@@ -1,9 +1,18 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
+import Vector :: *;
 import BitPat :: *;
 import BID :: *;
 
-module [Instr32DefModule] mkRV32I ();
+import RV_Common :: *;
+
+module [Instr32DefModule] mkRV_I ();
+
+/////////////////////////
+// Architectural state //
+////////////////////////////////////////////////////////////////////////////////
+
+  Vector#(32, Reg#(Bit#(XLEN))) regFile <- mkRegFileZ;
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -24,50 +33,58 @@ module [Instr32DefModule] mkRV32I ();
 
   // funct3 = ADDI = 000
   // opcode = OP-IMM = 0010011
-  // XXX also implements NOP
-  function Action instrADDI (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  // XXX pseudo-op: MV, NOP
+  function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("addi %d, %d, %d", dest, src, imm);
+      regFile[rd] <= regFile[rs1] + signExtend(imm);
+      $display("addi %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
-  
+
   // funct3 = SLTI = 010
   // opcode = OP-IMM = 0010011
-  function Action instrSLTI (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("slti %d, %d, %d", dest, src, imm);
+      regFile[rd] <= signedLT(regFile[rs1],signExtend(imm)) ? 1 : 0;
+      $display("slti %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
-  
+
   // funct3 = SLTIU = 011
   // opcode = OP-IMM = 0010011
-  function Action instrSLTIU (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  // XXX pseudo-op: SEQZ
+  function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("sltiu %d, %d, %d", dest, src, imm);
+      regFile[rd] <= (regFile[rs1] < signExtend(imm)) ? 1 : 0;
+      $display("sltiu %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
-  
+
   // funct3 = ANDI = 111
   // opcode = OP-IMM = 0010011
-  function Action instrANDI (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("andi %d, %d, %d", dest, src, imm);
+      regFile[rd] <= regFile[rs1] & signExtend(imm);
+      $display("andi %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
-  
+
   // funct3 = ORI = 110
   // opcode = OP-IMM = 0010011
-  function Action instrORI (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("ori %d, %d, %d", dest, src, imm);
+      regFile[rd] <= regFile[rs1] | signExtend(imm);
+      $display("ori %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
-  
+
   // funct3 = XORI = 100
   // opcode = OP-IMM = 0010011
-  function Action instrXORI (Bit#(12) imm, Bit#(5) src, Bit#(5) dest) =
+  // XXX pseudo-op: NOT
+  function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      $display("xori %d, %d, %d", dest, src, imm);
+      regFile[rd] <= regFile[rs1] ^ signExtend(imm);
+      $display("xori %d, %d, %d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
@@ -89,7 +106,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("slli %d, %d, %d", dest, src, shamt);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
-  
+
   // imm[11:5] = 0000000
   // funct3 = SRLI = 101
   // opcode = OP-IMM = 0010011
@@ -98,7 +115,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("srli %d, %d, %d", dest, src, shamt);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
-  
+
   // imm[11:5] = 0100000
   // funct3 = SRAI = 101
   // opcode = OP-IMM = 0010011
@@ -124,7 +141,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("lui %d, %d", dest, imm);
     endaction;
   defineInstr(pat(v, v, n(7'b0110111)), instrLUI);
-  
+
   // opcode = AUIPC = 0010111
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) dest) =
     action
@@ -153,7 +170,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("add %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
-  
+
   // funct7 = 0000000
   // funct3 = SLT = 010
   // opcode = OP = 0110011
@@ -162,7 +179,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("slt %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
-  
+
   // funct7 = 0000000
   // funct3 = SLTU = 011
   // opcode = OP = 0110011
@@ -171,7 +188,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("sltu %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
-  
+
   // funct7 = 0000000
   // funct3 = AND = 111
   // opcode = OP = 0110011
@@ -180,7 +197,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("and %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
-  
+
   // funct7 = 0000000
   // funct3 = OR = 110
   // opcode = OP = 0110011
@@ -189,7 +206,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("or %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
-  
+
   // funct7 = 0000000
   // funct3 = XOR = 100
   // opcode = OP = 0110011
@@ -198,7 +215,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("xor %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
-  
+
   // funct7 = 0000000
   // funct3 = SLL = 001
   // opcode = OP = 0110011
@@ -207,7 +224,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("sll %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
-  
+
   // funct7 = 0000000
   // funct3 = SRL = 101
   // opcode = OP = 0110011
@@ -216,7 +233,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("srl %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
-  
+
   // funct7 = 0100000
   // funct3 = SUB = 000
   // opcode = OP = 0110011
@@ -225,7 +242,7 @@ module [Instr32DefModule] mkRV32I ();
       $display("sub %d, %d, %d", dest, src1, src2);
     endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
-  
+
   // funct7 = 0100000
   // funct3 = SRA = 101
   // opcode = OP = 0110011
