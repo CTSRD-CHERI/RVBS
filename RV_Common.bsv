@@ -90,7 +90,11 @@ function a patJType (Bit#(7) opcode) =
 // RHS arguments: (Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd)
 */
 
-// Utility modules and functions
+import BID :: *;
+
+///////////////////////////////////
+// Utility modules and functions //
+////////////////////////////////////////////////////////////////////////////////
 
 // Read only register
 module mkROReg#(parameter a v) (Reg#(a));
@@ -124,3 +128,47 @@ typedef XLEN_VALUE XLEN;
 `else
 typedef 32 XLEN;
 `endif
+
+////////////////////////////////
+// RISC-V architectural state //
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  Vector#(32,Reg#(Bit#(32))) regFile;
+  Reg#(Bit#(32)) pc;
+} RVArchState;
+
+instance ArchState#(RVArchState);
+
+  module initArchState (RVArchState);
+    RVArchState s;
+    s.regFile <- mkRegFileZ;
+    s.pc <- mkReg(0);
+    return s;
+  endmodule
+
+  function Fmt lightReport (RVArchState s);
+    return $format("pc = 0x%0x", s.pc);
+  endfunction
+
+  function Fmt fullReport (RVArchState s);
+    return (
+      $format("regFile %s \n", map(readReg,s.regFile)) +
+      $format("pc = 0x%0x", s.pc)
+    );
+  endfunction
+
+endinstance
+
+//////////////////////////////
+// RISC-V common behaviours //
+////////////////////////////////////////////////////////////////////////////////
+
+function Action pcEpilogue(RVArchState s, World w) =
+  action
+    $display("---------- epilogue @%0t ----------", $time);
+    Bit#(32) tmpPC = s.pc + 4;
+    s.pc <= tmpPC;
+    $display("s.pc <= 0x%0x", tmpPC);
+    $display("===============================================================");
+  endaction;

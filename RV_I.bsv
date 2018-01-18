@@ -6,13 +6,7 @@ import BID :: *;
 
 import RV_Common :: *;
 
-module [Instr32DefModule] mkRV_I ();
-
-/////////////////////////
-// Architectural state //
-////////////////////////////////////////////////////////////////////////////////
-
-  Vector#(32, Reg#(Bit#(XLEN))) regFile <- mkRegFileZ;
+module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -36,8 +30,9 @@ module [Instr32DefModule] mkRV_I ();
   // XXX pseudo-op: MV, NOP
   function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= regFile[rs1] + signExtend(imm);
+      s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
       $display("addi %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
 
@@ -45,8 +40,9 @@ module [Instr32DefModule] mkRV_I ();
   // opcode = OP-IMM = 0010011
   function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= signedLT(regFile[rs1],signExtend(imm)) ? 1 : 0;
+      s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
       $display("slti %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
 
@@ -55,8 +51,9 @@ module [Instr32DefModule] mkRV_I ();
   // XXX pseudo-op: SEQZ
   function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= (regFile[rs1] < signExtend(imm)) ? 1 : 0;
+      s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
       $display("sltiu %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
 
@@ -64,8 +61,9 @@ module [Instr32DefModule] mkRV_I ();
   // opcode = OP-IMM = 0010011
   function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= regFile[rs1] & signExtend(imm);
+      s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
       $display("andi %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
 
@@ -73,8 +71,9 @@ module [Instr32DefModule] mkRV_I ();
   // opcode = OP-IMM = 0010011
   function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= regFile[rs1] | signExtend(imm);
+      s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
       $display("ori %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
 
@@ -83,8 +82,9 @@ module [Instr32DefModule] mkRV_I ();
   // XXX pseudo-op: NOT
   function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      regFile[rd] <= regFile[rs1] ^ signExtend(imm);
+      s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
       $display("xori %d, %d, %d", rd, rs1, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
