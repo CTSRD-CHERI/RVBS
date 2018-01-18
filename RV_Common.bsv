@@ -122,6 +122,11 @@ function Bool signedGT (Bit#(n) a, Bit#(n) b);
   Int#(n) sb = unpack(b);
   return sa > sb;
 endfunction
+function Bool signedGE (Bit#(n) a, Bit#(n) b);
+  Int#(n) sa = unpack(a);
+  Int#(n) sb = unpack(b);
+  return sa >= sb;
+endfunction
 
 // arithmetic right shift
 function Bit#(n) arithRightShift (Bit#(n) a, Bit#(m) b);

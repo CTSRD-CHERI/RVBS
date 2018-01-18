@@ -322,7 +322,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
       newPC[0] = 0;
       s.pc <= newPC;
       s.regFile[rd] <= s.pc + 4;
-      $display("jalr %d, %d", rd, rs1, imm);
+      $display("jalr %0d, %0d", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
@@ -339,12 +339,75 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
   +-------+----------+--------+--------+--------+----------+-------+----------+
 */
 
-//TODO BEQ
-//TODO BNE
-//TODO BLT
-//TODO BLTU
-//TODO BGE
-//TODO BGEU
+  // Note from the RISC-V ISA document:
+  // BGT, BGTU, BLE, and BLEU can be synthesized by reversing the operands
+  // to BLT, BLTU, BGE, and BGEU, respectivelly.
+
+  // funct3 = BEQ = 000
+  // opcode = 1100011
+  function Action instrBEQ (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (s.regFile[rs1] == s.regFile[rs2])
+        s.pc <= s.pc + imm;
+      $display("beq %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
+
+  // funct3 = BNE = 001
+  // opcode = 1100011
+  function Action instrBNE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (s.regFile[rs1] != s.regFile[rs2])
+        s.pc <= s.pc + imm;
+      $display("bne %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
+
+  // funct3 = BLT = 100
+  // opcode = 1100011
+  function Action instrBLT (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (signedLT(s.regFile[rs1], s.regFile[rs2]))
+        s.pc <= s.pc + imm;
+      $display("blt %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
+
+  // funct3 = BLTU = 110
+  // opcode = 1100011
+  function Action instrBLTU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (s.regFile[rs1] < s.regFile[rs2])
+        s.pc <= s.pc + imm;
+      $display("bltu %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
+
+  // funct3 = BGE = 101
+  // opcode = 1100011
+  function Action instrBGE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (signedGE(s.regFile[rs1], s.regFile[rs2]))
+        s.pc <= s.pc + imm;
+      $display("bge %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
+
+  // funct3 = BGEU = 111
+  // opcode = 1100011
+  function Action instrBGEU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+      if (s.regFile[rs1] >= s.regFile[rs2])
+        s.pc <= s.pc + imm;
+      $display("bgeu %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
 /////////////////////////////////
 // Load and Store Instructions //
