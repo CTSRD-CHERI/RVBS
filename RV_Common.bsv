@@ -123,11 +123,19 @@ function Bool signedGT (Bit#(n) a, Bit#(n) b);
   return sa > sb;
 endfunction
 
+// arithmetic right shift
+function Bit#(n) arithRightShift (Bit#(n) a, Bit#(m) b);
+  Int#(n) sa = unpack(a);
+  return pack(sa >> b);
+endfunction
+
 `ifdef XLEN_VALUE
 typedef XLEN_VALUE XLEN;
 `else
 typedef 32 XLEN;
 `endif
+//TODO for SLL instruction, use something like this:
+// typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
 ////////////////////////////////
 // RISC-V architectural state //
