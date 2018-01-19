@@ -173,15 +173,32 @@ instance ArchState#(RVArchState);
 
 endinstance
 
+//////////////////
+// RISC-V World //
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  Mem#(Bit#(32), Bit#(32)) mem;
+} RVWorld;
+
+instance World#(RVWorld);
+
+  module initWorld (RVWorld);
+    RVWorld w;
+    w.mem <- mkMem(8192);
+    return w;
+  endmodule
+
+endinstance
+
 //////////////////////////////
 // RISC-V common behaviours //
 ////////////////////////////////////////////////////////////////////////////////
 
-function Action pcEpilogue(RVArchState s, World w) =
+function Action pcEpilogue(RVArchState s, RVWorld w) =
   action
     $display("---------- epilogue @%0t ----------", $time);
     Bit#(32) tmpPC = s.pc + 4;
     s.pc <= tmpPC;
     $display("s.pc <= 0x%0x", tmpPC);
-    $display("===============================================================");
   endaction;

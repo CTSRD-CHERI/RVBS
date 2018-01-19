@@ -14,7 +14,8 @@ module top ();
 
   // instanciating simulator
   RVArchState s <- initArchState;
-  mkISASim(instq, s, list(mkRV_I));
+  RVWorld w <- initWorld;
+  mkISASim(instq, s, w, list(mkRV_I));
 
   // rule to keep the simulator busy
   rule dummyFetch;

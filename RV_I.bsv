@@ -6,7 +6,7 @@ import BID :: *;
 
 import RV_Common :: *;
 
-module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
+module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -239,7 +239,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
   // opcode = OP = 0110011
   function Action instrSLL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
-      s.regFile[rd] <= s.regFile[rs1] << s.regFile[rs2][4:0]; // TODO need to be derived from XLEN
+      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+      s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
       $display("sll %0d, %0d, %0d", rd, rs1, rs2);
       s.pc <= s.pc + 4;
     endaction;
@@ -250,7 +251,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
   // opcode = OP = 0110011
   function Action instrSRL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
-      s.regFile[rd] <= s.regFile[rs1] >> s.regFile[rs2][4:0]; // TODO need to be derived from XLEN
+      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+      s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
       $display("srl %0d, %0d, %0d", rd, rs1, rs2);
       s.pc <= s.pc + 4;
     endaction;
@@ -272,7 +274,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, World w) ();
   // opcode = OP = 0110011
   function Action instrSRA (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
-      s.regFile[rd] <= arithRightShift(s.regFile[rs1], s.regFile[rs2][4:0]); // TODO need to be derived from XLEN
+      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+      s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
       $display("sra %0d, %0d, %0d", rd, rs1, rs2);
       s.pc <= s.pc + 4;
     endaction;
