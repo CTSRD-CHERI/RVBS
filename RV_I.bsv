@@ -609,17 +609,71 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
 // Control and Status Register Instructions //
 ////////////////////////////////////////////////////////////////////////////////
 
-//TODO CSRRW
 /*
-TODO CSRRS
-RDCYCLE[H]
-RDTIME[H]
-RDINSTRET[H]
+  I-type
+
+   31                                 20 19    15 14    12 11     7 6        0
+  +-------------------------------------+--------+--------+--------+----------+
+  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
+  +-------------------------------------+--------+--------+--------+----------+
 */
-//TODO CSRRC
-//TODO CSRRWI
-//TODO CSRRSI
-//TODO CSRRCI
+
+  // funct3 = CSRRW = 001
+  // opcode = 1110011
+  // pseudo-op CSRW
+  function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrw %0d, %0d, %0d", rd, rs1, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
+
+  // funct3 = CSRRS = 010
+  // opcode = 1110011
+  // pseudo-op CSRR
+  // XXX RDCYCLE[H], RDTIME[H], RDINSTRET[H]
+  function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrs %0d, %0d, %0d", rd, rs1, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
+
+  // funct3 = CSRRC = 011
+  // opcode = 1110011
+  function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrc %0d, %0d, %0d", rd, rs1, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
+
+  // funct3 = CSRRWI = 101
+  // opcode = 1110011
+  function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrwi %0d, %0d, %0d", rd, zimm, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
+
+  // funct3 = CSRRSI = 110
+  // opcode = 1110011
+  function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrsi %0d, %0d, %0d", rd, zimm, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
+
+  // funct3 = CSRRCI = 111
+  // opcode = 1110011
+  function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
+    action
+      //TODO
+      $display("csrrci %0d, %0d, %0d", rd, zimm, imm);
+    endaction,
+  defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
 //////////////////////////////////////
 // Environment Call and Breakpoints //
