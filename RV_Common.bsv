@@ -110,8 +110,8 @@ typedef 32 XLEN;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
-  Vector#(32,Reg#(Bit#(32))) regFile;
-  Reg#(Bit#(32)) pc;
+  Vector#(32,Reg#(Bit#(XLEN))) regFile;
+  Reg#(Bit#(XLEN)) pc;
 } RVArchState;
 
 instance ArchState#(RVArchState);
@@ -141,7 +141,7 @@ endinstance
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
-  Mem#(Bit#(32), Bit#(32)) mem;
+  Mem#(Bit#(XLEN), Bit#(XLEN)) mem;
 } RVWorld;
 
 instance World#(RVWorld);
@@ -161,7 +161,7 @@ endinstance
 function Action pcEpilogue(RVArchState s, RVWorld w) =
   action
     $display("---------- epilogue @%0t ----------", $time);
-    Bit#(32) tmpPC = s.pc + 4;
+    Bit#(XLEN) tmpPC = s.pc + 4;
     s.pc <= tmpPC;
     $display("s.pc <= 0x%0x", tmpPC);
   endaction;

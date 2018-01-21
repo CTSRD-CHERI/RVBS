@@ -416,7 +416,121 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
 // Load and Store Instructions //
 ////////////////////////////////////////////////////////////////////////////////
 
-//TODO LOAD
+  // funct3 = LB = 000
+  // opcode = 0000011
+  function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    list(
+      action
+        $display("lb %0d, %0d, %0d - step 1", rd, rs1, imm);
+        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      endaction,
+      action
+        $display("lb %0d, %0d, %0d - step 2", rd, rs1, imm);
+        let rsp <- w.mem.getRsp();
+        case (rsp) matches
+          tagged ReadRsp .r: begin
+            Bit#(8) tmp = truncate(r);
+            s.regFile[rd] <= signExtend(tmp);
+          end
+        endcase
+        s.pc <= s.pc + 4;
+      endaction
+    );
+  defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)),instrLB);
+
+  // funct3 = LBU = 100
+  // opcode = 0000011
+  function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    list(
+      action
+        $display("lbu %0d, %0d, %0d - step 1", rd, rs1, imm);
+        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      endaction,
+      action
+        $display("lbu %0d, %0d, %0d - step 2", rd, rs1, imm);
+        let rsp <- w.mem.getRsp();
+        case (rsp) matches
+          tagged ReadRsp .r: begin
+            Bit#(8) tmp = truncate(r);
+            s.regFile[rd] <= zeroExtend(tmp);
+          end
+        endcase
+        s.pc <= s.pc + 4;
+      endaction
+    );
+  defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)),instrLBU);
+
+  // funct3 = LH = 001
+  // opcode = 0000011
+  function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    list(
+      action
+        $display("lh %0d, %0d, %0d - step 1", rd, rs1, imm);
+        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      endaction,
+      action
+        $display("lh %0d, %0d, %0d - step 2", rd, rs1, imm);
+        let rsp <- w.mem.getRsp();
+        case (rsp) matches
+          tagged ReadRsp .r: begin
+            Bit#(16) tmp = truncate(r);
+            s.regFile[rd] <= signExtend(tmp);
+          end
+        endcase
+        s.pc <= s.pc + 4;
+      endaction
+    );
+  defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)),instrLH);
+
+  // funct3 = LHU = 101
+  // opcode = 0000011
+  function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    list(
+      action
+        $display("lhu %0d, %0d, %0d - step 1", rd, rs1, imm);
+        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      endaction,
+      action
+        $display("lhu %0d, %0d, %0d - step 2", rd, rs1, imm);
+        let rsp <- w.mem.getRsp();
+        case (rsp) matches
+          tagged ReadRsp .r: begin
+            Bit#(18) tmp = truncate(r);
+            s.regFile[rd] <= zeroExtend(tmp);
+          end
+        endcase
+        s.pc <= s.pc + 4;
+      endaction
+    );
+  defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)),instrLHU);
+
+  // funct3 = LW = 010
+  // opcode = 0000011
+  function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+    list(
+      action
+        $display("lw %0d, %0d, %0d - step 1", rd, rs1, imm);
+        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+      endaction,
+      action
+        $display("lw %0d, %0d, %0d - step 2", rd, rs1, imm);
+        let rsp <- w.mem.getRsp();
+        case (rsp) matches
+          tagged ReadRsp .r: begin
+            Bit#(32) tmp = truncate(r);
+            s.regFile[rd] <= signExtend(tmp);
+          end
+        endcase
+        s.pc <= s.pc + 4;
+      endaction
+    );
+  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)),instrLH);
+
 //TODO STORE
 
 //////////////////
