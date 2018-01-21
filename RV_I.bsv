@@ -625,7 +625,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrw %0d, %0d, %0d", rd, rs1, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
   // funct3 = CSRRS = 010
@@ -636,7 +636,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrs %0d, %0d, %0d", rd, rs1, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
   // funct3 = CSRRC = 011
@@ -645,7 +645,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrc %0d, %0d, %0d", rd, rs1, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
   // funct3 = CSRRWI = 101
@@ -654,7 +654,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrwi %0d, %0d, %0d", rd, zimm, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
   // funct3 = CSRRSI = 110
@@ -663,7 +663,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrsi %0d, %0d, %0d", rd, zimm, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
   // funct3 = CSRRCI = 111
@@ -672,7 +672,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("csrrci %0d, %0d, %0d", rd, zimm, imm);
-    endaction,
+    endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
 //////////////////////////////////////
@@ -684,7 +684,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("ecall");
-    endaction,
+    endaction;
   defineInstr(pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
 
   // EBREAK
@@ -692,7 +692,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     action
       //TODO
       $display("ebreak");
-    endaction,
+    endaction;
   defineInstr(pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
 
 endmodule
