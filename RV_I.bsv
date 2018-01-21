@@ -446,7 +446,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
         s.pc <= s.pc + 4;
       endaction
     );
-  defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)),instrLB);
+  defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
 
   // funct3 = LBU = 100
   // opcode = 0000011
@@ -469,7 +469,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
         s.pc <= s.pc + 4;
       endaction
     );
-  defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)),instrLBU);
+  defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
 
   // funct3 = LH = 001
   // opcode = 0000011
@@ -492,7 +492,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
         s.pc <= s.pc + 4;
       endaction
     );
-  defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)),instrLH);
+  defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
 
   // funct3 = LHU = 101
   // opcode = 0000011
@@ -515,7 +515,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
         s.pc <= s.pc + 4;
       endaction
     );
-  defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)),instrLHU);
+  defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
 
   // funct3 = LW = 010
   // opcode = 0000011
@@ -538,7 +538,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
         s.pc <= s.pc + 4;
       endaction
     );
-  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)),instrLH);
+  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLH);
 
 /*
   S-type
@@ -558,7 +558,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
       $display("sb %0d, %0d, %0d", rs1, rs2, imm);
     endaction;
-  defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)),instrSB);
+  defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
   // funct3 = SH = 001
   // opcode = 0100011
@@ -569,7 +569,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
       $display("sh %0d, %0d, %0d", rs1, rs2, imm);
     endaction;
-  defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)),instrSH);
+  defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
   // funct3 = SW = 010
   // opcode = 0100011
@@ -580,14 +580,30 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
       $display("sw %0d, %0d, %0d", rs1, rs2, imm);
     endaction;
-  defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)),instrSW);
+  defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
 //////////////////
 // Memory Model //
 ////////////////////////////////////////////////////////////////////////////////
 
-//TODO FENCE
-//TODO FENCE.I
+
+  // funct3 = FENCE = 000
+  // opcode = 0001111
+  function Action instrFENCE(Bit#(4) pred, Bit#(4) succ) =
+    action
+      //TODO
+      $display("fence 0b%4b, 0b%4b", pred, succ);
+    endaction;
+  defineInstr(pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
+
+  // funct3 = FENCE.I = 001
+  // opcode = 0001111
+  function Action instrFENCE_I() =
+    action
+      //TODO
+      $display("fence.i");
+    endaction;
+  defineInstr(pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
 
 //////////////////////////////////////////////
 // Control and Status Register Instructions //
