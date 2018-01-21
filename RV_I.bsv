@@ -416,6 +416,15 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
 // Load and Store Instructions //
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+  I-type
+
+   31                                 20 19    15 14    12 11     7 6        0
+  +-------------------------------------+--------+--------+--------+----------+
+  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
+  +-------------------------------------+--------+--------+--------+----------+
+*/
+
   // funct3 = LB = 000
   // opcode = 0000011
   function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
@@ -531,7 +540,47 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
     );
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)),instrLH);
 
-//TODO STORE
+/*
+  S-type
+
+   31                        25 24    20 19    15 14    12 11     7 6        0
+  +----------------------------+--------+--------+--------+--------+----------+
+  |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
+  +----------------------------+--------+--------+--------+--------+----------+
+*/
+
+  // funct3 = SB = 000
+  // opcode = 0100011
+  function Action instrSB(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
+      $display("sb %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)),instrSB);
+
+  // funct3 = SH = 001
+  // opcode = 0100011
+  function Action instrSH(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
+      $display("sh %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)),instrSH);
+
+  // funct3 = SW = 010
+  // opcode = 0100011
+  function Action instrSW(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
+    action
+      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
+      $display("sw %0d, %0d, %0d", rs1, rs2, imm);
+    endaction;
+  defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)),instrSW);
 
 //////////////////
 // Memory Model //
