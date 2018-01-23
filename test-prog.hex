@@ -1,6 +1,8 @@
 // This is a test program using RISC-V instruction encodings
-001101EF // JAL   3, 67584
-002101A3 // SB    2,  2,  3
+0DEAD137 // LUI   2, 0xDEAD
+00C15113 // SRLI  2,  2, 0xC
+042011A3 // SH    2,  0, 0x43
 00A50CB3 // ADD  25, 10, 10
-00210183 // LB    3,  2,  2
 00110193 // ADDI  3,  2,  1
+04301283 // LH    5,  0, 0x43
+001101EF // JAL   3, 67584

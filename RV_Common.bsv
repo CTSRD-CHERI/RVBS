@@ -124,7 +124,17 @@ instance ArchState#(RVArchState);
   endmodule
 
   function Fmt lightReport (RVArchState s);
-    return $format("pc = 0x%0x", s.pc);
+    Fmt str = $format("regfile\n");
+    for (Integer i = 0; i < 6; i = i + 1) begin
+      for (Integer j = 0; j < 5; j = j + 1) begin
+        str = str + $format("\tx%0d: 0x%0x", (i*5)+j, s.regFile[(i*5)+j]);
+      end
+      str = str + $format("\n");
+    end
+    str = str + $format("\tx%0d: 0x%0x", 30, s.regFile[30]);
+    str = str + $format("\tx%0d: 0x%0x", 31, s.regFile[31]);
+    str = str + $format("\npc = 0x%0x", s.pc);
+    return str;
   endfunction
 
   function Fmt fullReport (RVArchState s);

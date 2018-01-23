@@ -30,7 +30,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
-      $display("addi %0d, %0d, %0d", rd, rs1, imm);
+      $display("addi %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
@@ -40,7 +40,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
-      $display("slti %0d, %0d, %0d", rd, rs1, imm);
+      $display("slti %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
@@ -51,7 +51,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
-      $display("sltiu %0d, %0d, %0d", rd, rs1, imm);
+      $display("sltiu %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
@@ -61,7 +61,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
-      $display("andi %0d, %0d, %0d", rd, rs1, imm);
+      $display("andi %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
@@ -71,7 +71,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
-      $display("ori %0d, %0d, %0d", rd, rs1, imm);
+      $display("ori %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
@@ -82,7 +82,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
-      $display("xori %0d, %0d, %0d", rd, rs1, imm);
+      $display("xori %0d, %0d, 0x%0x", rd, rs1, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
@@ -142,7 +142,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrLUI (Bit#(20) imm, Bit#(5) rd) =
     action
       s.regFile[rd] <= {imm, 12'b0};
-      $display("lui %0d, %0d", rd, imm);
+      $display("lui %0d, 0x%0x", rd, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(7'b0110111)), instrLUI);
@@ -151,7 +151,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.pc + {imm, 12'b0};
-      $display("auipc %0d, %0d", rd, imm);
+      $display("auipc %0d, 0x%0x", rd, imm);
       s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, n(7'b0010111)), instrAUIPC);
@@ -304,7 +304,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
       s.pc <= s.pc + imm;
       s.regFile[rd] <= s.pc + 4;
-      $display("jal %0d, %0d", rd, imm);
+      $display("jal %0d, 0x%0x", rd, imm);
     endaction;
   defineInstr(pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
 
@@ -325,7 +325,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       newPC[0] = 0;
       s.pc <= newPC;
       s.regFile[rd] <= s.pc + 4;
-      $display("jalr %0d, %0d", rd, rs1, imm);
+      $display("jalr %0d, 0x%0x", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
@@ -353,7 +353,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] == s.regFile[rs2])
         s.pc <= s.pc + imm;
-      $display("beq %0d, %0d, %0d", rs1, rs2, imm);
+      $display("beq %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
 
@@ -364,7 +364,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] != s.regFile[rs2])
         s.pc <= s.pc + imm;
-      $display("bne %0d, %0d, %0d", rs1, rs2, imm);
+      $display("bne %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
 
@@ -375,7 +375,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (signedLT(s.regFile[rs1], s.regFile[rs2]))
         s.pc <= s.pc + imm;
-      $display("blt %0d, %0d, %0d", rs1, rs2, imm);
+      $display("blt %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
 
@@ -386,7 +386,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] < s.regFile[rs2])
         s.pc <= s.pc + imm;
-      $display("bltu %0d, %0d, %0d", rs1, rs2, imm);
+      $display("bltu %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
 
@@ -397,7 +397,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (signedGE(s.regFile[rs1], s.regFile[rs2]))
         s.pc <= s.pc + imm;
-      $display("bge %0d, %0d, %0d", rs1, rs2, imm);
+      $display("bge %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
 
@@ -408,7 +408,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] >= s.regFile[rs2])
         s.pc <= s.pc + imm;
-      $display("bgeu %0d, %0d, %0d", rs1, rs2, imm);
+      $display("bgeu %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
@@ -430,12 +430,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        $display("lb %0d, %0d, %0d - step 1", rd, rs1, imm);
+        $display("lb %0d, %0d, 0x%0x - step 1", rd, rs1, imm);
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
       endaction,
       action
-        $display("lb %0d, %0d, %0d - step 2", rd, rs1, imm);
+        $display("lb %0d, %0d, 0x%0x - step 2", rd, rs1, imm);
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -453,12 +453,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        $display("lbu %0d, %0d, %0d - step 1", rd, rs1, imm);
+        $display("lbu %0d, %0d, 0x%0x - step 1", rd, rs1, imm);
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
       endaction,
       action
-        $display("lbu %0d, %0d, %0d - step 2", rd, rs1, imm);
+        $display("lbu %0d, %0d, 0x%0x - step 2", rd, rs1, imm);
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -476,12 +476,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        $display("lh %0d, %0d, %0d - step 1", rd, rs1, imm);
+        $display("lh %0d, %0d, 0x%0x - step 1", rd, rs1, imm);
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
       endaction,
       action
-        $display("lh %0d, %0d, %0d - step 2", rd, rs1, imm);
+        $display("lh %0d, %0d, 0x%0x - step 2", rd, rs1, imm);
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -499,12 +499,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        $display("lhu %0d, %0d, %0d - step 1", rd, rs1, imm);
+        $display("lhu %0d, %0d, 0x%0x - step 1", rd, rs1, imm);
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
       endaction,
       action
-        $display("lhu %0d, %0d, %0d - step 2", rd, rs1, imm);
+        $display("lhu %0d, %0d, 0x%0x - step 2", rd, rs1, imm);
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -522,12 +522,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        $display("lw %0d, %0d, %0d - step 1", rd, rs1, imm);
+        $display("lw %0d, %0d, 0x%0x - step 1", rd, rs1, imm);
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
       endaction,
       action
-        $display("lw %0d, %0d, %0d - step 2", rd, rs1, imm);
+        $display("lw %0d, %0d, 0x%0x - step 2", rd, rs1, imm);
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -556,7 +556,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
-      $display("sb %0d, %0d, %0d", rs1, rs2, imm);
+      $display("sb %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
@@ -567,7 +567,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
-      $display("sh %0d, %0d, %0d", rs1, rs2, imm);
+      $display("sh %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
@@ -578,7 +578,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
-      $display("sw %0d, %0d, %0d", rs1, rs2, imm);
+      $display("sw %0d, %0d, 0x%0x", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
@@ -624,7 +624,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrw %0d, %0d, %0d", rd, rs1, imm);
+      $display("csrrw %0d, %0d, 0x%0x", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
@@ -635,7 +635,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrs %0d, %0d, %0d", rd, rs1, imm);
+      $display("csrrs %0d, %0d, 0x%0x", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
@@ -644,7 +644,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrc %0d, %0d, %0d", rd, rs1, imm);
+      $display("csrrc %0d, %0d, 0x%0x", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
@@ -653,7 +653,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrwi %0d, %0d, %0d", rd, zimm, imm);
+      $display("csrrwi %0d, %0d, 0x%0x", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
@@ -662,7 +662,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrsi %0d, %0d, %0d", rd, zimm, imm);
+      $display("csrrsi %0d, %0d, 0x%0x", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
@@ -671,7 +671,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
   function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      $display("csrrci %0d, %0d, %0d", rd, zimm, imm);
+      $display("csrrci %0d, %0d, 0x%0x", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
