@@ -158,7 +158,7 @@ instance World#(RVWorld);
 
   module initWorld (RVWorld);
     RVWorld w;
-    w.mem <- mkMem(8192);
+    w.mem <- mkSimpleMem(8192);
     return w;
   endmodule
 
