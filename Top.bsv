@@ -9,9 +9,9 @@ import RV_I :: *;
 module top ();
 
   RVWorld w <- initWorld;
-  InstStream#(32) instStream <- mkInstStream("test-prog.hex", 1024);
+  IMem#(Bit#(XLEN), Bit#(32)) instMem <- mkSimpleInstMem(1024, "test-prog.hex");
 
   // instanciating simulator
-  mkISASim(instStream, w, initArchState, list(mkRV_I));
+  mkISASim(instMem, w, initArchState, list(mkRV_I));
 
 endmodule
