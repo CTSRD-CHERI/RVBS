@@ -8,11 +8,10 @@ import RV_I :: *;
 
 module top ();
 
-  RVArchState s <- initArchState;
   RVWorld w <- initWorld;
   InstStream#(32) instStream <- mkInstStream("test-prog.hex", 1024);
 
   // instanciating simulator
-  mkISASim(instStream, s, w, list(mkRV_I));
+  mkISASim(instStream, w, initArchState, list(mkRV_I));
 
 endmodule

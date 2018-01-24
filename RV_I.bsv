@@ -6,7 +6,7 @@ import BID :: *;
 
 import RV_Common :: *;
 
-module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
+module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -557,6 +557,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
       $display("sb %0d, %0d, 0x%0x", rs1, rs2, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
@@ -568,6 +569,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
       $display("sh %0d, %0d, 0x%0x", rs1, rs2, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
@@ -579,6 +581,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState s, RVWorld w) ();
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
       $display("sw %0d, %0d, 0x%0x", rs1, rs2, imm);
+      s.pc <= s.pc + 4;
     endaction;
   defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 

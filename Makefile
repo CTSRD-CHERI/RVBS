@@ -3,7 +3,7 @@ BITPATDIR=/home/aj443/devstuff/BitPat
 BIDDIR=/home/aj443/devstuff/BID
 BSVPATH=+:$(BITPATDIR):$(BIDDIR)
 BSC = bsc
-BSCFLAGS = -p $(BSVPATH)
+BSCFLAGS = -p $(BSVPATH) -check-assert
 
 # Top level module
 TOPFILE = Top.bsv

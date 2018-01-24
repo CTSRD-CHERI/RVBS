@@ -110,20 +110,20 @@ typedef 32 XLEN;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
-  Vector#(32,Reg#(Bit#(XLEN))) regFile;
-  Reg#(Bit#(XLEN)) pc;
-} RVArchState;
+  Vector#(32,Reg#(Bit#(n))) regFile;
+  Reg#(Bit#(n)) pc;
+} RVArchState#(numeric type n);
 
 instance ArchState#(RVArchState);
 
-  module initArchState (RVArchState);
-    RVArchState s;
+  module [ArchStateDefModule#(n)] initArchState (RVArchState#(n));
+    RVArchState#(n) s;
     s.regFile <- mkRegFileZ;
-    s.pc <- mkReg(0);
+    s.pc <- mkPC;
     return s;
   endmodule
 
-  function Fmt lightReport (RVArchState s);
+  function Fmt lightReport (RVArchState#(n) s);
     Fmt str = $format("regfile\n");
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
@@ -137,7 +137,7 @@ instance ArchState#(RVArchState);
     return str;
   endfunction
 
-  function Fmt fullReport (RVArchState s);
+  function Fmt fullReport (RVArchState#(n) s);
     return (
       $format("regFile %s \n", map(readReg,s.regFile)) +
       $format("pc = 0x%0x", s.pc)
@@ -168,7 +168,7 @@ endinstance
 // RISC-V common behaviours //
 ////////////////////////////////////////////////////////////////////////////////
 
-function Action pcEpilogue(RVArchState s, RVWorld w) =
+function Action pcEpilogue(RVArchState#(XLEN) s, RVWorld w) =
   action
     $display("---------- epilogue @%0t ----------", $time);
     Bit#(XLEN) tmpPC = s.pc + 4;
