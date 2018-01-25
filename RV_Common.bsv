@@ -170,8 +170,8 @@ endinstance
 
 function Action pcEpilogue(RVArchState#(XLEN) s, RVWorld w) =
   action
-    $display("---------- epilogue @%0t ----------", $time);
+    printTLogPlusArgs("itrace", "--------------- epilogue --------------");
     Bit#(XLEN) tmpPC = s.pc + 4;
     s.pc <= tmpPC;
-    $display("s.pc <= 0x%0x", tmpPC);
+    printTLogPlusArgs("itrace", $format("s.pc <= 0x%0x", tmpPC));
   endaction;
