@@ -14,8 +14,9 @@ sim: $(TOPMOD)
 
 $(TOPMOD): *.bsv
 	$(BSC) $(BSCFLAGS) -sim -g $(TOPMOD) -u $(TOPFILE)
-	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD)
+	$(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) $(BIDDIR)/*.c
 
 .PHONY: clean
 clean:
 	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo *.v $(TOPMOD)
+	$(MAKE) -C $(BIDDIR) clean
