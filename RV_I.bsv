@@ -30,8 +30,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
-      printTLogPlusArgs("itrace", $format("addi %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("addi", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
 
@@ -40,8 +40,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
-      printTLogPlusArgs("itrace", $format("slti %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("slti", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
 
@@ -51,8 +51,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
-      printTLogPlusArgs("itrace", $format("sltiu %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("sltiu", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
 
@@ -61,8 +61,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
-      printTLogPlusArgs("itrace", $format("andi %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("andi", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
 
@@ -71,8 +71,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
-      printTLogPlusArgs("itrace", $format("ori %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("ori", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
 
@@ -82,8 +82,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
-      printTLogPlusArgs("itrace", $format("xori %0d, %0d, 0x%0x", rd, rs1, imm));
       s.pc <= s.pc + 4;
+      logInstI("xori", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
@@ -102,8 +102,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSLLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] << imm4_0;
-      printTLogPlusArgs("itrace", $format("slli %0d, %0d, %0d", rd, rs1, imm4_0));
       s.pc <= s.pc + 4;
+      logInstI("slli", rd, rs1, zeroExtend(imm4_0));
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
 
@@ -113,8 +113,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSRLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] >> imm4_0;
-      printTLogPlusArgs("itrace", $format("srli %0d, %0d, %0d", rd, rs1, imm4_0));
       s.pc <= s.pc + 4;
+      logInstI("srli", rd, rs1, zeroExtend(imm4_0));
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
 
@@ -124,8 +124,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSRAI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm4_0);
-      printTLogPlusArgs("itrace", $format("srai %0d, %0d, %0d", rd, rs1, imm4_0));
       s.pc <= s.pc + 4;
+      logInstI("srai", rd, rs1, zeroExtend(imm4_0));
     endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
 
@@ -142,8 +142,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrLUI (Bit#(20) imm, Bit#(5) rd) =
     action
       s.regFile[rd] <= {imm, 12'b0};
-      printTLogPlusArgs("itrace", $format("lui %0d, 0x%0x", rd, imm));
       s.pc <= s.pc + 4;
+      logInstU("lui", rd, imm);
     endaction;
   defineInstr(pat(v, v, n(7'b0110111)), instrLUI);
 
@@ -151,8 +151,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.pc + {imm, 12'b0};
-      printTLogPlusArgs("itrace", $format("auipc %0d, 0x%0x", rd, imm));
       s.pc <= s.pc + 4;
+      logInstU("auipc", rd, imm);
     endaction;
   defineInstr(pat(v, v, n(7'b0010111)), instrAUIPC);
 
@@ -174,8 +174,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrADD (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] + s.regFile[rs2];
-      printTLogPlusArgs("itrace", $format("add %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("add", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
 
@@ -185,8 +185,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSLT (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= (signedLT(s.regFile[rs1], s.regFile[rs2])) ? 1 : 0;
-      printTLogPlusArgs("itrace", $format("slt %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("slt", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
 
@@ -196,8 +196,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSLTU (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= (s.regFile[rs1] < s.regFile[rs2]) ? 1 : 0;
-      printTLogPlusArgs("itrace", $format("sltu %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("sltu", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
 
@@ -207,8 +207,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrAND (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] & s.regFile[rs2];
-      printTLogPlusArgs("itrace", $format("and %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("and", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
 
@@ -218,8 +218,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] | s.regFile[rs2];
-      printTLogPlusArgs("itrace", $format("or %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("or", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
 
@@ -229,8 +229,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrXOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] ^ s.regFile[rs2];
-      printTLogPlusArgs("itrace", $format("xor %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("xor", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
 
@@ -241,8 +241,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
       s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
-      printTLogPlusArgs("itrace", $format("sll %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("sll", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
 
@@ -253,8 +253,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
       s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
-      printTLogPlusArgs("itrace", $format("srl %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("srl", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
 
@@ -264,8 +264,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrSUB (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
     action
       s.regFile[rd] <= s.regFile[rs1] - s.regFile[rs2];
-      printTLogPlusArgs("itrace", $format("sub %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("sub", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
 
@@ -276,8 +276,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
       s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
-      printTLogPlusArgs("itrace", $format("sra %0d, %0d, %0d", rd, rs1, rs2));
       s.pc <= s.pc + 4;
+      logInstR("sra", rd, rs1, rs2);
     endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0110011)), instrSRA);
 
@@ -304,7 +304,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
       s.pc <= s.pc + imm;
       s.regFile[rd] <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("jal %0d, 0x%0x", rd, imm));
+      logInstJ("jal", rd, imm);
     endaction;
   defineInstr(pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
 
@@ -325,7 +325,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       newPC[0] = 0;
       s.pc <= newPC;
       s.regFile[rd] <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("jalr %0d, 0x%0x", rd, rs1, imm));
+      logInstI("jalr", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
@@ -353,7 +353,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] == s.regFile[rs2]) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("beq %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("beq", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
 
@@ -364,7 +364,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] != s.regFile[rs2]) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("bne %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("bne", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
 
@@ -375,7 +375,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (signedLT(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("blt %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("blt", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
 
@@ -386,7 +386,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] < s.regFile[rs2]) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("bltu %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("bltu", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
 
@@ -397,7 +397,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (signedGE(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("bge %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("bge", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
 
@@ -408,7 +408,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
       if (s.regFile[rs1] >= s.regFile[rs2]) s.pc <= s.pc + imm;
       else s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("bgeu %0d, %0d, 0x%0x", rs1, rs2, imm));
+      logInstB("bgeu", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
@@ -430,12 +430,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        printTLogPlusArgs("itrace", $format("lb %0d, %0d, 0x%0x - step 1", rd, rs1, imm));
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+        logInstI("lb(step1)", rd, rs1, imm);
       endaction,
       action
-        printTLogPlusArgs("itrace", $format("lb %0d, %0d, 0x%0x - step 2", rd, rs1, imm));
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -444,6 +443,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
           end
         endcase
         s.pc <= s.pc + 4;
+        logInstI("lb(step2)", rd, rs1, imm);
       endaction
     );
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
@@ -453,12 +453,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        printTLogPlusArgs("itrace", $format("lbu %0d, %0d, 0x%0x - step 1", rd, rs1, imm));
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+        logInstI("lbu(step1)", rd, rs1, imm);
       endaction,
       action
-        printTLogPlusArgs("itrace", $format("lbu %0d, %0d, 0x%0x - step 2", rd, rs1, imm));
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -467,6 +466,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
           end
         endcase
         s.pc <= s.pc + 4;
+        logInstI("lbu(step2)", rd, rs1, imm);
       endaction
     );
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
@@ -476,12 +476,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        printTLogPlusArgs("itrace", $format("lh %0d, %0d, 0x%0x - step 1", rd, rs1, imm));
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+        logInstI("lh(step1)", rd, rs1, imm);
       endaction,
       action
-        printTLogPlusArgs("itrace", $format("lh %0d, %0d, 0x%0x - step 2", rd, rs1, imm));
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -490,6 +489,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
           end
         endcase
         s.pc <= s.pc + 4;
+        logInstI("lh(step2)", rd, rs1, imm);
       endaction
     );
   defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
@@ -499,12 +499,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        printTLogPlusArgs("itrace", $format("lhu %0d, %0d, 0x%0x - step 1", rd, rs1, imm));
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+        logInstI("lhu(step1)", rd, rs1, imm);
       endaction,
       action
-        printTLogPlusArgs("itrace", $format("lhu %0d, %0d, 0x%0x - step 2", rd, rs1, imm));
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -513,6 +512,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
           end
         endcase
         s.pc <= s.pc + 4;
+        logInstI("lhu(step2)", rd, rs1, imm);
       endaction
     );
   defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
@@ -522,12 +522,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     list(
       action
-        printTLogPlusArgs("itrace", $format("lw %0d, %0d, 0x%0x - step 1", rd, rs1, imm));
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
         w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+        logInstI("lw(step1)", rd, rs1, imm);
       endaction,
       action
-        printTLogPlusArgs("itrace", $format("lw %0d, %0d, 0x%0x - step 2", rd, rs1, imm));
         let rsp <- w.mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
@@ -536,6 +535,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
           end
         endcase
         s.pc <= s.pc + 4;
+        logInstI("lw(step2)", rd, rs1, imm);
       endaction
     );
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLH);
@@ -556,8 +556,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
-      printTLogPlusArgs("itrace", $format("sb %0d, %0d, 0x%0x", rs1, rs2, imm));
       s.pc <= s.pc + 4;
+      logInstS("sb", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
@@ -568,8 +568,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
-      printTLogPlusArgs("itrace", $format("sh %0d, %0d, 0x%0x", rs1, rs2, imm));
       s.pc <= s.pc + 4;
+      logInstS("sh", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
@@ -580,8 +580,8 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
-      printTLogPlusArgs("itrace", $format("sw %0d, %0d, 0x%0x", rs1, rs2, imm));
       s.pc <= s.pc + 4;
+      logInstS("sw", rs1, rs2, imm);
     endaction;
   defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
@@ -627,7 +627,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrw %0d, %0d, 0x%0x", rd, rs1, imm));
+      logInstI("csrrw", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
@@ -638,7 +638,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrs %0d, %0d, 0x%0x", rd, rs1, imm));
+      logInstI("csrrs", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
@@ -647,7 +647,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrc %0d, %0d, 0x%0x", rd, rs1, imm));
+      logInstI("csrrc", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
@@ -656,7 +656,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrwi %0d, %0d, 0x%0x", rd, zimm, imm));
+      logInstI("csrrwi", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
@@ -665,7 +665,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrsi %0d, %0d, 0x%0x", rd, zimm, imm));
+      logInstI("csrrsi", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
@@ -674,7 +674,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       //TODO
-      printTLogPlusArgs("itrace", $format("csrrci %0d, %0d, 0x%0x", rd, zimm, imm));
+      logInstI("csrrci", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
