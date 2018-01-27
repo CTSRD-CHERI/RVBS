@@ -152,7 +152,7 @@ function Action logInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
 // ArchState instance
 instance ArchState#(RVArchState);
 
-  module [ArchStateDefModule#(n)] initArchState (RVArchState#(n));
+  module [ArchStateDefModule#(n)] mkArchState (RVArchState#(n));
     RVArchState#(n) s;
     s.regFile <- mkRegFileZ;
     s.pc <- mkPC;

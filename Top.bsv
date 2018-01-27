@@ -12,6 +12,6 @@ module top ();
   IMem#(Bit#(XLEN), Bit#(32)) instMem <- mkSimpleInstMem(4096, "test-prog.hex");
 
   // instanciating simulator
-  mkISASim(instMem, w, initArchState, list(mkRV_I));
+  mkISASim(instMem, w, mkArchState, list(mkRV_I));
 
 endmodule
