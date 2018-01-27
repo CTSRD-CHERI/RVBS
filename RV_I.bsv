@@ -626,7 +626,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // pseudo-op CSRW
   function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      //TODO
+      // XXX for some reason, bluespec doesn't like this way to write it:
+      // s.regFile[rd] <- s.csrs.rw(imm, s.regFile[rs1]);
+      let val <- s.csrs.rw(imm, s.regFile[rs1]);
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrw", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
@@ -637,7 +641,9 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // XXX RDCYCLE[H], RDTIME[H], RDINSTRET[H]
   function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      //TODO
+      let val <- s.csrs.rs(imm, s.regFile[rs1]);
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrs", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
@@ -646,7 +652,9 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // opcode = 1110011
   function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
-      //TODO
+      let val <- s.csrs.rc(imm, s.regFile[rs1]);
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrc", rd, rs1, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
@@ -655,7 +663,9 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // opcode = 1110011
   function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
-      //TODO
+      let val <- s.csrs.rw(imm, zeroExtend(zimm));
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrwi", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
@@ -664,7 +674,9 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // opcode = 1110011
   function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
-      //TODO
+      let val <- s.csrs.rs(imm, zeroExtend(zimm));
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrsi", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
@@ -673,7 +685,9 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   // opcode = 1110011
   function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
-      //TODO
+      let val <- s.csrs.rc(imm, zeroExtend(zimm));
+      s.regFile[rd] <= val;
+      s.pc <= s.pc + 4;
       logInstI("csrrci", rd, zimm, imm);
     endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);

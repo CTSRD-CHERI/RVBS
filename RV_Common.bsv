@@ -3,6 +3,11 @@
 import BID :: *;
 import Vector :: *;
 
+import RV_CSRs :: *;
+export RV_CSRs :: *;
+
+export RV_Common :: *;
+
 ///////////////////////////////////
 // Utility modules and functions //
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,9 +26,48 @@ typedef 32 XLEN;
 
 // state type
 typedef struct {
-  Vector#(32,Reg#(Bit#(n))) regFile;
   Reg#(Bit#(n)) pc;
+  Vector#(32,Reg#(Bit#(n))) regFile;
+  CSRs#(n) csrs;
 } RVArchState#(numeric type n);
+
+// ArchState instance
+instance ArchState#(RVArchState);
+
+  module [ArchStateDefModule#(n)] mkArchState (RVArchState#(n));
+    RVArchState#(n) s;
+    s.pc <- mkPC;
+    s.regFile <- mkRegFileZ;
+    s.csrs <- mkCSRs;
+    return s;
+  endmodule
+
+  function Fmt lightReport (RVArchState#(n) s);
+    Fmt str = $format("regfile\n");
+    for (Integer i = 0; i < 6; i = i + 1) begin
+      for (Integer j = 0; j < 5; j = j + 1) begin
+        str = str + $format("\tx%0d: 0x%8x", (i*5)+j, s.regFile[(i*5)+j]);
+      end
+      str = str + $format("\n");
+    end
+    str = str + $format("\tx%0d: 0x%8x", 30, s.regFile[30]);
+    str = str + $format("\tx%0d: 0x%8x", 31, s.regFile[31]);
+    str = str + $format("\npc = 0x%8x", s.pc);
+    return str;
+  endfunction
+
+  function Fmt fullReport (RVArchState#(n) s);
+    return (
+      $format("regFile %s \n", map(readReg,s.regFile)) +
+      $format("pc = 0x%0x", s.pc)
+    );
+  endfunction
+
+endinstance
+
+///////////////////
+// Logging utils //
+////////////////////////////////////////////////////////////////////////////////
 
 // pretty printing and logging utils
 function Fmt gpRegName(Bit#(n) r) = $format("x%0d", r);
@@ -148,39 +192,6 @@ function Action logInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
   printTLogPlusArgs("itrace",
     $format(i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
   );
-
-// ArchState instance
-instance ArchState#(RVArchState);
-
-  module [ArchStateDefModule#(n)] mkArchState (RVArchState#(n));
-    RVArchState#(n) s;
-    s.regFile <- mkRegFileZ;
-    s.pc <- mkPC;
-    return s;
-  endmodule
-
-  function Fmt lightReport (RVArchState#(n) s);
-    Fmt str = $format("regfile\n");
-    for (Integer i = 0; i < 6; i = i + 1) begin
-      for (Integer j = 0; j < 5; j = j + 1) begin
-        str = str + $format("\tx%0d: 0x%8x", (i*5)+j, s.regFile[(i*5)+j]);
-      end
-      str = str + $format("\n");
-    end
-    str = str + $format("\tx%0d: 0x%8x", 30, s.regFile[30]);
-    str = str + $format("\tx%0d: 0x%8x", 31, s.regFile[31]);
-    str = str + $format("\npc = 0x%8x", s.pc);
-    return str;
-  endfunction
-
-  function Fmt fullReport (RVArchState#(n) s);
-    return (
-      $format("regFile %s \n", map(readReg,s.regFile)) +
-      $format("pc = 0x%0x", s.pc)
-    );
-  endfunction
-
-endinstance
 
 //////////////////
 // RISC-V World //
