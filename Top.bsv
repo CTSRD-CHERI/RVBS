@@ -9,7 +9,7 @@ import RV_I :: *;
 module top ();
 
   RVWorld w <- initWorld;
-  IMem#(Bit#(XLEN), Bit#(32)) instMem <- mkSimpleInstMem(1024, "test-prog.hex");
+  IMem#(Bit#(XLEN), Bit#(32)) instMem <- mkSimpleInstMem(4096, "test-prog.hex");
 
   // instanciating simulator
   mkISASim(instMem, w, initArchState, list(mkRV_I));
