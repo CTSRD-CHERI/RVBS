@@ -627,12 +627,13 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       /* TODO
-      `If rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-eects that might occur on a CSR read.`
+      `If rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
       Do the write side effect take place ?
       */
+      let r = (rd == 0) ? rwCSRReqNoRead(imm, s.regFile[rs1]) : rwCSRReq(imm, s.regFile[rs1]);
       // XXX for some reason, bluespec doesn't like this way to write it:
-      // s.regFile[rd] <- s.csrs.rw(imm, s.regFile[rs1]);
-      let val <- s.csrs.rw(imm, s.regFile[rs1]);
+      // s.regFile[rd] <- s.csrs.req(r);
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrw", rd, rs1, imm);
@@ -646,10 +647,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       /* TODO
-      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side eects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
+      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
       Do the read side effect take place ?
       */
-      let val <- s.csrs.rs(imm, s.regFile[rs1]);
+      let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrs", rd, rs1, imm);
@@ -661,10 +663,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
     action
       /* TODO
-      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side eects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
+      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
       Do the read side effect take place ?
       */
-      let val <- s.csrs.rc(imm, s.regFile[rs1]);
+      let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrc", rd, rs1, imm);
@@ -676,10 +679,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       /* TODO
-      `if rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-eects that might occur on a CSR read.`
+      `if rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
       Do the write side effect take place ?
       */
-      let val <- s.csrs.rw(imm, zeroExtend(zimm));
+      let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrwi", rd, zimm, imm);
@@ -691,10 +695,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       /* TODO
-      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side eects that might otherwise occur on a CSR write.`
+      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
       Do the read side effect take place ?
       */
-      let val <- s.csrs.rs(imm, zeroExtend(zimm));
+      let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrsi", rd, zimm, imm);
@@ -706,10 +711,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
   function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
     action
       /* TODO
-      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side eects that might otherwise occur on a CSR write.`
+      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
       Do the read side effect take place ?
       */
-      let val <- s.csrs.rc(imm, zeroExtend(zimm));
+      let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
+      let val <- s.csrs.req(r);
       s.regFile[rd] <= val;
       s.pc <= s.pc + 4;
       logInstI("csrrci", rd, zimm, imm);
