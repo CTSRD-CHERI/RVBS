@@ -12,15 +12,15 @@ interface CSRs#(numeric type n);
   method ActionValue#(Bit#(n)) req (CSRReq#(n) r);
 endinterface
 
-typedef enum {RW, RS, RC} CSRReqType;
-typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects;
+typedef enum {RW, RS, RC} CSRReqType deriving (FShow);
+typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects deriving (FShow);
 
 typedef struct {
   Bit#(12) idx;
   Bit#(n) val;
   CSRReqType rType;
   CSRReqEffects rEffects;
-} CSRReq#(numeric type n);
+} CSRReq#(numeric type n) deriving (FShow);
 
 instance DefaultValue#(CSRReq#(n));
   function CSRReq#(n) defaultValue =
@@ -43,25 +43,31 @@ function CSRReq#(n) rcCSRReqNoWrite(Bit#(12) i, Bit#(n) v) =
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
 
-module mkCSRs(CSRs#(n));
+module [ArchStateDefModule#(n)] mkCSRs(CSRs#(n));
 
   // Read only cycle counter @ 0xC00 [and 0xC80]
   Reg#(Bit#(64)) cycle <- mkReg(0);
   rule cycle_count;
     cycle <= cycle + 1;
   endrule
+  // Read only time counter @ 0xC01 [and 0xC81]
+  //TODO
+  // Read only retired instruction counter @ 0xC02 [and 0xC82]
+  Reg#(Bit#(64)) instret <- mkCommittedInstCnt;
 
   method ActionValue#(Bit#(n)) req (CSRReq#(n) r);
     Bit#(n) ret;
     case (r.idx)
       'hC00: ret = cycle[valueOf(n)-1:0];
+      'hC02: ret = instret[valueOf(n)-1:0];
       // RV32I only
       //'hC80: ret = cycle[63:32];
       default: begin
         ret = ?;
-        printLog($format("CSR %0d unimplemented", r.idx));
+        printLog($format("CSR %0d unimplemented - ", r.idx, fshow(r)));
       end
     endcase
     return ret;
   endmethod
+
 endmodule
