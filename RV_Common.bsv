@@ -193,20 +193,16 @@ function Action logInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
     $format(i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
   );
 
-//////////////////
-// RISC-V World //
+/////////////////////
+// RISC-V Memories //
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct {
-  Mem#(Bit#(XLEN), Bit#(XLEN)) mem;
-} RVWorld;
-
-instance World#(RVWorld);
-
-  module initWorld (RVWorld);
-    RVWorld w;
-    w.mem <- mkSimpleMem(4096);
-    return w;
-  endmodule
-
-endinstance
+typedef Mem#(Bit#(XLEN), Bit#(XLEN), Bit#(XLEN)) RVMem;
+typedef DMem#(Bit#(XLEN), Bit#(XLEN)) RVDMem;
+typedef IMem#(Bit#(XLEN), Bit#(XLEN)) RVIMem;
+module initRVMem (RVMem);
+  let imem <- mkSimpleIMem(4096, "test-prog.hex");
+  let dmem <- mkSimpleDMem(4096);
+  interface IMem inst = imem;
+  interface DMem data = dmem;
+endmodule

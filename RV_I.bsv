@@ -6,7 +6,7 @@ import BID :: *;
 
 import RV_Common :: *;
 
-module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
+module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -431,11 +431,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     list(
       action
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
         logInstI("lb(step1)", rd, rs1, imm);
       endaction,
       action
-        let rsp <- w.mem.getRsp();
+        let rsp <- mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
             Bit#(8) tmp = truncate(r);
@@ -454,11 +454,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     list(
       action
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
         logInstI("lbu(step1)", rd, rs1, imm);
       endaction,
       action
-        let rsp <- w.mem.getRsp();
+        let rsp <- mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
             Bit#(8) tmp = truncate(r);
@@ -477,11 +477,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     list(
       action
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
         logInstI("lh(step1)", rd, rs1, imm);
       endaction,
       action
-        let rsp <- w.mem.getRsp();
+        let rsp <- mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
             Bit#(16) tmp = truncate(r);
@@ -500,11 +500,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     list(
       action
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
         logInstI("lhu(step1)", rd, rs1, imm);
       endaction,
       action
-        let rsp <- w.mem.getRsp();
+        let rsp <- mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
             Bit#(18) tmp = truncate(r);
@@ -523,11 +523,11 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     list(
       action
         Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        w.mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
         logInstI("lw(step1)", rd, rs1, imm);
       endaction,
       action
-        let rsp <- w.mem.getRsp();
+        let rsp <- mem.getRsp();
         case (rsp) matches
           tagged ReadRsp .r: begin
             Bit#(32) tmp = truncate(r);
@@ -555,7 +555,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
+      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
       s.pc <= s.pc + 4;
       logInstS("sb", rs1, rs2, imm);
     endaction;
@@ -567,7 +567,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
+      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
       s.pc <= s.pc + 4;
       logInstS("sh", rs1, rs2, imm);
     endaction;
@@ -579,7 +579,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVWorld w) ();
     action
       Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      w.mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
+      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
       s.pc <= s.pc + 4;
       logInstS("sw", rs1, rs2, imm);
     endaction;
