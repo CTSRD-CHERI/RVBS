@@ -538,7 +538,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
         logInstI("lw(step2)", rd, rs1, imm);
       endaction
     );
-  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLH);
+  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
 
 /*
   S-type
