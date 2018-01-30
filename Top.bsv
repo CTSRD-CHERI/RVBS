@@ -8,7 +8,8 @@ import RV_I :: *;
 
 module top ();
 
-  RVMem mem <- initRVMem;
+  //RVMem mem <- initRVMem;
+  RVMem mem <- mkSharedMem(8192, "test-prog.hex");
 
   // instanciating simulator
   mkISASim(mem, mkArchState, list(mkRV_I));
