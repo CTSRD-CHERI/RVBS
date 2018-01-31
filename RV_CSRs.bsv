@@ -56,12 +56,21 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs#(n));
   Reg#(Bit#(64)) instret <- mkCommittedInstCnt;
 
   method ActionValue#(Bit#(n)) req (CSRReq#(n) r);
-    Bit#(n) ret;
+    Bit#(n) ret = ?;
     case (r.idx)
       'hC00: ret = cycle[valueOf(n)-1:0];
       'hC02: ret = instret[valueOf(n)-1:0];
       // RV32I only
       //'hC80: ret = cycle[63:32];
+      //XXX hack for test suite
+      'hCC0: begin // test success
+        $display("TEST SUCCESS");
+        $finish(0);
+      end
+      'hCC1: begin // test failure
+        $display("TEST FAILURE");
+        $finish(0);
+      end
       default: begin
         ret = ?;
         printLog($format("CSR %0d unimplemented - ", r.idx, fshow(r)));
