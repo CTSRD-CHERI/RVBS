@@ -141,7 +141,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // opcode = LUI = 0110111
   function Action instrLUI (Bit#(20) imm, Bit#(5) rd) =
     action
-      s.regFile[rd] <= {imm, 12'b0};
+      s.regFile[rd] <= signExtend({imm, 12'b0});
       s.pc <= s.pc + 4;
       logInstU("lui", rd, imm);
     endaction;
@@ -150,7 +150,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // opcode = AUIPC = 0010111
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) =
     action
-      s.regFile[rd] <= s.pc + {imm, 12'b0};
+      s.regFile[rd] <= s.pc + signExtend({imm, 12'b0});
       s.pc <= s.pc + 4;
       logInstU("auipc", rd, imm);
     endaction;

@@ -12,8 +12,10 @@ export RV_Common :: *;
 // Utility modules and functions //
 ////////////////////////////////////////////////////////////////////////////////
 
-`ifdef XLEN_VALUE
-typedef XLEN_VALUE XLEN;
+typedef 32 InstSz;
+
+`ifdef XLEN
+typedef `XLEN XLEN;
 `else
 typedef 32 XLEN;
 `endif
@@ -198,9 +200,9 @@ function Action logInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
 // RISC-V Memories //
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Mem#(Bit#(XLEN), Bit#(XLEN), Bit#(XLEN)) RVMem;
+typedef Mem#(Bit#(XLEN), Bit#(InstSz), Bit#(XLEN)) RVMem;
 typedef DMem#(Bit#(XLEN), Bit#(XLEN)) RVDMem;
-typedef IMem#(Bit#(XLEN), Bit#(XLEN)) RVIMem;
+typedef IMem#(Bit#(XLEN), Bit#(InstSz)) RVIMem;
 module initRVMem (RVMem);
   let imem <- mkSimpleIMem(4096, "test-prog.hex");
   let dmem <- mkSimpleDMem(4096);
