@@ -744,4 +744,15 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     endaction;
   defineInstr(pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
 
+/////////////////////////
+// Unknown Instruction //
+////////////////////////////////////////////////////////////////////////////////
+
+  function Action unknownInst(Bit#(32) inst) = action
+    // TODO
+    s.pc <= s.pc + 4;
+    printTLogPlusArgs("itrace", $format("UNKNOWN INSTRUCTION 0x%0x", inst));
+  endaction;
+  defineUnkInstr(unknownInst);
+
 endmodule
