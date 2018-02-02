@@ -27,64 +27,58 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // funct3 = ADDI = 000
   // opcode = OP-IMM = 0010011
   // XXX pseudo-op: MV, NOP
-  function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
-      s.pc <= s.pc + 4;
-      logInstI("addi", rd, rs1, imm);
-    endaction;
+  function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
+    s.pc <= s.pc + 4;
+    logInstI("addi", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
 
   // funct3 = SLTI = 010
   // opcode = OP-IMM = 0010011
-  function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
-      s.pc <= s.pc + 4;
-      logInstI("slti", rd, rs1, imm);
-    endaction;
+  function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
+    s.pc <= s.pc + 4;
+    logInstI("slti", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
 
   // funct3 = SLTIU = 011
   // opcode = OP-IMM = 0010011
   // XXX pseudo-op: SEQZ
-  function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
-      s.pc <= s.pc + 4;
-      logInstI("sltiu", rd, rs1, imm);
-    endaction;
+  function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
+    s.pc <= s.pc + 4;
+    logInstI("sltiu", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
 
   // funct3 = ANDI = 111
   // opcode = OP-IMM = 0010011
-  function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
-      s.pc <= s.pc + 4;
-      logInstI("andi", rd, rs1, imm);
-    endaction;
+  function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
+    s.pc <= s.pc + 4;
+    logInstI("andi", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
 
   // funct3 = ORI = 110
   // opcode = OP-IMM = 0010011
-  function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
-      s.pc <= s.pc + 4;
-      logInstI("ori", rd, rs1, imm);
-    endaction;
+  function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
+    s.pc <= s.pc + 4;
+    logInstI("ori", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
 
   // funct3 = XORI = 100
   // opcode = OP-IMM = 0010011
   // XXX pseudo-op: NOT
-  function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
-      s.pc <= s.pc + 4;
-      logInstI("xori", rd, rs1, imm);
-    endaction;
+  function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
+    s.pc <= s.pc + 4;
+    logInstI("xori", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
 /*
@@ -99,34 +93,31 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // imm[11:5] = 0000000
   // funct3 = SLLI = 001
   // opcode = OP-IMM = 0010011
-  function Action instrSLLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] << imm4_0;
-      s.pc <= s.pc + 4;
-      logInstI("slli", rd, rs1, zeroExtend(imm4_0));
-    endaction;
+  function Action instrSLLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] << imm4_0;
+    s.pc <= s.pc + 4;
+    logInstI("slli", rd, rs1, zeroExtend(imm4_0));
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
 
   // imm[11:5] = 0000000
   // funct3 = SRLI = 101
   // opcode = OP-IMM = 0010011
-  function Action instrSRLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] >> imm4_0;
-      s.pc <= s.pc + 4;
-      logInstI("srli", rd, rs1, zeroExtend(imm4_0));
-    endaction;
+  function Action instrSRLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] >> imm4_0;
+    s.pc <= s.pc + 4;
+    logInstI("srli", rd, rs1, zeroExtend(imm4_0));
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
 
   // imm[11:5] = 0100000
   // funct3 = SRAI = 101
   // opcode = OP-IMM = 0010011
-  function Action instrSRAI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm4_0);
-      s.pc <= s.pc + 4;
-      logInstI("srai", rd, rs1, zeroExtend(imm4_0));
-    endaction;
+  function Action instrSRAI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm4_0);
+    s.pc <= s.pc + 4;
+    logInstI("srai", rd, rs1, zeroExtend(imm4_0));
+  endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
 
 /*
@@ -139,21 +130,19 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 */
 
   // opcode = LUI = 0110111
-  function Action instrLUI (Bit#(20) imm, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= signExtend({imm, 12'b0});
-      s.pc <= s.pc + 4;
-      logInstU("lui", rd, imm);
-    endaction;
+  function Action instrLUI (Bit#(20) imm, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend({imm, 12'b0});
+    s.pc <= s.pc + 4;
+    logInstU("lui", rd, imm);
+  endaction;
   defineInstr(pat(v, v, n(7'b0110111)), instrLUI);
 
   // opcode = AUIPC = 0010111
-  function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.pc + signExtend({imm, 12'b0});
-      s.pc <= s.pc + 4;
-      logInstU("auipc", rd, imm);
-    endaction;
+  function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) = action
+    s.regFile[rd] <= s.pc + signExtend({imm, 12'b0});
+    s.pc <= s.pc + 4;
+    logInstU("auipc", rd, imm);
+  endaction;
   defineInstr(pat(v, v, n(7'b0010111)), instrAUIPC);
 
 //////////////////////////////////////////
@@ -171,114 +160,104 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // funct7 = 0000000
   // funct3 = ADD = 000
   // opcode = OP = 0110011
-  function Action instrADD (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] + s.regFile[rs2];
-      s.pc <= s.pc + 4;
-      logInstR("add", rd, rs1, rs2);
-    endaction;
+  function Action instrADD (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] + s.regFile[rs2];
+    s.pc <= s.pc + 4;
+    logInstR("add", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
 
   // funct7 = 0000000
   // funct3 = SLT = 010
   // opcode = OP = 0110011
-  function Action instrSLT (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= (signedLT(s.regFile[rs1], s.regFile[rs2])) ? 1 : 0;
-      s.pc <= s.pc + 4;
-      logInstR("slt", rd, rs1, rs2);
-    endaction;
+  function Action instrSLT (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= (signedLT(s.regFile[rs1], s.regFile[rs2])) ? 1 : 0;
+    s.pc <= s.pc + 4;
+    logInstR("slt", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
 
   // funct7 = 0000000
   // funct3 = SLTU = 011
   // opcode = OP = 0110011
-  function Action instrSLTU (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= (s.regFile[rs1] < s.regFile[rs2]) ? 1 : 0;
-      s.pc <= s.pc + 4;
-      logInstR("sltu", rd, rs1, rs2);
-    endaction;
+  function Action instrSLTU (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= (s.regFile[rs1] < s.regFile[rs2]) ? 1 : 0;
+    s.pc <= s.pc + 4;
+    logInstR("sltu", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
 
   // funct7 = 0000000
   // funct3 = AND = 111
   // opcode = OP = 0110011
-  function Action instrAND (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] & s.regFile[rs2];
-      s.pc <= s.pc + 4;
-      logInstR("and", rd, rs1, rs2);
-    endaction;
+  function Action instrAND (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] & s.regFile[rs2];
+    s.pc <= s.pc + 4;
+    logInstR("and", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
 
   // funct7 = 0000000
   // funct3 = OR = 110
   // opcode = OP = 0110011
-  function Action instrOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] | s.regFile[rs2];
-      s.pc <= s.pc + 4;
-      logInstR("or", rd, rs1, rs2);
-    endaction;
+  function Action instrOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] | s.regFile[rs2];
+    s.pc <= s.pc + 4;
+    logInstR("or", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
 
   // funct7 = 0000000
   // funct3 = XOR = 100
   // opcode = OP = 0110011
-  function Action instrXOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] ^ s.regFile[rs2];
-      s.pc <= s.pc + 4;
-      logInstR("xor", rd, rs1, rs2);
-    endaction;
+  function Action instrXOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] ^ s.regFile[rs2];
+    s.pc <= s.pc + 4;
+    logInstR("xor", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
 
   // funct7 = 0000000
   // funct3 = SLL = 001
   // opcode = OP = 0110011
-  function Action instrSLL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
-      s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
-      s.pc <= s.pc + 4;
-      logInstR("sll", rd, rs1, rs2);
-    endaction;
+  function Action instrSLL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
+    s.pc <= s.pc + 4;
+    logInstR("sll", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
 
   // funct7 = 0000000
   // funct3 = SRL = 101
   // opcode = OP = 0110011
-  function Action instrSRL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
-      s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
-      s.pc <= s.pc + 4;
-      logInstR("srl", rd, rs1, rs2);
-    endaction;
+  function Action instrSRL (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
+    s.pc <= s.pc + 4;
+    logInstR("srl", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
 
   // funct7 = 0100000
   // funct3 = SUB = 000
   // opcode = OP = 0110011
-  function Action instrSUB (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      s.regFile[rd] <= s.regFile[rs1] - s.regFile[rs2];
-      s.pc <= s.pc + 4;
-      logInstR("sub", rd, rs1, rs2);
-    endaction;
+  function Action instrSUB (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= s.regFile[rs1] - s.regFile[rs2];
+    s.pc <= s.pc + 4;
+    logInstR("sub", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
 
   // funct7 = 0100000
   // funct3 = SRA = 101
   // opcode = OP = 0110011
-  function Action instrSRA (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
-      s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
-      s.pc <= s.pc + 4;
-      logInstR("sra", rd, rs1, rs2);
-    endaction;
+  function Action instrSRA (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
+    s.pc <= s.pc + 4;
+    logInstR("sra", rd, rs1, rs2);
+  endaction;
   defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0110011)), instrSRA);
 
 ///////////////////////////////////
@@ -299,13 +278,12 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 */
 
   // opcode = JAL = 1101111
-  function Action instrJAL(Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
-      s.pc <= s.pc + imm;
-      s.regFile[rd] <= s.pc + 4;
-      logInstJ("jal", rd, imm);
-    endaction;
+  function Action instrJAL(Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd) = action
+    Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
+    s.pc <= s.pc + imm;
+    s.regFile[rd] <= s.pc + 4;
+    logInstJ("jal", rd, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
 
 /*
@@ -319,14 +297,13 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
   // funct3 = 000
   // opcode = JALR = 1100111
-  function Action instrJALR (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      Bit#(XLEN) newPC = s.regFile[rs1] + signExtend(imm);
-      newPC[0] = 0;
-      s.pc <= newPC;
-      s.regFile[rd] <= s.pc + 4;
-      logInstI("jalr", rd, rs1, imm);
-    endaction;
+  function Action instrJALR (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(XLEN) newPC = s.regFile[rs1] + signExtend(imm);
+    newPC[0] = 0;
+    s.pc <= newPC;
+    s.regFile[rd] <= s.pc + 4;
+    logInstI("jalr", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
 //////////////////////////
@@ -348,68 +325,62 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
   // funct3 = BEQ = 000
   // opcode = 1100011
-  function Action instrBEQ (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (s.regFile[rs1] == s.regFile[rs2]) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("beq", rs1, rs2, imm);
-    endaction;
+  function Action instrBEQ (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (s.regFile[rs1] == s.regFile[rs2]) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("beq", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
 
   // funct3 = BNE = 001
   // opcode = 1100011
-  function Action instrBNE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (s.regFile[rs1] != s.regFile[rs2]) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("bne", rs1, rs2, imm);
-    endaction;
+  function Action instrBNE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (s.regFile[rs1] != s.regFile[rs2]) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("bne", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
 
   // funct3 = BLT = 100
   // opcode = 1100011
-  function Action instrBLT (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (signedLT(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("blt", rs1, rs2, imm);
-    endaction;
+  function Action instrBLT (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (signedLT(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("blt", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
 
   // funct3 = BLTU = 110
   // opcode = 1100011
-  function Action instrBLTU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (s.regFile[rs1] < s.regFile[rs2]) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("bltu", rs1, rs2, imm);
-    endaction;
+  function Action instrBLTU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (s.regFile[rs1] < s.regFile[rs2]) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("bltu", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
 
   // funct3 = BGE = 101
   // opcode = 1100011
-  function Action instrBGE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (signedGE(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("bge", rs1, rs2, imm);
-    endaction;
+  function Action instrBGE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (signedGE(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("bge", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
 
   // funct3 = BGEU = 111
   // opcode = 1100011
-  function Action instrBGEU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-      if (s.regFile[rs1] >= s.regFile[rs2]) s.pc <= s.pc + imm;
-      else s.pc <= s.pc + 4;
-      logInstB("bgeu", rs1, rs2, imm);
-    endaction;
+  function Action instrBGEU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
+    Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
+    if (s.regFile[rs1] >= s.regFile[rs2]) s.pc <= s.pc + imm;
+    else s.pc <= s.pc + 4;
+    logInstB("bgeu", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
 /////////////////////////////////
@@ -427,117 +398,112 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
   // funct3 = LB = 000
   // opcode = 0000011
-  function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    list(
-      action
-        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
-        logInstI("lb(step1)", rd, rs1, imm);
-      endaction,
-      action
-        let rsp <- mem.getRsp();
-        case (rsp) matches
-          tagged ReadRsp .r: begin
-            Bit#(8) tmp = truncate(r);
-            s.regFile[rd] <= signExtend(tmp);
-          end
-        endcase
-        s.pc <= s.pc + 4;
-        logInstI("lb(step2)", rd, rs1, imm);
-      endaction
-    );
+  function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      logInstI("lb(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(8) tmp = truncate(r);
+          s.regFile[rd] <= signExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lb(step2)", rd, rs1, imm);
+    endaction
+  );
   defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
 
   // funct3 = LBU = 100
   // opcode = 0000011
-  function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    list(
-      action
-        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
-        logInstI("lbu(step1)", rd, rs1, imm);
-      endaction,
-      action
-        let rsp <- mem.getRsp();
-        case (rsp) matches
-          tagged ReadRsp .r: begin
-            Bit#(8) tmp = truncate(r);
-            s.regFile[rd] <= zeroExtend(tmp);
-          end
-        endcase
-        s.pc <= s.pc + 4;
-        logInstI("lbu(step2)", rd, rs1, imm);
-      endaction
-    );
+  function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      logInstI("lbu(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(8) tmp = truncate(r);
+          s.regFile[rd] <= zeroExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lbu(step2)", rd, rs1, imm);
+    endaction
+  );
   defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
 
   // funct3 = LH = 001
   // opcode = 0000011
-  function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    list(
-      action
-        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
-        logInstI("lh(step1)", rd, rs1, imm);
-      endaction,
-      action
-        let rsp <- mem.getRsp();
-        case (rsp) matches
-          tagged ReadRsp .r: begin
-            Bit#(16) tmp = truncate(r);
-            s.regFile[rd] <= signExtend(tmp);
-          end
-        endcase
-        s.pc <= s.pc + 4;
-        logInstI("lh(step2)", rd, rs1, imm);
-      endaction
-    );
+  function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      logInstI("lh(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(16) tmp = truncate(r);
+          s.regFile[rd] <= signExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lh(step2)", rd, rs1, imm);
+    endaction
+  );
   defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
 
   // funct3 = LHU = 101
   // opcode = 0000011
-  function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    list(
-      action
-        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
-        logInstI("lhu(step1)", rd, rs1, imm);
-      endaction,
-      action
-        let rsp <- mem.getRsp();
-        case (rsp) matches
-          tagged ReadRsp .r: begin
-            Bit#(18) tmp = truncate(r);
-            s.regFile[rd] <= zeroExtend(tmp);
-          end
-        endcase
-        s.pc <= s.pc + 4;
-        logInstI("lhu(step2)", rd, rs1, imm);
-      endaction
-    );
+  function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      logInstI("lhu(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(18) tmp = truncate(r);
+          s.regFile[rd] <= zeroExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lhu(step2)", rd, rs1, imm);
+    endaction
+  );
   defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
 
   // funct3 = LW = 010
   // opcode = 0000011
-  function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    list(
-      action
-        Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-        mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
-        logInstI("lw(step1)", rd, rs1, imm);
-      endaction,
-      action
-        let rsp <- mem.getRsp();
-        case (rsp) matches
-          tagged ReadRsp .r: begin
-            Bit#(32) tmp = truncate(r);
-            s.regFile[rd] <= signExtend(tmp);
-          end
-        endcase
-        s.pc <= s.pc + 4;
-        logInstI("lw(step2)", rd, rs1, imm);
-      endaction
-    );
+  function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+      logInstI("lw(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(32) tmp = truncate(r);
+          s.regFile[rd] <= signExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lw(step2)", rd, rs1, imm);
+    endaction
+  );
   defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
 
 /*
@@ -551,38 +517,35 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
   // funct3 = SB = 000
   // opcode = 0100011
-  function Action instrSB(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
-      s.pc <= s.pc + 4;
-      logInstS("sb", rs1, rs2, imm);
-    endaction;
+  function Action instrSB(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
+    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
+    s.pc <= s.pc + 4;
+    logInstS("sb", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
   // funct3 = SH = 001
   // opcode = 0100011
-  function Action instrSH(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
-      s.pc <= s.pc + 4;
-      logInstS("sh", rs1, rs2, imm);
-    endaction;
+  function Action instrSH(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
+    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
+    s.pc <= s.pc + 4;
+    logInstS("sh", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
   // funct3 = SW = 010
   // opcode = 0100011
-  function Action instrSW(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) =
-    action
-      Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
-      s.pc <= s.pc + 4;
-      logInstS("sw", rs1, rs2, imm);
-    endaction;
+  function Action instrSW(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
+    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
+    s.pc <= s.pc + 4;
+    logInstS("sw", rs1, rs2, imm);
+  endaction;
   defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
 //////////////////
@@ -592,22 +555,20 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
   // funct3 = FENCE = 000
   // opcode = 0001111
-  function Action instrFENCE(Bit#(4) pred, Bit#(4) succ) =
-    action
-      //TODO
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("fence 0b%4b, 0b%4b", pred, succ));
-    endaction;
+  function Action instrFENCE(Bit#(4) pred, Bit#(4) succ) = action
+    //TODO
+    s.pc <= s.pc + 4;
+    printTLogPlusArgs("itrace", $format("fence 0b%4b, 0b%4b", pred, succ));
+  endaction;
   defineInstr(pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
 
   // funct3 = FENCE.I = 001
   // opcode = 0001111
-  function Action instrFENCE_I() =
-    action
-      //TODO
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", $format("fence.i"));
-    endaction;
+  function Action instrFENCE_I() = action
+    //TODO
+    s.pc <= s.pc + 4;
+    printTLogPlusArgs("itrace", $format("fence.i"));
+  endaction;
   defineInstr(pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
 
 //////////////////////////////////////////////
@@ -626,102 +587,96 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   // funct3 = CSRRW = 001
   // opcode = 1110011
   // pseudo-op CSRW
-  function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      /* TODO
-      `If rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
-      Do the write side effect take place ?
-      */
-      let r = (rd == 0) ? rwCSRReqNoRead(imm, s.regFile[rs1]) : rwCSRReq(imm, s.regFile[rs1]);
-      // XXX for some reason, bluespec doesn't like this way to write it:
-      // s.regFile[rd] <- s.csrs.req(r);
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrw", rd, rs1, imm);
-    endaction;
+  function Action instrCSRRW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    /* TODO
+    `If rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
+    Do the write side effect take place ?
+    */
+    let r = (rd == 0) ? rwCSRReqNoRead(imm, s.regFile[rs1]) : rwCSRReq(imm, s.regFile[rs1]);
+    // XXX for some reason, bluespec doesn't like this way to write it:
+    // s.regFile[rd] <- s.csrs.req(r);
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrw", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
   // funct3 = CSRRS = 010
   // opcode = 1110011
   // pseudo-op CSRR
   // XXX RDCYCLE[H], RDTIME[H], RDINSTRET[H]
-  function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      /* TODO
-      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
-      Do the read side effect take place ?
-      */
-      let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrs", rd, rs1, imm);
-    endaction;
+  function Action instrCSRRS(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    /* TODO
+    `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
+    Do the read side effect take place ?
+    */
+    let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrs", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
   // funct3 = CSRRC = 011
   // opcode = 1110011
-  function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-    action
-      /* TODO
-      `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
-      Do the read side effect take place ?
-      */
-      let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrc", rd, rs1, imm);
-    endaction;
+  function Action instrCSRRC(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    /* TODO
+    `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
+    Do the read side effect take place ?
+    */
+    let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrc", rd, rs1, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
   // funct3 = CSRRWI = 101
   // opcode = 1110011
-  function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
-    action
-      /* TODO
-      `if rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
-      Do the write side effect take place ?
-      */
-      let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrwi", rd, zimm, imm);
-    endaction;
+  function Action instrCSRRWI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) = action
+    /* TODO
+    `if rd = x0, then the instruction shall not read the CSR and shall not cause any of the side-effects that might occur on a CSR read.`
+    Do the write side effect take place ?
+    */
+    let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrwi", rd, zimm, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
   // funct3 = CSRRSI = 110
   // opcode = 1110011
-  function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
-    action
-      /* TODO
-      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
-      Do the read side effect take place ?
-      */
-      let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrsi", rd, zimm, imm);
-    endaction;
+  function Action instrCSRRSI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) = action
+    /* TODO
+    `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
+    Do the read side effect take place ?
+    */
+    let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrsi", rd, zimm, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
   // funct3 = CSRRCI = 111
   // opcode = 1110011
-  function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
-    action
-      /* TODO
-      `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
-      Do the read side effect take place ?
-      */
-      let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
-      let val <- s.csrs.req(r);
-      s.regFile[rd] <= val;
-      s.pc <= s.pc + 4;
-      logInstI("csrrci", rd, zimm, imm);
-    endaction;
+  function Action instrCSRRCI(Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) = action
+    /* TODO
+    `if the the uimm[4:0] (zimm) field is zero, then these instructions will not write to the CSR, and shall not cause any of the side effects that might otherwise occur on a CSR write.`
+    Do the read side effect take place ?
+    */
+    let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
+    let val <- s.csrs.req(r);
+    s.regFile[rd] <= val;
+    s.pc <= s.pc + 4;
+    logInstI("csrrci", rd, zimm, imm);
+  endaction;
   defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
 //////////////////////////////////////
@@ -729,19 +684,17 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
 ////////////////////////////////////////////////////////////////////////////////
 
   // ECALL
-  function Action instrECALL() =
-    action
-      //TODO
-      printTLogPlusArgs("itrace", $format("ecall"));
-    endaction;
+  function Action instrECALL() = action
+    //TODO
+    printTLogPlusArgs("itrace", $format("ecall"));
+  endaction;
   defineInstr(pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
 
   // EBREAK
-  function Action instrEBREAK() =
-    action
-      //TODO
-      printTLogPlusArgs("itrace", $format("ebreak"));
-    endaction;
+  function Action instrEBREAK() = action
+    //TODO
+    printTLogPlusArgs("itrace", $format("ebreak"));
+  endaction;
   defineInstr(pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
 
 /////////////////////////
