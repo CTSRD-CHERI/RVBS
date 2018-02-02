@@ -595,6 +595,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   function Action instrFENCE(Bit#(4) pred, Bit#(4) succ) =
     action
       //TODO
+      s.pc <= s.pc + 4;
       printTLogPlusArgs("itrace", $format("fence 0b%4b, 0b%4b", pred, succ));
     endaction;
   defineInstr(pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
@@ -604,6 +605,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   function Action instrFENCE_I() =
     action
       //TODO
+      s.pc <= s.pc + 4;
       printTLogPlusArgs("itrace", $format("fence.i"));
     endaction;
   defineInstr(pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
