@@ -32,7 +32,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("addi", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
+  defineInstr("addi", pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
 
   // funct3 = SLTI = 010
   // opcode = OP-IMM = 0010011
@@ -41,7 +41,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("slti", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
+  defineInstr("slti", pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
 
   // funct3 = SLTIU = 011
   // opcode = OP-IMM = 0010011
@@ -51,7 +51,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("sltiu", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
+  defineInstr("sltiu", pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
 
   // funct3 = ANDI = 111
   // opcode = OP-IMM = 0010011
@@ -60,7 +60,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("andi", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
+  defineInstr("andi", pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
 
   // funct3 = ORI = 110
   // opcode = OP-IMM = 0010011
@@ -69,7 +69,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("ori", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
+  defineInstr("ori", pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
 
   // funct3 = XORI = 100
   // opcode = OP-IMM = 0010011
@@ -79,7 +79,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("xori", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
+  defineInstr("xori", pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
 /*
   I-type - shifts by a constant
@@ -98,7 +98,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("slli", rd, rs1, zeroExtend(imm4_0));
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
+  defineInstr("slli", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
 
   // imm[11:5] = 0000000
   // funct3 = SRLI = 101
@@ -108,7 +108,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("srli", rd, rs1, zeroExtend(imm4_0));
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
+  defineInstr("srli", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
 
   // imm[11:5] = 0100000
   // funct3 = SRAI = 101
@@ -118,7 +118,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("srai", rd, rs1, zeroExtend(imm4_0));
   endaction;
-  defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
+  defineInstr("srai", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
 
 /*
   U-type
@@ -135,7 +135,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstU("lui", rd, imm);
   endaction;
-  defineInstr(pat(v, v, n(7'b0110111)), instrLUI);
+  defineInstr("lui", pat(v, v, n(7'b0110111)), instrLUI);
 
   // opcode = AUIPC = 0010111
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) = action
@@ -143,7 +143,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstU("auipc", rd, imm);
   endaction;
-  defineInstr(pat(v, v, n(7'b0010111)), instrAUIPC);
+  defineInstr("auipc", pat(v, v, n(7'b0010111)), instrAUIPC);
 
 //////////////////////////////////////////
 // Integer Register-Register Operations //
@@ -165,7 +165,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("add", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
+  defineInstr("add", pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
 
   // funct7 = 0000000
   // funct3 = SLT = 010
@@ -175,7 +175,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("slt", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
+  defineInstr("slt", pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
 
   // funct7 = 0000000
   // funct3 = SLTU = 011
@@ -185,7 +185,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("sltu", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
+  defineInstr("sltu", pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
 
   // funct7 = 0000000
   // funct3 = AND = 111
@@ -195,7 +195,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("and", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
+  defineInstr("and", pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
 
   // funct7 = 0000000
   // funct3 = OR = 110
@@ -205,7 +205,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("or", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
+  defineInstr("or", pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
 
   // funct7 = 0000000
   // funct3 = XOR = 100
@@ -215,7 +215,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("xor", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
+  defineInstr("xor", pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
 
   // funct7 = 0000000
   // funct3 = SLL = 001
@@ -226,7 +226,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("sll", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
+  defineInstr("sll", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
 
   // funct7 = 0000000
   // funct3 = SRL = 101
@@ -237,7 +237,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("srl", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
+  defineInstr("srl", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
 
   // funct7 = 0100000
   // funct3 = SUB = 000
@@ -247,7 +247,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("sub", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
+  defineInstr("sub", pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
 
   // funct7 = 0100000
   // funct3 = SRA = 101
@@ -258,7 +258,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstR("sra", rd, rs1, rs2);
   endaction;
-  defineInstr(pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0110011)), instrSRA);
+  defineInstr("sra", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0110011)), instrSRA);
 
 ///////////////////////////////////
 // Control Transfer Instructions //
@@ -284,7 +284,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.regFile[rd] <= s.pc + 4;
     logInstJ("jal", rd, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
+  defineInstr("jal", pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
 
 /*
   I-type
@@ -304,7 +304,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.regFile[rd] <= s.pc + 4;
     logInstI("jalr", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
+  defineInstr("jalr", pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
 //////////////////////////
 // Conditional Branches //
@@ -331,7 +331,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("beq", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
+  defineInstr("beq", pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
 
   // funct3 = BNE = 001
   // opcode = 1100011
@@ -341,7 +341,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("bne", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
+  defineInstr("bne", pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
 
   // funct3 = BLT = 100
   // opcode = 1100011
@@ -351,7 +351,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("blt", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
+  defineInstr("blt", pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
 
   // funct3 = BLTU = 110
   // opcode = 1100011
@@ -361,7 +361,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("bltu", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
+  defineInstr("bltu", pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
 
   // funct3 = BGE = 101
   // opcode = 1100011
@@ -371,7 +371,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("bge", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
+  defineInstr("bge", pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
 
   // funct3 = BGEU = 111
   // opcode = 1100011
@@ -381,7 +381,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     else s.pc <= s.pc + 4;
     logInstB("bgeu", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
+  defineInstr("bgeu", pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
 /////////////////////////////////
 // Load and Store Instructions //
@@ -416,7 +416,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
       logInstI("lb(step2)", rd, rs1, imm);
     endaction
   );
-  defineInstr(pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
+  defineInstr("lb", pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
 
   // funct3 = LBU = 100
   // opcode = 0000011
@@ -438,7 +438,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
       logInstI("lbu(step2)", rd, rs1, imm);
     endaction
   );
-  defineInstr(pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
+  defineInstr("lbu", pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
 
   // funct3 = LH = 001
   // opcode = 0000011
@@ -460,7 +460,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
       logInstI("lh(step2)", rd, rs1, imm);
     endaction
   );
-  defineInstr(pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
+  defineInstr("lh", pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
 
   // funct3 = LHU = 101
   // opcode = 0000011
@@ -482,7 +482,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
       logInstI("lhu(step2)", rd, rs1, imm);
     endaction
   );
-  defineInstr(pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
+  defineInstr("lhu", pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
 
   // funct3 = LW = 010
   // opcode = 0000011
@@ -504,7 +504,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
       logInstI("lw(step2)", rd, rs1, imm);
     endaction
   );
-  defineInstr(pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
+  defineInstr("lw", pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
 
 /*
   S-type
@@ -524,7 +524,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstS("sb", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
+  defineInstr("sb", pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
   // funct3 = SH = 001
   // opcode = 0100011
@@ -535,7 +535,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstS("sh", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
+  defineInstr("sh", pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
   // funct3 = SW = 010
   // opcode = 0100011
@@ -546,7 +546,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstS("sw", rs1, rs2, imm);
   endaction;
-  defineInstr(pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
+  defineInstr("sw", pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
 //////////////////
 // Memory Model //
@@ -560,7 +560,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     printTLogPlusArgs("itrace", $format("fence 0b%4b, 0b%4b", pred, succ));
   endaction;
-  defineInstr(pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
+  defineInstr("fence", pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
 
   // funct3 = FENCE.I = 001
   // opcode = 0001111
@@ -569,7 +569,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     printTLogPlusArgs("itrace", $format("fence.i"));
   endaction;
-  defineInstr(pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
+  defineInstr("fence.i", pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
 
 //////////////////////////////////////////////
 // Control and Status Register Instructions //
@@ -600,7 +600,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrw", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
+  defineInstr("csrrw", pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
   // funct3 = CSRRS = 010
   // opcode = 1110011
@@ -617,7 +617,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrs", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
+  defineInstr("csrrs", pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
   // funct3 = CSRRC = 011
   // opcode = 1110011
@@ -632,7 +632,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrc", rd, rs1, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
+  defineInstr("csrrc", pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
   // funct3 = CSRRWI = 101
   // opcode = 1110011
@@ -647,7 +647,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrwi", rd, zimm, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
+  defineInstr("csrrwi", pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
   // funct3 = CSRRSI = 110
   // opcode = 1110011
@@ -662,7 +662,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrsi", rd, zimm, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
+  defineInstr("csrrsi", pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
   // funct3 = CSRRCI = 111
   // opcode = 1110011
@@ -677,7 +677,7 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     s.pc <= s.pc + 4;
     logInstI("csrrci", rd, zimm, imm);
   endaction;
-  defineInstr(pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
+  defineInstr("csrrci", pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
 //////////////////////////////////////
 // Environment Call and Breakpoints //
@@ -688,14 +688,14 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
     //TODO
     printTLogPlusArgs("itrace", $format("ecall"));
   endaction;
-  defineInstr(pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
+  defineInstr("ecall", pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
 
   // EBREAK
   function Action instrEBREAK() = action
     //TODO
     printTLogPlusArgs("itrace", $format("ebreak"));
   endaction;
-  defineInstr(pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
+  defineInstr("ebreak", pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
 
 /////////////////////////
 // Unknown Instruction //
