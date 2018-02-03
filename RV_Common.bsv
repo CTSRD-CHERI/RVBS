@@ -14,8 +14,8 @@ export RV_Common :: *;
 
 typedef 32 InstSz;
 
-`ifdef XLEN
-typedef `XLEN XLEN;
+`ifdef XLEN64
+typedef 64 XLEN;
 `else
 typedef 32 XLEN;
 `endif

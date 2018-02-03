@@ -6,7 +6,8 @@ import BID :: *;
 
 import RV_Common :: *;
 
-module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
+`ifdef XLEN32
+module [Instr32DefModule] mkRV32I#(RVArchState#(XLEN) s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -709,3 +710,252 @@ module [Instr32DefModule] mkRV_I#(RVArchState#(XLEN) s, RVDMem mem) ();
   defineUnkInstr(unknownInst);
 
 endmodule
+`endif // XLEN32
+
+////////////////////////////////////////////////////////////////////////////////
+
+`ifdef XLEN64
+module [Instr32DefModule] mkRV64I#(RVArchState#(XLEN) s, RVDMem mem) ();
+
+////////////////////////////////////////
+// Integer Computational Instructions //
+////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////
+// Integer Register-Immediate Instructions //
+/////////////////////////////////////////////
+/*
+  I-type
+
+   31                                 20 19    15 14    12 11     7 6        0
+  +-------------------------------------+--------+--------+--------+----------+
+  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
+  +-------------------------------------+--------+--------+--------+----------+
+*/
+
+  // funct3 = ADDIW = 000
+  // opcode = OP-IMM-32 = 0011011
+  // XXX pseudo-op: SEXT.W
+  function Action instrADDIW (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + signExtend(imm));
+    s.pc <= s.pc + 4;
+    logInstI("addiw", rd, rs1, imm);
+  endaction;
+  defineInstr("addiw", pat(v, v, n(3'b000), v, n(7'b0011011)), instrADDIW);
+
+/*
+  I-type - shifts by a constant
+
+   31              25 24              20 19    15 14    12 11     7 6        0
+  +------------------+------------------+--------+--------+--------+----------+
+  |     imm[11:5]    |     imm[4:0]     |   rs1  | funct3 |   rd   |  opcode  |
+  +------------------+------------------+--------+--------+--------+----------+
+*/
+
+  // imm[11:6] = 000000
+  // funct3 = SLLI = 001
+  // opcode = OP-IMM = 0010011
+  function Action instrSLLI (Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
+    // TODO check MXL and imm[5] for exception in RV32I mode
+    s.regFile[rd] <= s.regFile[rs1] << imm5_0;
+    s.pc <= s.pc + 4;
+    logInstI("slli", rd, rs1, zeroExtend(imm5_0));
+  endaction;
+  defineInstr("slli", pat(n(6'b000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
+
+  // imm[11:6] = 000000
+  // funct3 = SRLI = 101
+  // opcode = OP-IMM = 0010011
+  function Action instrSRLI (Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
+    // TODO check MXL and imm[5] for exception in RV32I mode
+    s.regFile[rd] <= s.regFile[rs1] >> imm5_0;
+    s.pc <= s.pc + 4;
+    logInstI("srli", rd, rs1, zeroExtend(imm5_0));
+  endaction;
+  defineInstr("srli", pat(n(6'b000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
+
+  // imm[11:6] = 010000
+  // funct3 = SRAI = 101
+  // opcode = OP-IMM = 0010011
+  function Action instrSRAI (Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
+    // TODO check MXL and imm[5] for exception in RV32I mode
+    s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm5_0);
+    s.pc <= s.pc + 4;
+    logInstI("srai", rd, rs1, zeroExtend(imm5_0));
+  endaction;
+  defineInstr("srai", pat(n(6'b010000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
+
+  // imm[11:5] = 0000000
+  // funct3 = SLLIW = 001
+  // opcode = OP-IMM-32 = 0011011
+  function Action instrSLLIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << imm4_0);
+    s.pc <= s.pc + 4;
+    logInstI("slliw", rd, rs1, zeroExtend(imm4_0));
+  endaction;
+  defineInstr("slliw", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0011011)), instrSLLIW);
+
+  // imm[11:5] = 0000000
+  // funct3 = SRLIW = 101
+  // opcode = OP-IMM-32 = 0011011
+  function Action instrSRLIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> imm4_0);
+    s.pc <= s.pc + 4;
+    logInstI("srliw", rd, rs1, zeroExtend(imm4_0));
+  endaction;
+  defineInstr("srliw", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0011011)), instrSRLIW);
+
+  // imm[11:5] = 0100000
+  // funct3 = SRAIW = 101
+  // opcode = OP-IMM-32 = 0011011
+  function Action instrSRAIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], imm4_0));
+    s.pc <= s.pc + 4;
+    logInstI("sraiw", rd, rs1, zeroExtend(imm4_0));
+  endaction;
+  defineInstr("sraiw", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0011011)), instrSRAIW);
+
+//////////////////////////////////////////
+// Integer Register-Register Operations //
+//////////////////////////////////////////
+/*
+  R-type
+
+   31                        25 24    20 19    15 14    12 11     7 6        0
+  +----------------------------+--------+--------+--------+--------+----------+
+  |           funct7           |   rs2  |   rs1  | funct3 |   rd   |  opcode  |
+  +----------------------------+--------+--------+--------+--------+----------+
+*/
+
+  // funct7 = 0000000
+  // funct3 = ADDW = 000
+  // opcode = OP-32 = 0111011
+  function Action instrADDW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + s.regFile[rs2][31:0]);
+    s.pc <= s.pc + 4;
+    logInstR("addw", rd, rs1, rs2);
+  endaction;
+  defineInstr("addw", pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0111011)), instrADDW);
+
+  // funct7 = 0100000
+  // funct3 = SUBW = 000
+  // opcode = OP-32 = 0111011
+  function Action instrSUBW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] - s.regFile[rs2][31:0]);
+    s.pc <= s.pc + 4;
+    logInstR("subw", rd, rs1, rs2);
+  endaction;
+  defineInstr("subw", pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0111011)), instrSUBW);
+
+  // funct7 = 0000000
+  // funct3 = SLLW = 001
+  // opcode = OP-32 = 0111011
+  function Action instrSLLW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << shiftAmnt);
+    s.pc <= s.pc + 4;
+    logInstR("sllw", rd, rs1, rs2);
+  endaction;
+  defineInstr("sllw", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0111011)), instrSLLW);
+
+  // funct7 = 0000000
+  // funct3 = SRLW = 101
+  // opcode = OP-32 = 0111011
+  function Action instrSRLW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> shiftAmnt);
+    s.pc <= s.pc + 4;
+    logInstR("srlw", rd, rs1, rs2);
+  endaction;
+  defineInstr("srlw", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0111011)), instrSRLW);
+
+  // funct7 = 0100000
+  // funct3 = SRAW = 101
+  // opcode = OP-32 = 0111011
+  function Action instrSRAW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
+    Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
+    s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], shiftAmnt));
+    s.pc <= s.pc + 4;
+    logInstR("sraw", rd, rs1, rs2);
+  endaction;
+  defineInstr("sraw", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0111011)), instrSRAW);
+
+/////////////////////////////////
+// Load and Store Instructions //
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+  I-type
+
+   31                                 20 19    15 14    12 11     7 6        0
+  +-------------------------------------+--------+--------+--------+----------+
+  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
+  +-------------------------------------+--------+--------+--------+----------+
+*/
+
+  // funct3 = LWU = 110
+  // opcode = 0000011
+  function List#(Action) instrLWU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+      logInstI("lwu(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(32) tmp = truncate(r);
+          s.regFile[rd] <= zeroExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("lwu(step2)", rd, rs1, imm);
+    endaction
+  );
+  defineInstr("lwu", pat(v, v, n(3'b110), v, n(7'b0000011)), instrLWU);
+
+  // funct3 = LD = 011
+  // opcode = 0000011
+  function List#(Action) instrLD(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+    action
+      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 8});
+      logInstI("ld(step1)", rd, rs1, imm);
+    endaction,
+    action
+      let rsp <- mem.getRsp();
+      case (rsp) matches
+        tagged ReadRsp .r: begin
+          Bit#(64) tmp = truncate(r);
+          s.regFile[rd] <= signExtend(tmp);
+        end
+      endcase
+      s.pc <= s.pc + 4;
+      logInstI("ld(step2)", rd, rs1, imm);
+    endaction
+  );
+  defineInstr("ld", pat(v, v, n(3'b011), v, n(7'b0000011)), instrLD);
+
+/*
+  S-type
+
+   31                        25 24    20 19    15 14    12 11     7 6        0
+  +----------------------------+--------+--------+--------+--------+----------+
+  |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
+  +----------------------------+--------+--------+--------+--------+----------+
+*/
+
+  // funct3 = SD = 011
+  // opcode = 0100011
+  function Action instrSD(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
+    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11111111, data: s.regFile[rs2]});
+    s.pc <= s.pc + 4;
+    logInstS("sd", rs1, rs2, imm);
+  endaction;
+  defineInstr("sd", pat(v, v, v, n(3'b011), v, n(7'b0100011)), instrSD);
+
+endmodule
+`endif // XLEN64

@@ -7,8 +7,9 @@ BSCFLAGS = -p $(BSVPATH) -check-assert
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif
-ifdef XLEN
-BSCFLAGS += -D XLEN=$(XLEN)
+BSCFLAGS += -D XLEN32
+ifeq ($(XLEN),64)
+BSCFLAGS += -D XLEN64
 endif
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs

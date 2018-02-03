@@ -12,6 +12,10 @@ module top ();
   RVMem mem <- mkSharedMem(8192, "test-prog.hex");
 
   // instanciating simulator
-  mkISASim(mem, mkArchState, list(mkRV_I));
+  `ifdef XLEN64
+  mkISASim(mem, mkArchState, list(mkRV32I, mkRV64I));
+  `else
+  mkISASim(mem, mkArchState, list(mkRV32I));
+  `endif
 
 endmodule
