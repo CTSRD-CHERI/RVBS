@@ -627,7 +627,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState#(XLEN) s, RVDMem mem) ();
     `if rs1 = x0, then the instruction will not write to the CSR at all, and so shall not cause any of the side effects that might otherwise occur on a CSR write, such as raising illegal instruction exceptions on accesses to read-only CSR.`
     Do the read side effect take place ?
     */
-    let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
+    let r = (rs1 == 0) ? rcCSRReqNoWrite(imm, s.regFile[rs1]) : rcCSRReq(imm, s.regFile[rs1]);
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
