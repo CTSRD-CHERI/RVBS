@@ -42,31 +42,84 @@ function CSRReq#(n) rcCSRReqNoWrite(Bit#(12) i, Bit#(n) v) =
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
 
-function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(Bit#(n)) csr, CSRReq#(n) r) = actionvalue
+function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
+provisos(Bits#(csr_t, n)) = actionvalue
   if (r.rEffects != NOWRITE) begin
     let newval = ?;
     case (r.rType)
       RW: newval = r.val;
-      RS: newval = csr | r.val;
-      RC: newval = csr & ~r.val;
+      RS: newval = pack(csr) | r.val;
+      RC: newval = pack(csr) & ~r.val;
     endcase
-    csr <= newval;
-    printTLogPlusArgs("CSRs", $format("overwriting 0x%0x with 0x%0x", csr, newval));
+    csr <= unpack(newval);
+    printTLogPlusArgs("CSRs", $format("overwriting 0x%0x with 0x%0x", pack(csr), newval));
   end
-  return csr;
+  return pack(csr);
 endactionvalue;
 
-// machine level CSRs
-module [ArchStateDefModule#(n)] mkMCSRs(CSRs#(n));
+
+////////////////////////
+// machine level CSRs //
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct { Bit#(2) mxl; Bit#(TSub#(n,28)) res; Bit#(26) extensions; }
+  MISA#(numeric type n) deriving (Bits, FShow);
+instance DefaultValue#(MISA#(n));
+  function MISA#(n) defaultValue() = MISA {
+    `ifdef XLEN64
+      mxl: 2'd2,
+    `else
+      mxl: 2'd1,
+    `endif
+    res: ?,
+    extensions: 26'b00000000000000000100000000
+  };
+endinstance
+
+typedef struct { Bit#(TSub#(n,7)) bank; Bit#(7) offset; }
+  MVENDORID#(numeric type n) deriving (Bits, FShow);
+instance DefaultValue#(MVENDORID#(n));
+  function MVENDORID#(n) defaultValue() = MVENDORID {bank: 0, offset: 7'd0};
+endinstance
+
+module [ArchStateDefModule#(n)] mkMCSRs(CSRs#(n))
+provisos(
+  Bits#(MISA#(n), n)
+);
+
+  // misa
+  Bit#(12) idx_misa = 12'h301;
+  Reg#(MISA#(n)) misa <- mkReg(defaultValue);
+  // mvendorid
+  Bit#(12) idx_mvendorid = 12'hF11;
+  Reg#(MVENDORID#(n)) mvendorid <- mkReg(defaultValue);
+  // marchid
+  Bit#(12) idx_marchid = 12'hF12;
+  Reg#(Bit#(n)) marchid <- mkReg(0);
+  // mimpid
+  Bit#(12) idx_mimpid = 12'hF13;
+  Reg#(Bit#(n)) mimpid <- mkReg(0);
+  // mhartid
+  Bit#(12) idx_mhartid = 12'hF14;
+  Reg#(Bit#(n)) mhartid <- mkReg(0);
   // mscratch
   Bit#(12) idx_mscratch = 12'h340;
   Reg#(Bit#(n)) mscratch <- mkReg(0);
+  // mtvec
+  Bit#(12) idx_mtvec = 12'h305;
+  Reg#(Bit#(n)) mtvec <- mkReg(0);
 
   // machine CSR requests
   method ActionValue#(Bit#(n)) req (CSRReq#(n) r);
     Bit#(n) ret = ?;
     case (r.idx)
-      idx_mscratch: ret <- readUpdateCSR(mscratch,r);
+      idx_misa:      ret <- readUpdateCSR(misa,r);
+      idx_mvendorid: ret <- readUpdateCSR(mvendorid,r); // TODO ReadOnly
+      idx_marchid:   ret <- readUpdateCSR(marchid,r); // TODO ReadOnly
+      idx_mimpid:    ret <- readUpdateCSR(mimpid,r);
+      idx_mhartid:   ret <- readUpdateCSR(mhartid,r); // TODO ReadOnly
+      idx_mscratch:  ret <- readUpdateCSR(mscratch,r);
+      idx_mtvec:     ret <- readUpdateCSR(mtvec,r); // TODO individual fields
       default: begin
         ret = ?;
         printLog($format("Machine CSR %0d unimplemented - ", r.idx, fshow(r)));
@@ -122,7 +175,10 @@ module [ArchStateDefModule#(n)] mkUCSRs(CSRs#(n));
 
 endmodule
 
-module [ArchStateDefModule#(n)] mkCSRs(CSRs#(n));
+module [ArchStateDefModule#(n)] mkCSRs(CSRs#(n))
+provisos(
+  Add#(2, a__, n)
+);
 
   CSRs#(n) uCSRs <- mkUCSRs;
   CSRs#(n) mCSRs <- mkMCSRs;

@@ -33,16 +33,16 @@ typedef struct {
   CSRs#(n) csrs;
 } RVArchState#(numeric type n);
 
-// ArchState instance
-instance ArchState#(RVArchState);
+module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState#(XLEN));
+  RVArchState#(XLEN) s;
+  s.pc <- mkPC;
+  s.regFile <- mkRegFileZ;
+  s.csrs <- mkCSRs;
+  return s;
+endmodule
 
-  module [ArchStateDefModule#(n)] mkArchState (RVArchState#(n));
-    RVArchState#(n) s;
-    s.pc <- mkPC;
-    s.regFile <- mkRegFileZ;
-    s.csrs <- mkCSRs;
-    return s;
-  endmodule
+// ArchState instance
+instance ArchState#(RVArchState#(n));
 
   function Fmt lightReport (RVArchState#(n) s);
     Fmt str = $format("regfile\n");
