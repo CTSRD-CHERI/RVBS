@@ -19,7 +19,7 @@ export RV_Common :: *;
 typedef struct {
   Reg#(Bit#(n)) pc;
   Vector#(32,Reg#(Bit#(n))) regFile;
-  CSRs#(n) csrs;
+  CSRs csrs;
 } RVArchState#(numeric type n);
 
 module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState#(XLEN));

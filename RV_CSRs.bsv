@@ -9,10 +9,6 @@ import BID :: *;
 // Interface to the CSRs //
 ////////////////////////////////////////////////////////////////////////////////
 
-interface CSRs#(numeric type n);
-  method ActionValue#(Bit#(n)) req (CSRReq#(n) r);
-endinterface
-
 typedef enum {RW, RS, RC} CSRReqType deriving (Eq, FShow);
 typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects deriving (Eq, FShow);
 
@@ -40,35 +36,73 @@ function CSRReq#(n) rcCSRReq(Bit#(12) i, Bit#(n) v) =
 function CSRReq#(n) rcCSRReqNoWrite(Bit#(12) i, Bit#(n) v) =
   CSRReq { idx: i, val: v, rType: RC, rEffects: NOWRITE };
 
-//////////////////////////
-// CSRs' implementation //
-////////////////////////////////////////////////////////////////////////////////
+typedef struct {
 
-function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
-provisos(Bits#(csr_t, n)) = actionvalue
-  if (r.rEffects != NOWRITE) begin
-    let newval = ?;
-    case (r.rType)
-      RW: newval = r.val;
-      RS: newval = pack(csr) | r.val;
-      RC: newval = pack(csr) & ~r.val;
-    endcase
-    csr <= unpack(newval);
-    printTLogPlusArgs("CSRs", $format("overwriting 0x%0x with 0x%0x", pack(csr), newval));
-  end
-  return pack(csr);
-endactionvalue;
+  // machine information registers
+  //////////////////////////////////////////////////////////////////////////////
+  Reg#(MVENDORID)  mvendorid;
+  Reg#(Bit#(XLEN)) marchid;
+  Reg#(Bit#(XLEN)) mimpid;
+  Reg#(Bit#(XLEN)) mhartid;
 
-function Bit#(2) xl_field(Integer xlen) = case (xlen)
-  128: 2'b11; // 3
-  64: 2'b10;  // 2
-  32: 2'b01;  // 1
-  default: 2'b00;
-endcase;
+  // machine trap setup registers
+  //////////////////////////////////////////////////////////////////////////////
+  Reg#(MSTATUS)    mstatus;
+  Reg#(MISA)       misa;
+  // medeleg
+  // mideleg
+  // mie
+  Reg#(Bit#(XLEN)) mtvec;
+  // mcounteren
 
-////////////////////////
-// machine level CSRs //
-////////////////////////////////////////////////////////////////////////////////
+  // machine trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  Reg#(Bit#(XLEN)) mscratch;
+  // mepc
+  // mcause
+  // mtval
+  // mip
+
+  // machine protection and translation
+  //////////////////////////////////////////////////////////////////////////////
+  // pmpcfg0
+  // pmpcfg1
+  // pmpcfg2
+  // pmpcfg3
+  // pmpaddr0
+  // pmpaddr1
+  // ...
+  // pmpaddr15
+
+  // user trap setup registers
+  //////////////////////////////////////////////////////////////////////////////
+  // ustatus
+  // uie
+  // utvec
+
+  // user trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  // uscratch
+  // uepc
+  // ucause
+  // utval
+  // uip
+
+  // user counters/timers
+  //////////////////////////////////////////////////////////////////////////////
+  Reg#(Bit#(64)) cycle;
+  // time
+  Reg#(Bit#(64)) instret;
+  // hpmcounter3
+  // hpmcounter4
+  // ...
+  // hpmcounter31
+
+  // CSR request
+  //////////////////////////////////////////////////////////////////////////////
+  function ActionValue#(Bit#(XLEN)) doReq (CSRReq#(XLEN) r) req;
+
+} CSRs;
 
 typedef struct { Bit#(2) mxl; Bit#(TSub#(XLEN,28)) res; Bit#(26) extensions; }
   MISA deriving (Bits, FShow);
@@ -135,29 +169,57 @@ instance DefaultValue#(MSTATUS);
   };
 endinstance
 
-//module [ArchStateDefModule#(n)] mkMCSRs(CSRs#(n))
-module mkMCSRs(CSRs#(XLEN));
+//////////////////////////
+// CSRs' implementation //
+////////////////////////////////////////////////////////////////////////////////
+
+function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
+provisos(Bits#(csr_t, n)) = actionvalue
+  if (r.rEffects != NOWRITE) begin
+    let newval = ?;
+    case (r.rType)
+      RW: newval = r.val;
+      RS: newval = pack(csr) | r.val;
+      RC: newval = pack(csr) & ~r.val;
+    endcase
+    csr <= unpack(newval);
+    printTLogPlusArgs("CSRs", $format("overwriting 0x%0x with 0x%0x", pack(csr), newval));
+  end
+  return pack(csr);
+endactionvalue;
+
+function Bit#(2) xl_field(Integer xlen) = case (xlen)
+  128: 2'b11; // 3
+  64: 2'b10;  // 2
+  32: 2'b01;  // 1
+  default: 2'b00;
+endcase;
+
+module [ArchStateDefModule#(n)] mkCSRs(CSRs);
+
+  // instance of the CSRs struct
+  CSRs csrs;
 
   // machine information registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MVENDORID)  mvendorid <- mkReg(defaultValue); // mvendorid 12'hF11
-  Reg#(Bit#(XLEN)) marchid   <- mkReg(0); // marchid 12'hF12
-  Reg#(Bit#(XLEN)) mimpid    <- mkReg(0); // mimpid 12'hF13
-  Reg#(Bit#(XLEN)) mhartid   <- mkReg(0); // mhartid 12'hF14
+  csrs.mvendorid <- mkReg(defaultValue); // mvendorid 12'hF11
+  csrs.marchid   <- mkReg(0); // marchid 12'hF12
+  csrs.mimpid    <- mkReg(0); // mimpid 12'hF13
+  csrs.mhartid   <- mkReg(0); // mhartid 12'hF14
 
   // machine trap setup registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MSTATUS)    mstatus <- mkReg(defaultValue); // mstatus 12'h300
-  Reg#(MISA)       misa    <- mkReg(defaultValue); // misa 12'h301
+  csrs.mstatus <- mkReg(defaultValue); // mstatus 12'h300
+  csrs.misa    <- mkReg(defaultValue); // misa 12'h301
   // medeleg 12'h302
   // mideleg 12'h303
   // mie 12'h304
-  Reg#(Bit#(XLEN)) mtvec   <- mkReg(0); // mtvec 12'h305
+  csrs.mtvec   <- mkReg(0); // mtvec 12'h305
   // mcounteren 12'h306
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(Bit#(XLEN)) mscratch <- mkReg(0); // mscratch 12'h340
+  csrs.mscratch <- mkReg(0); // mscratch 12'h340
   // mepc 12'h341
   // mcause 12'h342
   // mtval 12'h343
@@ -173,31 +235,6 @@ module mkMCSRs(CSRs#(XLEN));
   // pmpaddr1 12'h3B1
   // ...
   // pmpaddr15 12'h3BF
-
-  // machine CSR requests
-  method ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r);
-    Bit#(XLEN) ret = ?;
-    case (r.idx) // TODO sort out individual behaviours for each CSR
-      12'h300: ret <- readUpdateCSR(mstatus,r);
-      12'h301: ret <- readUpdateCSR(misa,r);
-      12'h305: ret <- readUpdateCSR(mtvec,r);
-      12'h340: ret <- readUpdateCSR(mscratch,r);
-      12'hF11: ret <- readUpdateCSR(mvendorid,r);
-      12'hF12: ret <- readUpdateCSR(marchid,r);
-      12'hF13: ret <- readUpdateCSR(mimpid,r);
-      12'hF14: ret <- readUpdateCSR(mhartid,r);
-      default: begin
-        ret = ?;
-        printLog($format("Machine CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
-      end
-    endcase
-    return ret;
-  endmethod
-
-endmodule
-
-// user level CSRs
-module [ArchStateDefModule#(XLEN)] mkUCSRs(CSRs#(XLEN));
 
   // user trap setup registers
   //////////////////////////////////////////////////////////////////////////////
@@ -215,22 +252,31 @@ module [ArchStateDefModule#(XLEN)] mkUCSRs(CSRs#(XLEN));
 
   // user counters/timers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(Bit#(64)) cycle <- mkReg(0); // cycle 12'hC00 (and 12'hC80 in RV32)
+  csrs.cycle <- mkReg(0); // cycle 12'hC00 (and 12'hC80 in RV32)
   rule cycle_count;
-    cycle <= cycle + 1;
+    csrs.cycle <= csrs.cycle + 1;
   endrule
   // time 12'hC01 (and 12'hC81 in RV32)
-  Reg#(Bit#(64)) instret <- mkCommittedInstCnt; // insret 12'hC02 (and 12'hC82 in RV32)
+  csrs.instret <- mkCommittedInstCnt; // insret 12'hC02 (and 12'hC82 in RV32)
   // hpmcounter3 12'hC03 (and 12'hC83 in RV32)
   // hpmcounter4 12'hC04 (and 12'hC84 in RV32)
   // ...
   // hpmcounter31 12'hC1F (and 12'hC9F in RV32)
 
-  method ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r);
+  // CSR requests
+  function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
     Bit#(XLEN) ret = ?;
-    case (r.idx)
-      12'hC00: ret = cycle[valueOf(XLEN)-1:0];
-      12'hC02: ret = instret[valueOf(XLEN)-1:0];
+    case (r.idx) // TODO sort out individual behaviours for each CSR
+      12'h300: ret <- readUpdateCSR(csrs.mstatus,r);
+      12'h301: ret <- readUpdateCSR(csrs.misa,r);
+      12'h305: ret <- readUpdateCSR(csrs.mtvec,r);
+      12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
+      12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
+      12'hF12: ret <- readUpdateCSR(csrs.marchid,r);
+      12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);
+      12'hF14: ret <- readUpdateCSR(csrs.mhartid,r);
+      12'hC00: ret = csrs.cycle[valueOf(XLEN)-1:0];
+      12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
       // RV32I only
       //'hC80: ret = cycle[63:32];
       //XXX hack for test suite
@@ -244,31 +290,13 @@ module [ArchStateDefModule#(XLEN)] mkUCSRs(CSRs#(XLEN));
       end
       default: begin
         ret = ?;
-        printLog($format("User CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
-      end
-    endcase
-    return ret;
-  endmethod
-
-endmodule
-
-module [ArchStateDefModule#(XLEN)] mkCSRs(CSRs#(XLEN));
-
-  CSRs#(XLEN) uCSRs <- mkUCSRs;
-  CSRs#(XLEN) mCSRs <- mkMCSRs;
-
-  method ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r);
-    printTLogPlusArgs("CSRs", $format("received ", fshow(r)));
-    Bit#(XLEN) ret = ?;
-    case (r.idx[9:8]) // lowest privilege level required for CSR access
-      2'b00: ret <- uCSRs.req(r);
-      2'b11: ret <- mCSRs.req(r);
-      default: begin
-        ret = ?;
         printLog($format("CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
       end
     endcase
     return ret;
-  endmethod
+  endactionvalue;
+  csrs.req = req;
+
+  return csrs;
 
 endmodule
