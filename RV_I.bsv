@@ -7,7 +7,7 @@ import BID :: *;
 import RV_Common :: *;
 
 `ifdef XLEN32
-module [Instr32DefModule] mkRV32I#(RVArchState#(XLEN) s, RVDMem mem) ();
+module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -715,7 +715,7 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 
 `ifdef XLEN64
-module [Instr32DefModule] mkRV64I#(RVArchState#(XLEN) s, RVDMem mem) ();
+module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //

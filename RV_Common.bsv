@@ -17,13 +17,13 @@ export RV_Common :: *;
 
 // state type
 typedef struct {
-  Reg#(Bit#(n)) pc;
-  Vector#(32,Reg#(Bit#(n))) regFile;
+  Reg#(Bit#(XLEN)) pc;
+  Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
-} RVArchState#(numeric type n);
+} RVArchState;
 
-module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState#(XLEN));
-  RVArchState#(XLEN) s;
+module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState);
+  RVArchState s;
   s.pc <- mkPC;
   s.regFile <- mkRegFileZ;
   s.csrs <- mkCSRs;
@@ -31,9 +31,9 @@ module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState#(XLEN));
 endmodule
 
 // ArchState instance
-instance ArchState#(RVArchState#(n));
+instance ArchState#(RVArchState);
 
-  function Fmt lightReport (RVArchState#(n) s);
+  function Fmt lightReport (RVArchState s);
     Fmt str = $format("regfile\n");
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
@@ -48,7 +48,7 @@ instance ArchState#(RVArchState#(n));
     return str;
   endfunction
 
-  function Fmt fullReport (RVArchState#(n) s);
+  function Fmt fullReport (RVArchState s);
     return (
       $format("regFile %s \n", map(readReg,s.regFile)) +
       $format("pc = 0x%0x", s.pc)
