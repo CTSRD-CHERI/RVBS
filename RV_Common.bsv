@@ -3,24 +3,13 @@
 import BID :: *;
 import Vector :: *;
 
+import RV_BasicTypes :: *;
+export RV_BasicTypes :: *;
+
 import RV_CSRs :: *;
 export RV_CSRs :: *;
 
 export RV_Common :: *;
-
-///////////////////////////////////
-// Utility modules and functions //
-////////////////////////////////////////////////////////////////////////////////
-
-typedef 32 InstSz;
-
-`ifdef XLEN64
-typedef 64 XLEN;
-`else
-typedef 32 XLEN;
-`endif
-//TODO for SLL instruction, use something like this:
-// typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
 ////////////////////////////////
 // RISC-V architectural state //
