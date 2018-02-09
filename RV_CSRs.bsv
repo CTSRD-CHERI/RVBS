@@ -1,9 +1,9 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
 import DefaultValue :: *;
-import RV_BasicTypes :: *;
-
 import BID :: *;
+
+import RV_BasicTypes :: *;
 
 ///////////////////////////
 // Interface to the CSRs //
@@ -40,14 +40,14 @@ typedef struct {
 
   // machine information registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MVENDORID)  mvendorid;
+  Reg#(MVendorID)  mvendorid;
   Reg#(Bit#(XLEN)) marchid;
   Reg#(Bit#(XLEN)) mimpid;
   Reg#(Bit#(XLEN)) mhartid;
 
   // machine trap setup registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MSTATUS)    mstatus;
+  Reg#(MStatus)    mstatus;
   Reg#(MISA)       misa;
   // medeleg
   // mideleg
@@ -59,7 +59,7 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Bit#(XLEN)) mscratch;
   // mepc
-  // mcause
+  Reg#(MCause) mcause;
   // mtval
   // mip
 
@@ -119,9 +119,9 @@ instance DefaultValue#(MISA);
 endinstance
 
 typedef struct { Bit#(TSub#(XLEN,7)) bank; Bit#(7) offset; }
-  MVENDORID deriving (Bits, FShow);
-instance DefaultValue#(MVENDORID);
-  function MVENDORID defaultValue() = MVENDORID {bank: 0, offset: 7'd0};
+  MVendorID deriving (Bits, FShow);
+instance DefaultValue#(MVendorID);
+  function MVendorID defaultValue() = MVendorID {bank: 0, offset: 7'd0};
 endinstance
 
 typedef struct {
@@ -153,9 +153,9 @@ typedef struct {
   Bool res0;
   Bool sie;
   Bool uie;
-} MSTATUS deriving (Bits, FShow);
-instance DefaultValue#(MSTATUS);
-  function MSTATUS defaultValue() = MSTATUS {
+} MStatus deriving (Bits, FShow);
+instance DefaultValue#(MStatus);
+  function MStatus defaultValue() = MStatus {
     sd: False,
     `ifdef XLEN64 // MAX_XLEN > 32
     res4: ?, sxl: xl_field(valueOf(XLEN)), uxl: xl_field(valueOf(XLEN)), res3: ?,
@@ -214,14 +214,14 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
   // medeleg 12'h302
   // mideleg 12'h303
   // mie 12'h304
-  csrs.mtvec   <- mkReg(0); // mtvec 12'h305
+  csrs.mtvec   <- mkRegU; // mtvec 12'h305
   // mcounteren 12'h306
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
-  csrs.mscratch <- mkReg(0); // mscratch 12'h340
+  csrs.mscratch <- mkRegU; // mscratch 12'h340
   // mepc 12'h341
-  // mcause 12'h342
+  csrs.mcause <- mkRegU; // mcause 12'h342
   // mtval 12'h343
   // mip 12'h344
 
@@ -271,6 +271,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
       12'h301: ret <- readUpdateCSR(csrs.misa,r);
       12'h305: ret <- readUpdateCSR(csrs.mtvec,r);
       12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
+      12'h342: ret <- readUpdateCSR(csrs.mcause,r);
       12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
       12'hF12: ret <- readUpdateCSR(csrs.marchid,r);
       12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);
