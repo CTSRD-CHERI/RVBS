@@ -709,8 +709,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
 ////////////////////////////////////////////////////////////////////////////////
 
   function Action unknownInst(Bit#(32) inst) = action
-    // TODO
-    s.pc <= s.pc + 4;
+    trap(s, tagged Exception IllegalInst);
     printTLogPlusArgs("itrace", $format("pc: 0x%0x -- UNKNOWN INSTRUCTION 0x%0x", s.pc, inst));
   endaction;
   defineUnkInstr(unknownInst);

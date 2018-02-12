@@ -273,6 +273,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
       12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
       12'h341: ret <- readUpdateCSR(csrs.mepc,r);
       12'h342: ret <- readUpdateCSR(csrs.mcause,r);
+      12'h343: ret = 0; // mtval placeholder
       12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
       12'hF12: ret <- readUpdateCSR(csrs.marchid,r);
       12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);
