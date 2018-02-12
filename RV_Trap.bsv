@@ -36,7 +36,7 @@ module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
   function Action instrMRET () = action
     // TODO implement mstatus changes
     s.pc <= s.csrs.mepc;
-    printTLogPlusArgs("itrace", $format("mret"));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- mret", s.pc));
   endaction;
   defineInstr("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
 

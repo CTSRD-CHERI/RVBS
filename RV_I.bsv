@@ -31,7 +31,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrADDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
     s.pc <= s.pc + 4;
-    logInstI("addi", rd, rs1, imm);
+    logInstI(s.pc, "addi", rd, rs1, imm);
   endaction;
   defineInstr("addi", pat(v, v, n(3'b000), v, n(7'b0010011)), instrADDI);
 
@@ -40,7 +40,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSLTI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
     s.pc <= s.pc + 4;
-    logInstI("slti", rd, rs1, imm);
+    logInstI(s.pc, "slti", rd, rs1, imm);
   endaction;
   defineInstr("slti", pat(v, v, n(3'b010), v, n(7'b0010011)), instrSLTI);
 
@@ -50,7 +50,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSLTIU (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
     s.pc <= s.pc + 4;
-    logInstI("sltiu", rd, rs1, imm);
+    logInstI(s.pc, "sltiu", rd, rs1, imm);
   endaction;
   defineInstr("sltiu", pat(v, v, n(3'b011), v, n(7'b0010011)), instrSLTIU);
 
@@ -59,7 +59,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrANDI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
     s.pc <= s.pc + 4;
-    logInstI("andi", rd, rs1, imm);
+    logInstI(s.pc, "andi", rd, rs1, imm);
   endaction;
   defineInstr("andi", pat(v, v, n(3'b111), v, n(7'b0010011)), instrANDI);
 
@@ -68,7 +68,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
     s.pc <= s.pc + 4;
-    logInstI("ori", rd, rs1, imm);
+    logInstI(s.pc, "ori", rd, rs1, imm);
   endaction;
   defineInstr("ori", pat(v, v, n(3'b110), v, n(7'b0010011)), instrORI);
 
@@ -78,7 +78,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrXORI (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
     s.pc <= s.pc + 4;
-    logInstI("xori", rd, rs1, imm);
+    logInstI(s.pc, "xori", rd, rs1, imm);
   endaction;
   defineInstr("xori", pat(v, v, n(3'b100), v, n(7'b0010011)), instrXORI);
 
@@ -97,7 +97,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSLLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] << imm4_0;
     s.pc <= s.pc + 4;
-    logInstI("slli", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "slli", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("slli", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
 
@@ -107,7 +107,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSRLI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] >> imm4_0;
     s.pc <= s.pc + 4;
-    logInstI("srli", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "srli", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("srli", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
 
@@ -117,7 +117,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSRAI (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm4_0);
     s.pc <= s.pc + 4;
-    logInstI("srai", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "srai", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("srai", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
 
@@ -134,7 +134,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrLUI (Bit#(20) imm, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend({imm, 12'b0});
     s.pc <= s.pc + 4;
-    logInstU("lui", rd, imm);
+    logInstU(s.pc, "lui", rd, imm);
   endaction;
   defineInstr("lui", pat(v, v, n(7'b0110111)), instrLUI);
 
@@ -142,7 +142,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrAUIPC (Bit#(20) imm, Bit#(5) rd) = action
     s.regFile[rd] <= s.pc + signExtend({imm, 12'b0});
     s.pc <= s.pc + 4;
-    logInstU("auipc", rd, imm);
+    logInstU(s.pc, "auipc", rd, imm);
   endaction;
   defineInstr("auipc", pat(v, v, n(7'b0010111)), instrAUIPC);
 
@@ -164,7 +164,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrADD (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] + s.regFile[rs2];
     s.pc <= s.pc + 4;
-    logInstR("add", rd, rs1, rs2);
+    logInstR(s.pc, "add", rd, rs1, rs2);
   endaction;
   defineInstr("add", pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0110011)), instrADD);
 
@@ -174,7 +174,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSLT (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= (signedLT(s.regFile[rs1], s.regFile[rs2])) ? 1 : 0;
     s.pc <= s.pc + 4;
-    logInstR("slt", rd, rs1, rs2);
+    logInstR(s.pc, "slt", rd, rs1, rs2);
   endaction;
   defineInstr("slt", pat(n(7'b0000000), v, v, n(3'b010), v, n(7'b0110011)), instrSLT);
 
@@ -184,7 +184,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSLTU (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= (s.regFile[rs1] < s.regFile[rs2]) ? 1 : 0;
     s.pc <= s.pc + 4;
-    logInstR("sltu", rd, rs1, rs2);
+    logInstR(s.pc, "sltu", rd, rs1, rs2);
   endaction;
   defineInstr("sltu", pat(n(7'b0000000), v, v, n(3'b011), v, n(7'b0110011)), instrSLTU);
 
@@ -194,7 +194,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrAND (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] & s.regFile[rs2];
     s.pc <= s.pc + 4;
-    logInstR("and", rd, rs1, rs2);
+    logInstR(s.pc, "and", rd, rs1, rs2);
   endaction;
   defineInstr("and", pat(n(7'b0000000), v, v, n(3'b111), v, n(7'b0110011)), instrAND);
 
@@ -204,7 +204,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] | s.regFile[rs2];
     s.pc <= s.pc + 4;
-    logInstR("or", rd, rs1, rs2);
+    logInstR(s.pc, "or", rd, rs1, rs2);
   endaction;
   defineInstr("or", pat(n(7'b0000000), v, v, n(3'b110), v, n(7'b0110011)), instrOR);
 
@@ -214,7 +214,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrXOR (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] ^ s.regFile[rs2];
     s.pc <= s.pc + 4;
-    logInstR("xor", rd, rs1, rs2);
+    logInstR(s.pc, "xor", rd, rs1, rs2);
   endaction;
   defineInstr("xor", pat(n(7'b0000000), v, v, n(3'b100), v, n(7'b0110011)), instrXOR);
 
@@ -225,7 +225,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
     s.pc <= s.pc + 4;
-    logInstR("sll", rd, rs1, rs2);
+    logInstR(s.pc, "sll", rd, rs1, rs2);
   endaction;
   defineInstr("sll", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0110011)), instrSLL);
 
@@ -236,7 +236,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
     s.pc <= s.pc + 4;
-    logInstR("srl", rd, rs1, rs2);
+    logInstR(s.pc, "srl", rd, rs1, rs2);
   endaction;
   defineInstr("srl", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0110011)), instrSRL);
 
@@ -246,7 +246,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrSUB (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= s.regFile[rs1] - s.regFile[rs2];
     s.pc <= s.pc + 4;
-    logInstR("sub", rd, rs1, rs2);
+    logInstR(s.pc, "sub", rd, rs1, rs2);
   endaction;
   defineInstr("sub", pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0110011)), instrSUB);
 
@@ -257,7 +257,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
     s.pc <= s.pc + 4;
-    logInstR("sra", rd, rs1, rs2);
+    logInstR(s.pc, "sra", rd, rs1, rs2);
   endaction;
   defineInstr("sra", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0110011)), instrSRA);
 
@@ -283,7 +283,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
     s.pc <= s.pc + imm;
     s.regFile[rd] <= s.pc + 4;
-    logInstJ("jal", rd, imm);
+    logInstJ(s.pc, "jal", rd, imm);
   endaction;
   defineInstr("jal", pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
 
@@ -303,7 +303,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     newPC[0] = 0;
     s.pc <= newPC;
     s.regFile[rd] <= s.pc + 4;
-    logInstI("jalr", rd, rs1, imm);
+    logInstI(s.pc, "jalr", rd, rs1, imm);
   endaction;
   defineInstr("jalr", pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
 
@@ -330,7 +330,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (s.regFile[rs1] == s.regFile[rs2]) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("beq", rs1, rs2, imm);
+    logInstB(s.pc, "beq", rs1, rs2, imm);
   endaction;
   defineInstr("beq", pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
 
@@ -340,7 +340,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (s.regFile[rs1] != s.regFile[rs2]) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("bne", rs1, rs2, imm);
+    logInstB(s.pc, "bne", rs1, rs2, imm);
   endaction;
   defineInstr("bne", pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
 
@@ -350,7 +350,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (signedLT(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("blt", rs1, rs2, imm);
+    logInstB(s.pc, "blt", rs1, rs2, imm);
   endaction;
   defineInstr("blt", pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
 
@@ -360,7 +360,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (s.regFile[rs1] < s.regFile[rs2]) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("bltu", rs1, rs2, imm);
+    logInstB(s.pc, "bltu", rs1, rs2, imm);
   endaction;
   defineInstr("bltu", pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
 
@@ -370,7 +370,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (signedGE(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("bge", rs1, rs2, imm);
+    logInstB(s.pc, "bge", rs1, rs2, imm);
   endaction;
   defineInstr("bge", pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
 
@@ -380,7 +380,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
     if (s.regFile[rs1] >= s.regFile[rs2]) s.pc <= s.pc + imm;
     else s.pc <= s.pc + 4;
-    logInstB("bgeu", rs1, rs2, imm);
+    logInstB(s.pc, "bgeu", rs1, rs2, imm);
   endaction;
   defineInstr("bgeu", pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
 
@@ -403,7 +403,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
-      logInstI("lb(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lb(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -414,7 +414,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lb(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lb(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lb", pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
@@ -425,7 +425,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
-      logInstI("lbu(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lbu(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -436,7 +436,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lbu(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lbu(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lbu", pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
@@ -447,7 +447,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
-      logInstI("lh(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lh(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -458,7 +458,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lh(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lh(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lh", pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
@@ -469,7 +469,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
-      logInstI("lhu(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lhu(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -480,7 +480,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lhu(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lhu(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lhu", pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
@@ -491,7 +491,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
-      logInstI("lw(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lw(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -502,7 +502,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lw(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lw(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lw", pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
@@ -523,7 +523,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
     s.pc <= s.pc + 4;
-    logInstS("sb", rs1, rs2, imm);
+    logInstS(s.pc, "sb", rs1, rs2, imm);
   endaction;
   defineInstr("sb", pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
 
@@ -534,7 +534,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
     s.pc <= s.pc + 4;
-    logInstS("sh", rs1, rs2, imm);
+    logInstS(s.pc, "sh", rs1, rs2, imm);
   endaction;
   defineInstr("sh", pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
 
@@ -545,7 +545,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
     s.pc <= s.pc + 4;
-    logInstS("sw", rs1, rs2, imm);
+    logInstS(s.pc, "sw", rs1, rs2, imm);
   endaction;
   defineInstr("sw", pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
 
@@ -559,7 +559,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrFENCE(Bit#(4) pred, Bit#(4) succ) = action
     //TODO
     s.pc <= s.pc + 4;
-    printTLogPlusArgs("itrace", $format("fence 0b%4b, 0b%4b", pred, succ));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence 0b%4b, 0b%4b", s.pc, pred, succ));
   endaction;
   defineInstr("fence", pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE);
 
@@ -568,7 +568,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action instrFENCE_I() = action
     //TODO
     s.pc <= s.pc + 4;
-    printTLogPlusArgs("itrace", $format("fence.i"));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence.i", s.pc));
   endaction;
   defineInstr("fence.i", pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I);
 
@@ -599,7 +599,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrw", rd, rs1, imm);
+    logInstI(s.pc, "csrrw", rd, rs1, imm);
   endaction;
   defineInstr("csrrw", pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
@@ -616,7 +616,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrs", rd, rs1, imm);
+    logInstI(s.pc, "csrrs", rd, rs1, imm);
   endaction;
   defineInstr("csrrs", pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
@@ -631,7 +631,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrc", rd, rs1, imm);
+    logInstI(s.pc, "csrrc", rd, rs1, imm);
   endaction;
   defineInstr("csrrc", pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
@@ -646,7 +646,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrwi", rd, zimm, imm);
+    logInstI(s.pc, "csrrwi", rd, zimm, imm);
   endaction;
   defineInstr("csrrwi", pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
@@ -661,7 +661,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrsi", rd, zimm, imm);
+    logInstI(s.pc, "csrrsi", rd, zimm, imm);
   endaction;
   defineInstr("csrrsi", pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
@@ -676,7 +676,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI("csrrci", rd, zimm, imm);
+    logInstI(s.pc, "csrrci", rd, zimm, imm);
   endaction;
   defineInstr("csrrci", pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 
@@ -693,14 +693,14 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
       M: tagged Exception ECallFromM;
     endcase;
     trap(s, cause);
-    printTLogPlusArgs("itrace", $format("ecall"));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ecall", s.pc));
   endaction;
   defineInstr("ecall", pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
 
   // EBREAK
   function Action instrEBREAK() = action
     //TODO
-    printTLogPlusArgs("itrace", $format("ebreak"));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ebreak", s.pc));
   endaction;
   defineInstr("ebreak", pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
 
@@ -711,7 +711,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function Action unknownInst(Bit#(32) inst) = action
     // TODO
     s.pc <= s.pc + 4;
-    printTLogPlusArgs("itrace", $format("UNKNOWN INSTRUCTION 0x%0x", inst));
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- UNKNOWN INSTRUCTION 0x%0x", s.pc, inst));
   endaction;
   defineUnkInstr(unknownInst);
 
@@ -745,7 +745,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrADDIW (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + signExtend(imm));
     s.pc <= s.pc + 4;
-    logInstI("addiw", rd, rs1, imm);
+    logInstI(s.pc, "addiw", rd, rs1, imm);
   endaction;
   defineInstr("addiw", pat(v, v, n(3'b000), v, n(7'b0011011)), instrADDIW);
 
@@ -765,7 +765,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     // TODO check MXL and imm[5] for exception in RV32I mode
     s.regFile[rd] <= s.regFile[rs1] << imm5_0;
     s.pc <= s.pc + 4;
-    logInstI("slli", rd, rs1, zeroExtend(imm5_0));
+    logInstI(s.pc, "slli", rd, rs1, zeroExtend(imm5_0));
   endaction;
   defineInstr("slli", pat(n(6'b000000), v, v, n(3'b001), v, n(7'b0010011)), instrSLLI);
 
@@ -776,7 +776,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     // TODO check MXL and imm[5] for exception in RV32I mode
     s.regFile[rd] <= s.regFile[rs1] >> imm5_0;
     s.pc <= s.pc + 4;
-    logInstI("srli", rd, rs1, zeroExtend(imm5_0));
+    logInstI(s.pc, "srli", rd, rs1, zeroExtend(imm5_0));
   endaction;
   defineInstr("srli", pat(n(6'b000000), v, v, n(3'b101), v, n(7'b0010011)), instrSRLI);
 
@@ -787,7 +787,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     // TODO check MXL and imm[5] for exception in RV32I mode
     s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm5_0);
     s.pc <= s.pc + 4;
-    logInstI("srai", rd, rs1, zeroExtend(imm5_0));
+    logInstI(s.pc, "srai", rd, rs1, zeroExtend(imm5_0));
   endaction;
   defineInstr("srai", pat(n(6'b010000), v, v, n(3'b101), v, n(7'b0010011)), instrSRAI);
 
@@ -797,7 +797,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrSLLIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << imm4_0);
     s.pc <= s.pc + 4;
-    logInstI("slliw", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "slliw", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("slliw", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0011011)), instrSLLIW);
 
@@ -807,7 +807,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrSRLIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> imm4_0);
     s.pc <= s.pc + 4;
-    logInstI("srliw", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "srliw", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("srliw", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0011011)), instrSRLIW);
 
@@ -817,7 +817,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrSRAIW (Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], imm4_0));
     s.pc <= s.pc + 4;
-    logInstI("sraiw", rd, rs1, zeroExtend(imm4_0));
+    logInstI(s.pc, "sraiw", rd, rs1, zeroExtend(imm4_0));
   endaction;
   defineInstr("sraiw", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0011011)), instrSRAIW);
 
@@ -839,7 +839,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrADDW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + s.regFile[rs2][31:0]);
     s.pc <= s.pc + 4;
-    logInstR("addw", rd, rs1, rs2);
+    logInstR(s.pc, "addw", rd, rs1, rs2);
   endaction;
   defineInstr("addw", pat(n(7'b0000000), v, v, n(3'b000), v, n(7'b0111011)), instrADDW);
 
@@ -849,7 +849,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function Action instrSUBW (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] - s.regFile[rs2][31:0]);
     s.pc <= s.pc + 4;
-    logInstR("subw", rd, rs1, rs2);
+    logInstR(s.pc, "subw", rd, rs1, rs2);
   endaction;
   defineInstr("subw", pat(n(7'b0100000), v, v, n(3'b000), v, n(7'b0111011)), instrSUBW);
 
@@ -860,7 +860,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << shiftAmnt);
     s.pc <= s.pc + 4;
-    logInstR("sllw", rd, rs1, rs2);
+    logInstR(s.pc, "sllw", rd, rs1, rs2);
   endaction;
   defineInstr("sllw", pat(n(7'b0000000), v, v, n(3'b001), v, n(7'b0111011)), instrSLLW);
 
@@ -871,7 +871,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> shiftAmnt);
     s.pc <= s.pc + 4;
-    logInstR("srlw", rd, rs1, rs2);
+    logInstR(s.pc, "srlw", rd, rs1, rs2);
   endaction;
   defineInstr("srlw", pat(n(7'b0000000), v, v, n(3'b101), v, n(7'b0111011)), instrSRLW);
 
@@ -882,7 +882,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
     s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], shiftAmnt));
     s.pc <= s.pc + 4;
-    logInstR("sraw", rd, rs1, rs2);
+    logInstR(s.pc, "sraw", rd, rs1, rs2);
   endaction;
   defineInstr("sraw", pat(n(7'b0100000), v, v, n(3'b101), v, n(7'b0111011)), instrSRAW);
 
@@ -905,7 +905,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
-      logInstI("lwu(step1)", rd, rs1, imm);
+      logInstI(s.pc, "lwu(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -916,7 +916,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("lwu(step2)", rd, rs1, imm);
+      logInstI(s.pc, "lwu(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("lwu", pat(v, v, n(3'b110), v, n(7'b0000011)), instrLWU);
@@ -927,7 +927,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
       mem.sendReq(tagged ReadReq {addr: addr, numBytes: 8});
-      logInstI("ld(step1)", rd, rs1, imm);
+      logInstI(s.pc, "ld(step1)", rd, rs1, imm);
     endaction,
     action
       let rsp <- mem.getRsp();
@@ -938,7 +938,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
-      logInstI("ld(step2)", rd, rs1, imm);
+      logInstI(s.pc, "ld(step2)", rd, rs1, imm);
     endaction
   );
   defineInstr("ld", pat(v, v, n(3'b011), v, n(7'b0000011)), instrLD);
@@ -959,7 +959,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11111111, data: s.regFile[rs2]});
     s.pc <= s.pc + 4;
-    logInstS("sd", rs1, rs2, imm);
+    logInstS(s.pc, "sd", rs1, rs2, imm);
   endaction;
   defineInstr("sd", pat(v, v, v, n(3'b011), v, n(7'b0100011)), instrSD);
 

@@ -96,9 +96,9 @@ function a patITypeShamt (Bit#(7) imm_11_5, Bit#(3) funct3, Bit#(7) opcode) =
   pat(n(imm_11_5), v, v, n(funct3), v, n(opcode))
 // RHS arguments: (Bit#(7) imm11_5, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd)
 */
-function Action logInstI(String i, Bit#(5) rd, Bit#(5) rs1, Bit#(12) imm) =
+function Action logInstI(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(5) rs1, Bit#(12) imm) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rd), ", ", rName(rs1), ", 0x%0x", imm)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", ", rName(rs1), ", 0x%0x", imm)
   );
 /*
   R-type
@@ -112,9 +112,9 @@ function BitPat#() patRType (Bit#(7) funct7, Bit#(3) funct3, Bit#(7) opcode) =
   return pat(n(funct7), v, v, n(funct3), v, n(opcode))
 // RHS arguments: (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd)
 */
-function Action logInstR(String i, Bit#(5) rd, Bit#(5) rs1, Bit#(5) rs2) =
+function Action logInstR(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(5) rs1, Bit#(5) rs2) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rd), ", ", rName(rs1), ", ", rs2)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", ", rName(rs1), ", ", rs2)
   );
 /*
   U-type
@@ -128,9 +128,9 @@ function a patUType (Bit#(7) opcode) =
   pat(v, v, n(opcode))
 // RHS arguments: (Bit#(20) imm31_12, Bit#(5) rd)
 */
-function Action logInstU(String i, Bit#(5) rd, Bit#(20) imm) =
+function Action logInstU(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(20) imm) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rd), ", 0x%0x", imm)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", 0x%0x", imm)
   );
 /*
   J-type
@@ -144,9 +144,9 @@ function a patJType (Bit#(7) opcode) =
   pat(v, v, v, v, v, n(opcode))
 // RHS arguments: (Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd)
 */
-function Action logInstJ(String i, Bit#(5) rd, Bit#(XLEN) imm) =
+function Action logInstJ(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(XLEN) imm) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rd), ", 0x%0x", imm)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", 0x%0x", imm)
   );
 /*
   B-type
@@ -160,9 +160,9 @@ function a patBType (Bit#(3) funct3, Bit#(7) opcode) =
   pat(v, v, v, v, n(funct3), v, v, n(opcode))
 // RHS arguments: (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11)
 */
-function Action logInstB(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
+function Action logInstB(Bit#(XLEN) pc, String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
   );
 /*
   S-type
@@ -176,7 +176,7 @@ function a patSType (Bit#(3) funct3, Bit#(7) opcode) =
   pat(v, v, v, n(funct3), v, n(opcode))
 // RHS arguments: (Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0)
 */
-function Action logInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
+function Action logInstS(Bit#(XLEN) pc, String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
   printTLogPlusArgs("itrace",
-    $format(i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
   );
