@@ -13,9 +13,9 @@ module top ();
 
   // instanciating simulator
   `ifdef XLEN64
-  mkISASim(mem, mkArchState, list(mkRV32I, mkRV64I));
+  mkISASim(mem, mkArchState, list(mkRVTrap, mkRV32I, mkRV64I));
   `else
-  mkISASim(mem, mkArchState, list(mkRV32I));
+  mkISASim(mem, mkArchState, list(mkRVTrap, mkRV32I));
   `endif
 
 endmodule

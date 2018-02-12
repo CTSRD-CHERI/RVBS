@@ -21,7 +21,7 @@ typedef 32 XLEN;
 ////////////////////////////////////////////////////////////////////////////////
 
 // privilege levels
-typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, FShow);
+typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
 
 // machine interrupt/exception codes
 

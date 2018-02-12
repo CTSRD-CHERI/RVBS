@@ -32,7 +32,9 @@ endmodule
 // ArchState instance
 instance ArchState#(RVArchState);
 
-  function Fmt lightReport (RVArchState s);
+  function Fmt lightReport (RVArchState s) = fullReport(s);
+
+  function Fmt fullReport (RVArchState s);
     Fmt str = $format("regfile\n");
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
@@ -44,14 +46,8 @@ instance ArchState#(RVArchState);
     str = str + $format(rName(5'd30),": 0x%8x\t", s.regFile[30]);
     str = str + $format(rName(5'd31),": 0x%8x", s.regFile[31]);
     str = str + $format("\npc = 0x%8x", s.pc);
+    str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
-  endfunction
-
-  function Fmt fullReport (RVArchState s);
-    return (
-      $format("regFile %s \n", map(readReg,s.regFile)) +
-      $format("pc = 0x%0x", s.pc)
-    );
   endfunction
 
 endinstance

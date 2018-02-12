@@ -687,6 +687,12 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // ECALL
   function Action instrECALL() = action
     //TODO
+    MCause cause = case (s.currentPrivLvl)
+      U: tagged Exception ECallFromU;
+      S: tagged Exception ECallFromS;
+      M: tagged Exception ECallFromM;
+    endcase;
+    trap(s, cause);
     printTLogPlusArgs("itrace", $format("ecall"));
   endaction;
   defineInstr("ecall", pat(n(12'b000000000000), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrECALL);
