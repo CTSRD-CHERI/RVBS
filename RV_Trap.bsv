@@ -16,6 +16,7 @@ function Action trap(RVArchState s, MCause cause) = action
   s.csrs.mepc <= s.pc;
   s.pc <= s.csrs.mtvec;
   s.currentPrivLvl <= M;
+  printTLogPlusArgs("itrace", $format(" >>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
 
 module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();

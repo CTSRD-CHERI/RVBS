@@ -599,7 +599,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrw", rd, rs1, imm);
+    logInstCSR(s.pc, "csrrw", rd, rs1, imm);
   endaction;
   defineInstr("csrrw", pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW);
 
@@ -616,7 +616,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrs", rd, rs1, imm);
+    logInstCSR(s.pc, "csrrs", rd, rs1, imm);
   endaction;
   defineInstr("csrrs", pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS);
 
@@ -631,7 +631,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrc", rd, rs1, imm);
+    logInstCSR(s.pc, "csrrc", rd, rs1, imm);
   endaction;
   defineInstr("csrrc", pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC);
 
@@ -646,7 +646,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrwi", rd, zimm, imm);
+    logInstCSR(s.pc, "csrrwi", rd, zimm, imm);
   endaction;
   defineInstr("csrrwi", pat(v, v, n(3'b101), v, n(7'b1110011)), instrCSRRWI);
 
@@ -661,7 +661,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrsi", rd, zimm, imm);
+    logInstCSR(s.pc, "csrrsi", rd, zimm, imm);
   endaction;
   defineInstr("csrrsi", pat(v, v, n(3'b110), v, n(7'b1110011)), instrCSRRSI);
 
@@ -676,7 +676,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
     let val <- s.csrs.req(r);
     s.regFile[rd] <= val;
     s.pc <= s.pc + 4;
-    logInstI(s.pc, "csrrci", rd, zimm, imm);
+    logInstCSR(s.pc, "csrrci", rd, zimm, imm);
   endaction;
   defineInstr("csrrci", pat(v, v, n(3'b111), v, n(7'b1110011)), instrCSRRCI);
 

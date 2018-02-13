@@ -42,7 +42,7 @@ typedef enum {
 typedef union tagged {
   MIntCode Interrupt;
   MExcCode Exception;
-} MCause deriving (Eq, FShow);
+} MCause deriving (Eq);
 instance Bits#(MCause, XLEN);
   function Bit#(XLEN) pack (MCause c) = case (c) matches // n must be at leas 4 + 1
     tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
@@ -52,14 +52,20 @@ instance Bits#(MCause, XLEN);
     tagged Interrupt unpack(truncate(c)) :
     tagged Exception unpack(truncate(c));
 endinstance
+instance FShow#(MCause);
+  function Fmt fshow(MCause cause) = case (cause) matches
+    tagged Interrupt .i: $format(fshow(i), " (interrupt)");
+    tagged Exception .e: $format(fshow(e), " (exception)");
+  endcase;
+endinstance
 
 ///////////////////
 // Logging utils //
 ////////////////////////////////////////////////////////////////////////////////
 
 // pretty printing and logging utils
-function Fmt gpRegName(Bit#(n) r) = $format("x%0d", r);
-function Fmt abiRegName(Bit#(n) r) = case (r)
+function Fmt gpRegName(Bit#(5) r) = $format("x%0d", r);
+function Fmt abiRegName(Bit#(5) r) = case (r)
   0: $format("zero");
   1: $format("ra");
   2: $format("sp");
@@ -72,7 +78,7 @@ function Fmt abiRegName(Bit#(n) r) = case (r)
   18, 19, 20, 21, 22, 23, 24, 25, 26, 27: $format("s%0d", r - 16);
   28, 29, 30, 31: $format("t%0d", r - 25);
 endcase;
-function Fmt rName(Bit#(n) r) = abiRegName(r);
+function Fmt rName(Bit#(5) r) = abiRegName(r);
 /*
   I-type
 
@@ -179,4 +185,50 @@ function a patSType (Bit#(3) funct3, Bit#(7) opcode) =
 function Action logInstS(Bit#(XLEN) pc, String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
   printTLogPlusArgs("itrace",
     $format("pc: 0x%0x -- ", pc, i,"\t", rName(rs1), ", ", rName(rs2), ", 0x%0x", imm)
+  );
+
+// CSRs logging
+function Fmt csrName(Bit#(12) idx) = case (idx)
+  12'h000: $format("ustatus");
+  12'h004: $format("uie");
+  12'h005: $format("utvec");
+  12'h040: $format("uscratch");
+  12'h041: $format("uepc");
+  12'h042: $format("ucause");
+  12'h043: $format("utval");
+  12'h044: $format("uip");
+  12'h300: $format("mstatus");
+  12'h301: $format("misa");
+  12'h302: $format("medeleg");
+  12'h303: $format("mideleg");
+  12'h304: $format("mie");
+  12'h305: $format("mtvec");
+  12'h306: $format("mcounteren");
+  12'h340: $format("mscratch");
+  12'h341: $format("mepc");
+  12'h342: $format("mcause");
+  12'h343: $format("mtval");
+  12'h344: $format("mip");
+  12'h3A0, 12'h3A1, 12'h3A2, 12'h3A3: $format("pmpcfg%0d", idx - 12'h3A0);
+  12'h3B0, 12'h3B1, 12'h3B2, 12'h3B3, 12'h3B4, 12'h3B5, 12'h3B6, 12'h3B7, 12'h3B8, 12'h3B9, 12'h3BA, 12'h3BB, 12'h3BC, 12'h3BD, 12'h3BE, 12'h3BF:
+    $format("pmpaddr%0d", idx - 12'h3B0);
+  12'hC00: $format("cycle");
+  12'hC01: $format("time");
+  12'hC02: $format("insret");
+  12'hC03, 12'hC04, 12'hC05, 12'hC06, 12'hC07, 12'hC08, 12'hC09, 12'hC0A, 12'hC0B, 12'hC0C, 12'hC0D, 12'hC0E, 12'hC0F:
+    $format("hpmcounter%0d", idx - 12'hC00);
+  12'hC80: $format("cycleh");
+  12'hC81: $format("timeh");
+  12'hC82: $format("insreth");
+  12'hC83, 12'hC84, 12'hC85, 12'hC86, 12'hC87, 12'hC88, 12'hC89, 12'hC8A, 12'hC8B, 12'hC8C, 12'hC8D, 12'hC8E, 12'hC8F:
+    $format("hpmcounter%0dh", idx - 12'hC80);
+  12'hF11: $format("mvendorid");
+  12'hF12: $format("marchid");
+  12'hF13: $format("mimpid");
+  12'hF14: $format("mhartid");
+  default: $format("unknown");
+endcase;
+function Action logInstCSR(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(5) rs1, Bit#(12) imm) =
+  printTLogPlusArgs("itrace",
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", ", rName(rs1), ", 0x%0x", imm, " (", csrName(imm), ")")
   );
