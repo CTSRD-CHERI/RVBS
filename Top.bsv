@@ -9,7 +9,7 @@ import RV_I :: *;
 module top ();
 
   //RVMem mem <- initRVMem;
-  RVMem mem <- mkSharedMem(8192, "test-prog.hex");
+  RVMem mem <- mkSharedMem(16384, "test-prog.hex");
 
   // instanciating simulator
   `ifdef XLEN64
