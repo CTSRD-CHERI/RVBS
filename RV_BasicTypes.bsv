@@ -16,9 +16,19 @@ typedef 32 XLEN;
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
-///////////////////////
-// RISC-V trap types //
+/////////////////////////////////////
+// RISC-V trap and CSR basic types //
 ////////////////////////////////////////////////////////////////////////////////
+
+typeclass CSR#(type a);
+  function Action updateCSR(Reg#(a) csr, a val);
+endtypeclass
+
+instance CSR#(Bit#(XLEN));
+  function Action updateCSR(Reg#(Bit#(XLEN)) csr, Bit#(XLEN) val) = action
+    csr <= val;
+  endaction;
+endinstance
 
 // privilege levels
 typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
@@ -57,6 +67,11 @@ instance FShow#(MCause);
     tagged Interrupt .i: $format(fshow(i), " (interrupt)");
     tagged Exception .e: $format(fshow(e), " (exception)");
   endcase;
+endinstance
+instance CSR#(MCause);
+  function Action updateCSR(Reg#(MCause) csr, MCause val) = action
+    csr <= val;
+  endaction;
 endinstance
 
 ///////////////////
