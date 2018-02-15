@@ -119,8 +119,9 @@ provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
       RC: newval = pack(csr) & ~r.val;
     endcase
     updateCSR(csr, unpack(newval));
-    printTLogPlusArgs("CSRs", $format("overwriting 0x%0x with 0x%0x", pack(csr), newval));
-  end
+    printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
+  end else
+    printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", pack(csr)));
   return pack(csr);
 endactionvalue;
 

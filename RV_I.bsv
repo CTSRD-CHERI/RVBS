@@ -402,7 +402,9 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lb(step1)", rd, rs1, imm);
     endaction,
     action
@@ -414,6 +416,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lb(step2)", rd, rs1, imm);
     endaction
   );
@@ -424,7 +427,9 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 1});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lbu(step1)", rd, rs1, imm);
     endaction,
     action
@@ -436,6 +441,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lbu(step2)", rd, rs1, imm);
     endaction
   );
@@ -446,7 +452,9 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lh(step1)", rd, rs1, imm);
     endaction,
     action
@@ -458,6 +466,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lh(step2)", rd, rs1, imm);
     endaction
   );
@@ -468,7 +477,9 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 2});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lhu(step1)", rd, rs1, imm);
     endaction,
     action
@@ -480,6 +491,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lhu(step2)", rd, rs1, imm);
     endaction
   );
@@ -490,7 +502,9 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lw(step1)", rd, rs1, imm);
     endaction,
     action
@@ -502,6 +516,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lw(step2)", rd, rs1, imm);
     endaction
   );
@@ -686,7 +701,6 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
 
   // ECALL
   function Action instrECALL() = action
-    //TODO
     MCause cause = case (s.currentPrivLvl)
       U: tagged Exception ECallFromU;
       S: tagged Exception ECallFromS;
@@ -699,7 +713,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
 
   // EBREAK
   function Action instrEBREAK() = action
-    //TODO
+    trap(s, tagged Exception Breakpoint);
     printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ebreak", s.pc));
   endaction;
   defineInstr("ebreak", pat(n(12'b000000000001), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrEBREAK);
@@ -903,7 +917,9 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLWU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 4});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lwu(step1)", rd, rs1, imm);
     endaction,
     action
@@ -915,6 +931,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "lwu(step2)", rd, rs1, imm);
     endaction
   );
@@ -925,7 +942,9 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLD(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      mem.sendReq(tagged ReadReq {addr: addr, numBytes: 8});
+      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 8};
+      mem.sendReq(req);
+      printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "ld(step1)", rd, rs1, imm);
     endaction,
     action
@@ -937,6 +956,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
         end
       endcase
       s.pc <= s.pc + 4;
+      printTLogPlusArgs("itrace", fshow(rsp));
       logInstI(s.pc, "ld(step2)", rd, rs1, imm);
     endaction
   );

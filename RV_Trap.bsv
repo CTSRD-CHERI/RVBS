@@ -4,6 +4,7 @@ import BitPat :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+import RV_CSRTypes :: *;
 import RV_State :: *;
 
 ////////////////
@@ -16,7 +17,7 @@ function Action trap(RVArchState s, MCause cause) = action
   s.csrs.mepc <= s.pc;
   s.pc <= s.csrs.mtvec;
   s.currentPrivLvl <= M;
-  printTLogPlusArgs("itrace", $format(" >>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
+  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
 
 module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
@@ -35,8 +36,17 @@ module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
   // rd = 00000
   // opcode = SYSTEM = 1110011
   function Action instrMRET () = action
-    // TODO implement mstatus changes
+    // current privilege update
+    s.currentPrivLvl <= s.csrs.mstatus.mpp;
+    // pc update
     s.pc <= s.csrs.mepc;
+    // mstatus CSR manipulation
+    let val = s.csrs.mstatus;
+    val.mie = val.mpie;
+    val.mpie = True;
+    val.mpp = M; // change to U when user mode is supported
+    s.csrs.mstatus <= val;
+    // trace
     printTLogPlusArgs("itrace", $format("pc: 0x%0x -- mret", s.pc));
   endaction;
   defineInstr("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
