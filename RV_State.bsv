@@ -56,13 +56,6 @@ endinstance
 // RISC-V Memories //
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Mem#(Bit#(XLEN), Bit#(InstSz), Bit#(XLEN)) RVMem;
-typedef DMem#(Bit#(XLEN), Bit#(XLEN)) RVDMem;
-typedef IMem#(Bit#(XLEN), Bit#(InstSz)) RVIMem;
-module initRVMem (RVMem);
-  let imem <- mkSimpleIMem(4096, "test-prog.hex");
-  let dmem <- mkSimpleDMem(4096);
-  interface IMem inst = imem;
-  interface DMem data = dmem;
-endmodule
-
+typedef FullMem#(Bit#(XLEN), Bit#(InstSz), Bit#(XLEN)) RVMem;
+typedef Mem#(Bit#(XLEN), Bit#(XLEN)) RVDMem;
+typedef Mem#(Bit#(XLEN), Bit#(InstSz)) RVIMem;
