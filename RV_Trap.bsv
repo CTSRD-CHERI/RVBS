@@ -15,7 +15,16 @@ function Action trap(RVArchState s, MCause cause) = action
   // TODO latch current priv in mstatus
   s.csrs.mcause <= cause;
   s.csrs.mepc <= s.pc;
-  s.pc <= s.csrs.mtvec;
+  // prepare trap handler address
+  Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+  case (s.csrs.mtvec.mode)
+    Direct: s.pc <= tgt;
+    Vectored: s.pc <= case (cause) matches
+      tagged Interrupt .i: (tgt + zeroExtend({pack(i),2'b00}));
+      default: tgt;
+    endcase;
+    default: $finish(1);
+  endcase
   s.currentPrivLvl <= M;
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
@@ -50,5 +59,15 @@ module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
     printTLogPlusArgs("itrace", $format("pc: 0x%0x -- mret", s.pc));
   endaction;
   defineInstr("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
+
+  // funct12 = WFI = 000100000101
+  // rs1 = 00000
+  // funct3 = PRIV = 000
+  // rd = 00000
+  // opcode = SYSTEM = 1110011
+  function Action instrWFI () = action
+    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- wfi -- IMPLEMENTED AS NOP", s.pc));
+  endaction;
+  defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 
 endmodule

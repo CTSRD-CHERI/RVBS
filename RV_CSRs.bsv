@@ -53,7 +53,7 @@ typedef struct {
   // medeleg
   // mideleg
   // mie
-  Reg#(Bit#(XLEN)) mtvec;
+  Reg#(MTVec) mtvec;
   // mcounteren
 
   // machine trap handling
@@ -144,7 +144,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
   // medeleg 12'h302
   // mideleg 12'h303
   // mie 12'h304
-  csrs.mtvec   <- mkRegU; // mtvec 12'h305
+  csrs.mtvec   <- mkReg(defaultValue); // mtvec 12'h305
   // mcounteren 12'h306
 
   // machine trap handling
