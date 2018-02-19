@@ -16,6 +16,9 @@ typedef 32 XLEN;
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
+// 4-bytes alignment test
+function Bool is4BytesAligned(Bit#(sz) x) provisos (Add#(2, a__, sz)) = x[1:0] == 0;
+
 /////////////////////////////////////
 // RISC-V trap and CSR basic types //
 ////////////////////////////////////////////////////////////////////////////////

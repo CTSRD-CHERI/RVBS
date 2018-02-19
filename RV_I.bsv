@@ -281,8 +281,11 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = JAL = 1101111
   function Action instrJAL(Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd) = action
     Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
-    s.pc <= s.pc + imm;
-    s.regFile[rd] <= s.pc + 4;
+    Bit#(XLEN) tgt = s.pc + imm;
+    if (is4BytesAligned(tgt)) begin
+      s.pc <= tgt;
+      s.regFile[rd] <= s.pc + 4;
+    end else trap(s, tagged Exception InstAddrAlign);
     logInstJ(s.pc, "jal", rd, imm);
   endaction;
   defineInstr("jal", pat(v, v, v, v, v, n(7'b1101111)),instrJAL);
@@ -299,10 +302,12 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // funct3 = 000
   // opcode = JALR = 1100111
   function Action instrJALR (Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
-    Bit#(XLEN) newPC = s.regFile[rs1] + signExtend(imm);
-    newPC[0] = 0;
-    s.pc <= newPC;
-    s.regFile[rd] <= s.pc + 4;
+    Bit#(XLEN) tgt = s.regFile[rs1] + signExtend(imm);
+    tgt[0] = 0;
+    if (is4BytesAligned(tgt)) begin
+      s.pc <= tgt;
+      s.regFile[rd] <= s.pc + 4;
+    end else trap(s, tagged Exception InstAddrAlign);
     logInstI(s.pc, "jalr", rd, rs1, imm);
   endaction;
   defineInstr("jalr", pat(v, v, n(3'b000), v, n(7'b1100111)), instrJALR);
@@ -324,12 +329,15 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // BGT, BGTU, BLE, and BLEU can be synthesized by reversing the operands
   // to BLT, BLTU, BGE, and BGEU, respectivelly.
 
+  function Action branchCommon(Bit#(XLEN) tgt) = action
+    if (is4BytesAligned(tgt)) s.pc <= tgt; else trap(s, tagged Exception InstAddrAlign);
+  endaction;
+
   // funct3 = BEQ = 000
   // opcode = 1100011
   function Action instrBEQ (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (s.regFile[rs1] == s.regFile[rs2]) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (s.regFile[rs1] == s.regFile[rs2]) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "beq", rs1, rs2, imm);
   endaction;
   defineInstr("beq", pat(v, v, v, v, n(3'b000), v, v, n(7'b1100011)), instrBEQ);
@@ -338,8 +346,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = 1100011
   function Action instrBNE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (s.regFile[rs1] != s.regFile[rs2]) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (s.regFile[rs1] != s.regFile[rs2]) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "bne", rs1, rs2, imm);
   endaction;
   defineInstr("bne", pat(v, v, v, v, n(3'b001), v, v, n(7'b1100011)), instrBNE);
@@ -348,8 +355,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = 1100011
   function Action instrBLT (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (signedLT(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (signedLT(s.regFile[rs1], s.regFile[rs2])) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "blt", rs1, rs2, imm);
   endaction;
   defineInstr("blt", pat(v, v, v, v, n(3'b100), v, v, n(7'b1100011)), instrBLT);
@@ -358,8 +364,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = 1100011
   function Action instrBLTU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (s.regFile[rs1] < s.regFile[rs2]) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (s.regFile[rs1] < s.regFile[rs2]) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "bltu", rs1, rs2, imm);
   endaction;
   defineInstr("bltu", pat(v, v, v, v, n(3'b110), v, v, n(7'b1100011)), instrBLTU);
@@ -368,8 +373,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = 1100011
   function Action instrBGE (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (signedGE(s.regFile[rs1], s.regFile[rs2])) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (signedGE(s.regFile[rs1], s.regFile[rs2])) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "bge", rs1, rs2, imm);
   endaction;
   defineInstr("bge", pat(v, v, v, v, n(3'b101), v, v, n(7'b1100011)), instrBGE);
@@ -378,8 +382,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   // opcode = 1100011
   function Action instrBGEU (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
     Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-    if (s.regFile[rs1] >= s.regFile[rs2]) s.pc <= s.pc + imm;
-    else s.pc <= s.pc + 4;
+    if (s.regFile[rs1] >= s.regFile[rs2]) branchCommon(s.pc + imm); else s.pc <= s.pc + 4;
     logInstB(s.pc, "bgeu", rs1, rs2, imm);
   endaction;
   defineInstr("bgeu", pat(v, v, v, v, n(3'b111), v, v, n(7'b1100011)), instrBGEU);
