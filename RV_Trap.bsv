@@ -23,7 +23,10 @@ function Action trap(RVArchState s, MCause cause) = action
       tagged Interrupt .i: (tgt + zeroExtend({pack(i),2'b00}));
       default: tgt;
     endcase;
-    default: $finish(1);
+    default: begin
+      printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
+      $finish(1);
+    end
   endcase
   s.currentPrivLvl <= M;
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));

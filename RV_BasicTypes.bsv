@@ -71,9 +71,30 @@ instance FShow#(MCause);
     tagged Exception .e: $format(fshow(e), " (exception)");
   endcase;
 endinstance
+//function Bool isValidMCause(MCause c) = case (c) matches
+function Bool isValidMCause(Bit#(XLEN) c) = case (unpack(c)) matches
+  tagged Interrupt .i: case (i)
+    USoftInt, SSoftInt, MSoftInt,
+    UtimerInt, STimerInt, MTimerInt,
+    UExtInt, SExtInt, MExtInt: True;
+    default: False;
+  endcase
+  tagged Exception .e: case (e)
+    InstAddrAlign, InstAccessFault, IllegalInst,
+    Breakpoint, LoadAddrAlign, LoadAccessFault,
+    StrAMOAddrAlign, StrAMOAccessFault,
+    ECallFromU, ECallFromS, ECallFromM,
+    InstPgFault, LoadPgFault, StrAMOPgFault: True;
+    default: False;
+  endcase
+endcase;
 instance CSR#(MCause);
   function Action updateCSR(Reg#(MCause) csr, MCause val) = action
-    csr <= val;
+    if (isValidMCause(pack(val))) csr <= val;
+    else begin
+      printTLog($format("Illegal MCause value 0x%0x written in mcause register", pack(val)));
+      $finish(1);
+    end
   endaction;
 endinstance
 
