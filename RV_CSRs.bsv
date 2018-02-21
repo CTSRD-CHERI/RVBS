@@ -166,6 +166,35 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
   // ...
   // pmpaddr15 12'h3BF
 
+  // machine counter / timers
+  //////////////////////////////////////////////////////////////////////////////
+  // mcycle 12'hB00
+  // minsret 12'hB02
+  // mhpmcounter3 12'hB03 (and 12'hB83 in RV32)
+  // mhpmcounter4 12'hB04 (and 12'hB84 in RV32)
+  // ...
+  // mhpmcounter31 12'B1F (and 12'hB9F in RV32)
+
+  // machine counter setup
+  //////////////////////////////////////////////////////////////////////////////
+  // mhpmevent3 12'h323
+  // mhpmevent4 12'h324
+  // ...
+  // mhpmevent31 12'h33F
+
+  // debug / trace registers (shared with debug mode)
+  //////////////////////////////////////////////////////////////////////////////
+  // tselect 12'h7A0
+  // tdata1 12'h7A1
+  // tdata2 12'h7A2
+  // tdata3 12'h7A3
+
+  // debug mode registers
+  //////////////////////////////////////////////////////////////////////////////
+  // dcsr 12'h7B0
+  // dpc 12'h7B1
+  // dscratch 12'h7B2
+
   // user trap setup registers
   //////////////////////////////////////////////////////////////////////////////
   // ustatus 12'h000
