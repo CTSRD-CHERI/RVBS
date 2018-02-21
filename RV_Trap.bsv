@@ -14,7 +14,7 @@ import RV_State :: *;
 function Action trap(RVArchState s, MCause cause) = action
   // TODO latch current priv in mstatus
   s.csrs.mcause <= cause;
-  s.csrs.mepc <= s.pc;
+  s.csrs.mepc <= unpack(s.pc);
   // prepare trap handler address
   Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
   case (s.csrs.mtvec.mode)
@@ -48,7 +48,7 @@ module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
     // current privilege update
     s.currentPrivLvl <= s.csrs.mstatus.mpp;
     // pc update
-    s.pc <= s.csrs.mepc;
+    s.pc <= pack(s.csrs.mepc);
     // mstatus CSR manipulation
     let val = s.csrs.mstatus;
     val.mie = val.mpie;

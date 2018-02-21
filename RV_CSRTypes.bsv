@@ -101,6 +101,22 @@ instance CSR#(MStatus);
   endaction;
 endinstance
 
+// MEPC
+////////////////////////////////////////////////////////////////////////////////
+typedef struct {
+  Bit#(XLEN) addr;
+} MEPC deriving (Bits, FShow);
+instance DefaultValue#(MEPC);
+  function MEPC defaultValue() = MEPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
+endinstance
+instance CSR#(MEPC);
+  function Action updateCSR(Reg#(MEPC) csr, MEPC val) = action
+    let newval = val;
+    if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
+    csr <= newval;
+  endaction;
+endinstance
+
 // MTVec
 ////////////////////////////////////////////////////////////////////////////////
 typedef enum {Direct, Vectored, Res} MTVecMode deriving (Eq, FShow);

@@ -59,7 +59,7 @@ typedef struct {
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Bit#(XLEN)) mscratch;
-  Reg#(Bit#(XLEN)) mepc;
+  Reg#(MEPC) mepc;
   Reg#(MCause) mcause;
   // mtval
   // mip
@@ -150,7 +150,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
   csrs.mscratch <- mkRegU; // mscratch 12'h340
-  csrs.mepc <- mkRegU; // mepc 12'h341
+  csrs.mepc <- mkReg(defaultValue); // mepc 12'h341
   csrs.mcause <- mkRegU; // mcause 12'h342
   // mtval 12'h343
   // mip 12'h344
