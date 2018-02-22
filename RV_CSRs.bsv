@@ -93,7 +93,7 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Bit#(64)) cycle;
   // time
-  Reg#(Bit#(64)) instret;
+  //Reg#(Bit#(64)) instret;
   // hpmcounter3
   // hpmcounter4
   // ...
@@ -125,7 +125,7 @@ provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
   return pack(csr);
 endactionvalue;
 
-module [ArchStateDefModule#(n)] mkCSRs(CSRs);
+module mkCSRs(CSRs);
 
   // instance of the CSRs struct
   CSRs csrs;
@@ -216,7 +216,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
     csrs.cycle <= csrs.cycle + 1;
   endrule
   // time 12'hC01 (and 12'hC81 in RV32)
-  csrs.instret <- mkCommittedInstCnt; // insret 12'hC02 (and 12'hC82 in RV32)
+  // csrs.instret <- mkCommittedInstCnt; // insret 12'hC02 (and 12'hC82 in RV32)
   // hpmcounter3 12'hC03 (and 12'hC83 in RV32)
   // hpmcounter4 12'hC04 (and 12'hC84 in RV32)
   // ...
@@ -238,7 +238,7 @@ module [ArchStateDefModule#(n)] mkCSRs(CSRs);
       12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);
       12'hF14: ret <- readUpdateCSR(csrs.mhartid,r);
       12'hC00: ret = csrs.cycle[valueOf(XLEN)-1:0];
-      12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
+      //12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
       // RV32I only
       //'hC80: ret = cycle[63:32];
       //XXX hack for test suite

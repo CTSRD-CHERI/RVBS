@@ -15,12 +15,12 @@ export RV_State :: *;
 // state type
 typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
-  Reg#(Bit#(XLEN)) pc;
+  PC#(Bit#(XLEN)) pc;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
 } RVArchState;
 
-module [ArchStateDefModule#(XLEN)] mkArchState (RVArchState);
+module mkArchState (RVArchState);
   RVArchState s;
   s.currentPrivLvl <- mkReg(M);
   s.pc <- mkPC;

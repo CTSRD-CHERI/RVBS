@@ -405,7 +405,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lb(step1)", rd, rs1, imm);
@@ -430,7 +430,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lbu(step1)", rd, rs1, imm);
@@ -455,7 +455,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lh(step1)", rd, rs1, imm);
@@ -480,7 +480,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lhu(step1)", rd, rs1, imm);
@@ -505,7 +505,7 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lw(step1)", rd, rs1, imm);
@@ -920,7 +920,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLWU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "lwu(step1)", rd, rs1, imm);
@@ -945,7 +945,7 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   function List#(Action) instrLD(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
     action
       Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      DMemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 8};
+      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 8};
       mem.sendReq(req);
       printTLogPlusArgs("itrace", fshow(req));
       logInstI(s.pc, "ld(step1)", rd, rs1, imm);

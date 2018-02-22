@@ -8,14 +8,14 @@ import RV_I :: *;
 
 module top ();
 
-  //RVMem mem <- initRVMem;
-  RVMem mem <- mkSharedMem(16384, "test-prog.hex");
+  RVArchState s <- mkArchState;
+  RVMem mem <- mkFullMem(16384, "test-prog.hex", s.pc.next);
 
   // instanciating simulator
   `ifdef XLEN64
-  mkISASim(mem, mkArchState, list(mkRVTrap, mkRV32I, mkRV64I));
+  mkISASim(mem, s, list(mkRVTrap, mkRV32I, mkRV64I));
   `else
-  mkISASim(mem, mkArchState, list(mkRVTrap, mkRV32I));
+  mkISASim(mem, s, list(mkRVTrap, mkRV32I));
   `endif
 
 endmodule
