@@ -1,7 +1,8 @@
 # BSV compiler flags
+FORKJOINDIR = /home/aj443/devstuff/ForkJoin
 BITPATDIR = /home/aj443/devstuff/BitPat
 BIDDIR = /home/aj443/devstuff/BID
-BSVPATH = +:$(BITPATDIR):$(BIDDIR)
+BSVPATH = +:$(FORKJOINDIR):$(BITPATDIR):$(BIDDIR)
 BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
 ifdef NO_LOGS

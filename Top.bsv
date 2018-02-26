@@ -9,7 +9,7 @@ import RV_I :: *;
 module top ();
 
   RVArchState s <- mkArchState;
-  RVMem mem <- mkFullMem(16384, "test-prog.hex", s.pc.next);
+  RVMem mem <- mkFullMem(16384, "test-prog.hex", toPAddr(s.pc.next)); // TODO properly check the PC against pmp and eventually translate
 
   // instanciating simulator
   `ifdef XLEN64

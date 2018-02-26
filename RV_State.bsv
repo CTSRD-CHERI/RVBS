@@ -4,6 +4,8 @@ import Vector :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+import RV_PMP :: *;
+export RV_PMP :: *;
 import RV_CSRs :: *;
 export RV_CSRs :: *;
 export RV_State :: *;
@@ -15,9 +17,10 @@ export RV_State :: *;
 // state type
 typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
-  PC#(Bit#(XLEN)) pc;
+  PC#(VAddr) pc;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
+  PMP pmp;
 } RVArchState;
 
 module mkArchState (RVArchState);
@@ -25,7 +28,8 @@ module mkArchState (RVArchState);
   s.currentPrivLvl <- mkReg(M);
   s.pc <- mkPC;
   s.regFile <- mkRegFileZ;
-  s.csrs <- mkCSRs;
+  s.pmp <- mkPMP(s.currentPrivLvl);
+  s.csrs <- mkCSRs(s.pmp);
   return s;
 endmodule
 
@@ -52,10 +56,9 @@ instance ArchState#(RVArchState);
 
 endinstance
 
-/////////////////////
-// RISC-V Memories //
+///////////////////
+// RISC-V Memory //
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef FullMem#(Bit#(XLEN), Bit#(InstSz), Bit#(XLEN)) RVMem;
-typedef Mem#(Bit#(XLEN), Bit#(XLEN)) RVDMem;
-typedef Mem#(Bit#(XLEN), Bit#(InstSz)) RVIMem;
+typedef FullMem#(PAddr, Bit#(InstSz), Bit#(XLEN)) RVMem;
+typedef Mem#(PAddr, Bit#(XLEN)) RVDMem;

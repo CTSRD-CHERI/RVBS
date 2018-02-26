@@ -2,9 +2,58 @@
 
 import Vector :: *;
 import BitPat :: *;
+import Printf :: *;
 import BID :: *;
 
 import RV_Common :: *;
+
+/////////////////////////////////////////////////////
+// Helpers for load & store family of instructions //
+////////////////////////////////////////////////////////////////////////////////
+typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
+function List#(Action) loadHelper(RVArchState s, RVDMem mem, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
+  action
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: READ};
+    s.pmp.lookup(req);
+    printTLogPlusArgs("itrace", fshow(req));
+    logInstI(s.pc, sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm);
+  endaction, action
+    PMPRsp rsp <- s.pmp.getMatch();
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
+    mem.sendReq(req);
+    printTLogPlusArgs("itrace", fshow(rsp));
+    printTLogPlusArgs("itrace", fshow(req));
+    logInstI(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rd, rs1, imm);
+  endaction, action
+    let rsp <- mem.getRsp();
+    case (rsp) matches
+      tagged ReadRsp .r: begin
+        Bool isNeg = unpack(r[(args.numBytes*8)-1]);
+        Bit#(XLEN) mask = (~0) << args.numBytes*8;
+        s.regFile[rd] <= (args.sgnExt && isNeg) ? r | mask : r & ~mask;
+      end
+    endcase
+    s.pc <= s.pc + 4;
+    printTLogPlusArgs("itrace", fshow(rsp));
+    logInstI(s.pc, sprintf("%s (mem rsp step)", args.name), rd, rs1, imm);
+  endaction);
+typedef struct { String name; Integer numBytes; } StrArgs;
+function List#(Action) storeHelper(RVArchState s, RVDMem mem, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
+  Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+  return list(action
+    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: WRITE};
+    s.pmp.lookup(req);
+    printTLogPlusArgs("itrace", fshow(req));
+    logInstS(s.pc, sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm);
+  endaction, action
+    PMPRsp rsp <- s.pmp.getMatch();
+    mem.sendReq(tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]});
+    s.pc <= s.pc + 4;
+    logInstS(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rs1, rs2, imm);
+  endaction);
+endfunction
 
 `ifdef XLEN32
 module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
@@ -400,130 +449,12 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   +-------------------------------------+--------+--------+--------+----------+
 */
 
-  // funct3 = LB = 000
-  // opcode = 0000011
-  function List#(Action) instrLB(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lb(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(8) tmp = truncate(r);
-          s.regFile[rd] <= signExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lb(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lb", pat(v, v, n(3'b000), v, n(7'b0000011)), instrLB);
-
-  // funct3 = LBU = 100
-  // opcode = 0000011
-  function List#(Action) instrLBU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 1};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lbu(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(8) tmp = truncate(r);
-          s.regFile[rd] <= zeroExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lbu(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lbu", pat(v, v, n(3'b100), v, n(7'b0000011)), instrLBU);
-
-  // funct3 = LH = 001
-  // opcode = 0000011
-  function List#(Action) instrLH(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lh(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(16) tmp = truncate(r);
-          s.regFile[rd] <= signExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lh(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lh", pat(v, v, n(3'b001), v, n(7'b0000011)), instrLH);
-
-  // funct3 = LHU = 101
-  // opcode = 0000011
-  function List#(Action) instrLHU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 2};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lhu(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(18) tmp = truncate(r);
-          s.regFile[rd] <= zeroExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lhu(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lhu", pat(v, v, n(3'b101), v, n(7'b0000011)), instrLHU);
-
-  // funct3 = LW = 010
-  // opcode = 0000011
-  function List#(Action) instrLW(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lw(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(32) tmp = truncate(r);
-          s.regFile[rd] <= signExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lw(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lw", pat(v, v, n(3'b010), v, n(7'b0000011)), instrLW);
+  let load = loadHelper(s, mem);
+  defineInstr("lb",  pat(v, v, n(3'b000), v, n(7'b0000011)), load(LoadArgs{name: "lb",  numBytes: 1, sgnExt: True}));
+  defineInstr("lbu", pat(v, v, n(3'b100), v, n(7'b0000011)), load(LoadArgs{name: "lbu", numBytes: 1, sgnExt: False}));
+  defineInstr("lh",  pat(v, v, n(3'b001), v, n(7'b0000011)), load(LoadArgs{name: "lh",  numBytes: 2, sgnExt: True}));
+  defineInstr("lhu", pat(v, v, n(3'b101), v, n(7'b0000011)), load(LoadArgs{name: "lhu", numBytes: 2, sgnExt: False}));
+  defineInstr("lw",  pat(v, v, n(3'b010), v, n(7'b0000011)), load(LoadArgs{name: "lw",  numBytes: 4, sgnExt: True}));
 
 /*
   S-type
@@ -534,38 +465,10 @@ module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
   +----------------------------+--------+--------+--------+--------+----------+
 */
 
-  // funct3 = SB = 000
-  // opcode = 0100011
-  function Action instrSB(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
-    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1, data: s.regFile[rs2]});
-    s.pc <= s.pc + 4;
-    logInstS(s.pc, "sb", rs1, rs2, imm);
-  endaction;
-  defineInstr("sb", pat(v, v, v, n(3'b000), v, n(7'b0100011)), instrSB);
-
-  // funct3 = SH = 001
-  // opcode = 0100011
-  function Action instrSH(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
-    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11, data: s.regFile[rs2]});
-    s.pc <= s.pc + 4;
-    logInstS(s.pc, "sh", rs1, rs2, imm);
-  endaction;
-  defineInstr("sh", pat(v, v, v, n(3'b001), v, n(7'b0100011)), instrSH);
-
-  // funct3 = SW = 010
-  // opcode = 0100011
-  function Action instrSW(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
-    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b1111, data: s.regFile[rs2]});
-    s.pc <= s.pc + 4;
-    logInstS(s.pc, "sw", rs1, rs2, imm);
-  endaction;
-  defineInstr("sw", pat(v, v, v, n(3'b010), v, n(7'b0100011)), instrSW);
+  let store = storeHelper(s, mem);
+  defineInstr("sb", pat(v, v, v, n(3'b000), v, n(7'b0100011)), store(StrArgs{name: "sb", numBytes: 1}));
+  defineInstr("sh", pat(v, v, v, n(3'b001), v, n(7'b0100011)), store(StrArgs{name: "sh", numBytes: 2}));
+  defineInstr("sw", pat(v, v, v, n(3'b010), v, n(7'b0100011)), store(StrArgs{name: "sw", numBytes: 4}));
 
 //////////////////
 // Memory Model //
@@ -915,55 +818,9 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   +-------------------------------------+--------+--------+--------+----------+
 */
 
-  // funct3 = LWU = 110
-  // opcode = 0000011
-  function List#(Action) instrLWU(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 4};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "lwu(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(32) tmp = truncate(r);
-          s.regFile[rd] <= zeroExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "lwu(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("lwu", pat(v, v, n(3'b110), v, n(7'b0000011)), instrLWU);
-
-  // funct3 = LD = 011
-  // opcode = 0000011
-  function List#(Action) instrLD(Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-    action
-      Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-      MemReq#(Bit#(XLEN), Bit#(XLEN)) req = tagged ReadReq {addr: addr, numBytes: 8};
-      mem.sendReq(req);
-      printTLogPlusArgs("itrace", fshow(req));
-      logInstI(s.pc, "ld(step1)", rd, rs1, imm);
-    endaction,
-    action
-      let rsp <- mem.getRsp();
-      case (rsp) matches
-        tagged ReadRsp .r: begin
-          Bit#(64) tmp = truncate(r);
-          s.regFile[rd] <= signExtend(tmp);
-        end
-      endcase
-      s.pc <= s.pc + 4;
-      printTLogPlusArgs("itrace", fshow(rsp));
-      logInstI(s.pc, "ld(step2)", rd, rs1, imm);
-    endaction
-  );
-  defineInstr("ld", pat(v, v, n(3'b011), v, n(7'b0000011)), instrLD);
+  let load = loadHelper(s, mem);
+  defineInstr("lwu", pat(v, v, n(3'b110), v, n(7'b0000011)), load(LoadArgs{name: "lwu", numBytes: 4, sgnExt: False}));
+  defineInstr("ld",  pat(v, v, n(3'b011), v, n(7'b0000011)), load(LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}));
 
 /*
   S-type
@@ -974,16 +831,8 @@ module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
   +----------------------------+--------+--------+--------+--------+----------+
 */
 
-  // funct3 = SD = 011
-  // opcode = 0100011
-  function Action instrSD(Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0) = action
-    Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
-    mem.sendReq(tagged WriteReq {addr: addr, byteEnable: 'b11111111, data: s.regFile[rs2]});
-    s.pc <= s.pc + 4;
-    logInstS(s.pc, "sd", rs1, rs2, imm);
-  endaction;
-  defineInstr("sd", pat(v, v, v, n(3'b011), v, n(7'b0100011)), instrSD);
+  let store = storeHelper(s, mem);
+  defineInstr("sd", pat(v, v, v, n(3'b011), v, n(7'b0100011)), store(StrArgs{name: "sd", numBytes: 8}));
 
 endmodule
 `endif // XLEN64

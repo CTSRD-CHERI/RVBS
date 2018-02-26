@@ -1,10 +1,12 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
 import DefaultValue :: *;
+import Vector :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
+import RV_PMP :: *;
 
 ///////////////////////////
 // Interface to the CSRs //
@@ -66,14 +68,14 @@ typedef struct {
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
-  // pmpcfg0
-  // pmpcfg1
-  // pmpcfg2
-  // pmpcfg3
-  // pmpaddr0
-  // pmpaddr1
-  // ...
-  // pmpaddr15
+  // pmpcfg0, pmpcfg1, pmpcfg2, pmpcfg3
+  `ifdef XLEN64
+  Vector#(2, Reg#(Vector#(8, PMPCfg))) pmpcfg;
+  `else
+  Vector#(4, Reg#(Vector#(4, PMPCfg))) pmpcfg;
+  `endif
+  // pmpaddr0, pmpaddr1, ..., pmpaddr15
+  Vector#(16, Reg#(PMPAddr)) pmpaddr;
 
   // user trap setup registers
   //////////////////////////////////////////////////////////////////////////////
@@ -125,7 +127,7 @@ provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
   return pack(csr);
 endactionvalue;
 
-module mkCSRs(CSRs);
+module mkCSRs#(PMP pmp)(CSRs);
 
   // instance of the CSRs struct
   CSRs csrs;
@@ -165,6 +167,8 @@ module mkCSRs(CSRs);
   // pmpaddr1 12'h3B1
   // ...
   // pmpaddr15 12'h3BF
+  csrs.pmpcfg = pmp.cfg;
+  csrs.pmpaddr = pmp.addr;
 
   // machine counter / timers
   //////////////////////////////////////////////////////////////////////////////
@@ -233,6 +237,15 @@ module mkCSRs(CSRs);
       12'h341: ret <- readUpdateCSR(csrs.mepc,r);
       12'h342: ret <- readUpdateCSR(csrs.mcause,r);
       12'h343: ret = 0; // mtval placeholder
+      `ifdef XLEN32
+      12'h3A0, 12'h3A1, 12'h3A2, 12'h3A3:
+        ret <- readUpdateCSR(csrs.pmpcfg[r.idx - 12'h3A0],r);
+      `else
+      12'h3A0: ret <- readUpdateCSR(csrs.pmpcfg[0],r);
+      12'h3A2: ret <- readUpdateCSR(csrs.pmpcfg[1],r);
+      `endif
+      12'h3B0, 12'h3B1, 12'h3B2, 12'h3B3, 12'h3B4, 12'h3B5, 12'h3B6, 12'h3B7, 12'h3B8, 12'h3B9, 12'h3BA, 12'h3BB, 12'h3BC, 12'h3BD, 12'h3BE, 12'h3BF:
+        ret <- readUpdateCSR(csrs.pmpaddr[r.idx - 12'h3B0],r);
       12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
       12'hF12: ret <- readUpdateCSR(csrs.marchid,r);
       12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);

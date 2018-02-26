@@ -10,9 +10,18 @@ typedef 32 InstSz;
 
 `ifdef XLEN64
 typedef 64 XLEN;
+typedef 56 PAddrSz;
 `else
 typedef 32 XLEN;
+typedef 34 PAddrSz;
 `endif
+typedef Bit#(XLEN) VAddr;
+typedef Bit#(PAddrSz) PAddr;
+function PAddr toPAddr (VAddr addr);
+  Bit#(TMax#(PAddrSz, XLEN)) tmp = zeroExtend(addr);
+  return truncate(tmp);
+endfunction
+
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
