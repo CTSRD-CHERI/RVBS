@@ -80,25 +80,30 @@ instance DefaultValue#(PMPRsp);
 endinstance
 
 typedef struct {
+  function Action f(PMPReq req) put;
+  function ActionValue#(PMPRsp) f() get;
+} PMPLookup;
+
+typedef struct {
   `ifdef XLEN64
   Vector#(2, Reg#(PMPCfgIfc#(8))) cfg;
   `else
   Vector#(4, Reg#(PMPCfgIfc#(4))) cfg;
   `endif
   Vector#(16, Reg#(PMPAddr)) addr;
-  function Action doLookup (PMPReq req) lookup;
-  function ActionValue#(PMPRsp) getLookup () getMatch;
+  Array#(PMPLookup) lookup;
 } PMP;
 
-module mkPMP#(PrivLvl plvl) (PMP);
+module mkPMP#(Integer width, PrivLvl plvl) (PMP);
 
   PMP pmp;
-  FIFO#(PMPRsp) rsp <- mkBypassFIFO;
+  FIFO#(PMPRsp) rsp[width];
+  for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkBypassFIFO;
   // mapped CSRs
   pmp.cfg <- replicateM(mkPMPCfgIfcReg);
   pmp.addr <- replicateM(mkReg(defaultValue));
   // lookup method
-  function Action lookup (PMPReq req) = action
+  function Action lookup (Integer i, PMPReq req) = action
     // inner helper for zipwith
     function PMPRsp doLookup (PMPCfg cfg1, Bit#(SmallPASz) a1, Bit#(SmallPASz) a0);
       // authorisation after match
@@ -129,14 +134,18 @@ module mkPMP#(PrivLvl plvl) (PMP);
     function isMatch(x) = x.matched;
     function Bit#(SmallPASz) getAddr(Reg#(PMPAddr) x) = x.address;
     Vector#(16, Bit#(SmallPASz)) addrs = map(getAddr, pmp.addr);
-    PMPRsp noMatchRsp = PMPRsp {matched: False, authorized: (plvl == M), addr: req.addr};
-    rsp.enq(fromMaybe(
-      noMatchRsp,
+    rsp[i].enq(fromMaybe(
+      PMPRsp {matched: False, authorized: (plvl == M), addr: req.addr},
       find(isMatch, zipWith3(doLookup, concat(readVReg(pmp.cfg)), addrs, shiftInAt0(addrs,0)))
     ));
   endaction;
-  pmp.lookup = lookup;
-  pmp.getMatch = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
+  // build the multiple lookup interfaces
+  PMPLookup ifc[width];
+  for (Integer i  = 0; i < width; i = i + 1) begin
+    ifc[i].put = lookup(i);
+    ifc[i].get = actionvalue rsp[i].deq(); return rsp[i].first(); endactionvalue;
+  end
+  pmp.lookup = ifc;
   // returning PMP interface
   return pmp;
 

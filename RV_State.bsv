@@ -1,6 +1,7 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
 import Vector :: *;
+import ConfigReg :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
@@ -25,10 +26,11 @@ typedef struct {
 
 module mkArchState (RVArchState);
   RVArchState s;
-  s.currentPrivLvl <- mkReg(M);
-  s.pc <- mkPC;
+  //s.currentPrivLvl <- mkReg(M);
+  s.currentPrivLvl <- mkConfigReg(M);
+  s.pc <- mkPC(0);
   s.regFile <- mkRegFileZ;
-  s.pmp <- mkPMP(s.currentPrivLvl);
+  s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
   s.csrs <- mkCSRs(s.pmp);
   return s;
 endmodule
@@ -55,10 +57,3 @@ instance ArchState#(RVArchState);
   endfunction
 
 endinstance
-
-///////////////////
-// RISC-V Memory //
-////////////////////////////////////////////////////////////////////////////////
-
-typedef FullMem#(PAddr, Bit#(InstSz), Bit#(XLEN)) RVMem;
-typedef Mem#(PAddr, Bit#(XLEN)) RVDMem;

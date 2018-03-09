@@ -15,11 +15,11 @@ function List#(Action) loadHelper(RVArchState s, RVDMem mem, LoadArgs args, Bit#
   action
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: READ};
-    s.pmp.lookup(req);
+    s.pmp.lookup[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
     logInstI(s.pc, sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm);
   endaction, action
-    PMPRsp rsp <- s.pmp.getMatch();
+    PMPRsp rsp <- s.pmp.lookup[1].get();
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
     mem.sendReq(req);
     printTLogPlusArgs("itrace", fshow(rsp));
@@ -44,11 +44,11 @@ function List#(Action) storeHelper(RVArchState s, RVDMem mem, StrArgs args, Bit#
   return list(action
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: WRITE};
-    s.pmp.lookup(req);
+    s.pmp.lookup[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
     logInstS(s.pc, sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm);
   endaction, action
-    PMPRsp rsp <- s.pmp.getMatch();
+    PMPRsp rsp <- s.pmp.lookup[1].get();
     mem.sendReq(tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]});
     s.pc <= s.pc + 4;
     logInstS(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rs1, rs2, imm);

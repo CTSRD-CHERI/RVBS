@@ -6,6 +6,7 @@ import BID :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
 import RV_State :: *;
+import RV_Mem :: *;
 
 ////////////////
 // Trap logic //
