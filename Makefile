@@ -5,6 +5,8 @@ BIDDIR = /home/aj443/devstuff/BID
 BSVPATH = +:$(RECIPEDIR):$(BITPATDIR):$(BIDDIR)
 BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
+BSCFLAGS += -show-schedule -sched-dot
+BSCFLAGS += -show-rule-rel \* \*
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif
@@ -30,5 +32,5 @@ $(TOPMOD): *.bsv
 
 .PHONY: clean
 clean:
-	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo *.v $(TOPMOD)
+	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo *.v *.dot *.sched $(TOPMOD)
 	$(MAKE) -C $(BIDDIR) clean
