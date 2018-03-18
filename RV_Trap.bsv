@@ -33,7 +33,7 @@ function Action trap(RVArchState s, MCause cause) = action
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
 
-module [Instr32DefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
+module [InstrDefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
 /*
   I-type
 

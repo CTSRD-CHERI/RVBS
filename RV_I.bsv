@@ -56,7 +56,7 @@ function List#(Action) storeHelper(RVArchState s, RVDMem mem, StrArgs args, Bit#
 endfunction
 
 `ifdef XLEN32
-module [Instr32DefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
+module [InstrDefModule] mkRV32I#(RVArchState s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
@@ -640,7 +640,7 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 
 `ifdef XLEN64
-module [Instr32DefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
+module [InstrDefModule] mkRV64I#(RVArchState s, RVDMem mem) ();
 
 ////////////////////////////////////////
 // Integer Computational Instructions //
