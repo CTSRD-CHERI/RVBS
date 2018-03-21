@@ -38,7 +38,7 @@ endaction;
 // XXX pseudo-op: MV, NOP
 function Action instrADDI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] + signExtend(imm);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "addi", rd, rs1, imm);
 endaction;
 
@@ -46,7 +46,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSLTI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signedLT(s.regFile[rs1],signExtend(imm)) ? 1 : 0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "slti", rd, rs1, imm);
 endaction;
 
@@ -55,7 +55,7 @@ endaction;
 // XXX pseudo-op: SEQZ
 function Action instrSLTIU (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= (s.regFile[rs1] < signExtend(imm)) ? 1 : 0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "sltiu", rd, rs1, imm);
 endaction;
 
@@ -63,7 +63,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrANDI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] & signExtend(imm);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "andi", rd, rs1, imm);
 endaction;
 
@@ -71,7 +71,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrORI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] | signExtend(imm);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "ori", rd, rs1, imm);
 endaction;
 
@@ -80,7 +80,7 @@ endaction;
 // XXX pseudo-op: NOT
 function Action instrXORI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] ^ signExtend(imm);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "xori", rd, rs1, imm);
 endaction;
 
@@ -98,7 +98,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSLLI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] << imm4_0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "slli", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -107,7 +107,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSRLI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] >> imm4_0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "srli", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -116,7 +116,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSRAI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm4_0);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "srai", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -132,14 +132,14 @@ endaction;
 // opcode = LUI = 0110111
 function Action instrLUI (RVState s, Bit#(20) imm, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend({imm, 12'b0});
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstU(s.pc, "lui", rd, imm);
 endaction;
 
 // opcode = AUIPC = 0010111
 function Action instrAUIPC (RVState s, Bit#(20) imm, Bit#(5) rd) = action
   s.regFile[rd] <= s.pc + signExtend({imm, 12'b0});
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstU(s.pc, "auipc", rd, imm);
 endaction;
 
@@ -160,7 +160,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrADD (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] + s.regFile[rs2];
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "add", rd, rs1, rs2);
 endaction;
 
@@ -169,7 +169,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSLT (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= (signedLT(s.regFile[rs1], s.regFile[rs2])) ? 1 : 0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "slt", rd, rs1, rs2);
 endaction;
 
@@ -178,7 +178,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSLTU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= (s.regFile[rs1] < s.regFile[rs2]) ? 1 : 0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sltu", rd, rs1, rs2);
 endaction;
 
@@ -187,7 +187,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrAND (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] & s.regFile[rs2];
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "and", rd, rs1, rs2);
 endaction;
 
@@ -196,7 +196,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrOR (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] | s.regFile[rs2];
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "or", rd, rs1, rs2);
 endaction;
 
@@ -205,7 +205,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrXOR (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] ^ s.regFile[rs2];
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "xor", rd, rs1, rs2);
 endaction;
 
@@ -215,7 +215,7 @@ endaction;
 function Action instrSLL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= s.regFile[rs1] << shiftAmnt;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sll", rd, rs1, rs2);
 endaction;
 
@@ -225,7 +225,7 @@ endaction;
 function Action instrSRL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= s.regFile[rs1] >> shiftAmnt;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "srl", rd, rs1, rs2);
 endaction;
 
@@ -234,7 +234,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSUB (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= s.regFile[rs1] - s.regFile[rs2];
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sub", rd, rs1, rs2);
 endaction;
 
@@ -244,7 +244,7 @@ endaction;
 function Action instrSRA (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= arithRightShift(s.regFile[rs1], shiftAmnt);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sra", rd, rs1, rs2);
 endaction;
 
@@ -269,9 +269,9 @@ endaction;
 function Action instrJAL(RVState s, Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd) = action
   Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
   Bit#(XLEN) tgt = s.pc + imm;
-  if (is4BytesAligned(tgt)) begin
+  if (isInstAligned(tgt)) begin
     s.pc <= tgt;
-    s.regFile[rd] <= s.pc + 4;
+    s.regFile[rd] <= s.pc + s.instByteSz;
   end else trap(s, tagged Exception InstAddrAlign);
   logInstJ(s.pc, "jal", rd, imm);
 endaction;
@@ -290,9 +290,9 @@ endaction;
 function Action instrJALR (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(XLEN) tgt = s.regFile[rs1] + signExtend(imm);
   tgt[0] = 0;
-  if (is4BytesAligned(tgt)) begin
+  if (isInstAligned(tgt)) begin
     s.pc <= tgt;
-    s.regFile[rd] <= s.pc + 4;
+    s.regFile[rd] <= s.pc + s.instByteSz;
   end else trap(s, tagged Exception InstAddrAlign);
   logInstI(s.pc, "jalr", rd, rs1, imm);
 endaction;
@@ -315,14 +315,14 @@ endaction;
 // to BLT, BLTU, BGE, and BGEU, respectivelly.
 
 function Action branchCommon(RVState s, Bit#(XLEN) tgt) = action
-  if (is4BytesAligned(tgt)) s.pc <= tgt; else trap(s, tagged Exception InstAddrAlign);
+  if (isInstAligned(tgt)) s.pc <= tgt; else trap(s, tagged Exception InstAddrAlign);
 endaction;
 
 // funct3 = BEQ = 000
 // opcode = 1100011
 function Action instrBEQ (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (s.regFile[rs1] == s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (s.regFile[rs1] == s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "beq", rs1, rs2, imm);
 endaction;
 
@@ -330,7 +330,7 @@ endaction;
 // opcode = 1100011
 function Action instrBNE (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (s.regFile[rs1] != s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (s.regFile[rs1] != s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "bne", rs1, rs2, imm);
 endaction;
 
@@ -338,7 +338,7 @@ endaction;
 // opcode = 1100011
 function Action instrBLT (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (signedLT(s.regFile[rs1], s.regFile[rs2])) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (signedLT(s.regFile[rs1], s.regFile[rs2])) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "blt", rs1, rs2, imm);
 endaction;
 
@@ -346,7 +346,7 @@ endaction;
 // opcode = 1100011
 function Action instrBLTU (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (s.regFile[rs1] < s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (s.regFile[rs1] < s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "bltu", rs1, rs2, imm);
 endaction;
 
@@ -354,7 +354,7 @@ endaction;
 // opcode = 1100011
 function Action instrBGE (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (signedGE(s.regFile[rs1], s.regFile[rs2])) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (signedGE(s.regFile[rs1], s.regFile[rs2])) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "bge", rs1, rs2, imm);
 endaction;
 
@@ -362,7 +362,7 @@ endaction;
 // opcode = 1100011
 function Action instrBGEU (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
-  if (s.regFile[rs1] >= s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + 4;
+  if (s.regFile[rs1] >= s.regFile[rs2]) branchCommon(s, s.pc + imm); else s.pc <= s.pc + s.instByteSz;
   logInstB(s.pc, "bgeu", rs1, rs2, imm);
 endaction;
 
@@ -402,7 +402,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
         s.regFile[rd] <= (args.sgnExt && isNeg) ? r | mask : r & ~mask;
       end
     endcase
-    s.pc <= s.pc + 4;
+    s.pc <= s.pc + s.instByteSz;
     printTLogPlusArgs("itrace", fshow(rsp));
     logInstI(s.pc, sprintf("%s (mem rsp step)", args.name), rd, rs1, imm);
   endaction);
@@ -428,7 +428,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   endaction, action
     PMPRsp rsp <- s.pmp.lookup[1].get();
     s.dmem.sendReq(tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]});
-    s.pc <= s.pc + 4;
+    s.pc <= s.pc + s.instByteSz;
     logInstS(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rs1, rs2, imm);
   endaction);
 endfunction
@@ -442,7 +442,7 @@ endfunction
 // opcode = 0001111
 function Action instrFENCE(RVState s, Bit#(4) pred, Bit#(4) succ) = action
   //TODO
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence 0b%4b, 0b%4b", s.pc, pred, succ));
 endaction;
 
@@ -450,7 +450,7 @@ endaction;
 // opcode = 0001111
 function Action instrFENCE_I(RVState s) = action
   //TODO
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence.i", s.pc));
 endaction;
 
@@ -480,7 +480,7 @@ function Action instrCSRRW(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   // s.regFile[rd] <- s.csrs.req(r);
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrw", rd, rs1, imm);
 endaction;
 
@@ -496,7 +496,7 @@ function Action instrCSRRS(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrs", rd, rs1, imm);
 endaction;
 
@@ -510,7 +510,7 @@ function Action instrCSRRC(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   let r = (rs1 == 0) ? rcCSRReqNoWrite(imm, s.regFile[rs1]) : rcCSRReq(imm, s.regFile[rs1]);
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrc", rd, rs1, imm);
 endaction;
 
@@ -524,7 +524,7 @@ function Action instrCSRRWI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrwi", rd, zimm, imm);
 endaction;
 
@@ -538,7 +538,7 @@ function Action instrCSRRSI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrsi", rd, zimm, imm);
 endaction;
 
@@ -552,7 +552,7 @@ function Action instrCSRRCI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
   let val <- s.csrs.req(r);
   s.regFile[rd] <= val;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstCSR(s.pc, "csrrci", rd, zimm, imm);
 endaction;
 
@@ -656,7 +656,7 @@ endmodule
 // XXX pseudo-op: SEXT.W
 function Action instrADDIW (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + signExtend(imm));
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "addiw", rd, rs1, imm);
 endaction;
 
@@ -675,7 +675,7 @@ endaction;
 function Action instrSLLI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.regFile[rd] <= s.regFile[rs1] << imm5_0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "slli", rd, rs1, zeroExtend(imm5_0));
 endaction;
 
@@ -685,7 +685,7 @@ endaction;
 function Action instrSRLI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.regFile[rd] <= s.regFile[rs1] >> imm5_0;
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "srli", rd, rs1, zeroExtend(imm5_0));
 endaction;
 
@@ -695,7 +695,7 @@ endaction;
 function Action instrSRAI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.regFile[rd] <= arithRightShift(s.regFile[rs1], imm5_0);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "srai", rd, rs1, zeroExtend(imm5_0));
 endaction;
 
@@ -704,7 +704,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSLLIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << imm4_0);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "slliw", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -713,7 +713,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSRLIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> imm4_0);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "srliw", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -722,7 +722,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSRAIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], imm4_0));
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstI(s.pc, "sraiw", rd, rs1, zeroExtend(imm4_0));
 endaction;
 
@@ -743,7 +743,7 @@ endaction;
 // opcode = OP-32 = 0111011
 function Action instrADDW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] + s.regFile[rs2][31:0]);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "addw", rd, rs1, rs2);
 endaction;
 
@@ -752,7 +752,7 @@ endaction;
 // opcode = OP-32 = 0111011
 function Action instrSUBW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] - s.regFile[rs2][31:0]);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "subw", rd, rs1, rs2);
 endaction;
 
@@ -762,7 +762,7 @@ endaction;
 function Action instrSLLW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] << shiftAmnt);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sllw", rd, rs1, rs2);
 endaction;
 
@@ -772,7 +772,7 @@ endaction;
 function Action instrSRLW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= signExtend(s.regFile[rs1][31:0] >> shiftAmnt);
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "srlw", rd, rs1, rs2);
 endaction;
 
@@ -782,7 +782,7 @@ endaction;
 function Action instrSRAW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.regFile[rs2]);
   s.regFile[rd] <= signExtend(arithRightShift(s.regFile[rs1][31:0], shiftAmnt));
-  s.pc <= s.pc + 4;
+  s.pc <= s.pc + s.instByteSz;
   logInstR(s.pc, "sraw", rd, rs1, rs2);
 endaction;
 

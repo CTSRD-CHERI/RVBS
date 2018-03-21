@@ -68,10 +68,32 @@ function List#(Action) instrC_SWSP (RVState s, Bit#(4) imm5_2, Bit#(2) imm7_6, B
 //TODO C.FSWSP
 //TODO C.FSDSP
 
+///////////////////////////////////
+// Control Transfer Instructions //
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+  CJ-type
+
+   15    13 12                               2 1  0
+  +--------+----------------------------------+----+
+  | funct3 |                imm               | op |
+  +--------+----------------------------------+----+
+
+*/
+
+// funct3 = C.J = 101
+// op = C1 = 01
+function Action instrC_J (RVState s, Bit#(11) i) = action
+  Bit#(11) offset = {i[10], i[6], i[8:7], i[4], i[5], i[9], i[0], i[3:1]};
+  instrJAL(s, offset[10], offset[9:0], offset[10], signExtend(offset[10]), 0);
+endaction;
+
 module [InstrDefModule] mkRV32C#(RVState s) ();
 
   defineInstr("c.lwsp", pat(n(3'b010), v, gv(neq(0)), v, v, n(2'b10)), instrC_LWSP(s));
   defineInstr("c.swsp", pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
+  defineInstr("c.j",    pat(n(3'b101), v, n(2'b01)), instrC_J(s));
 
 endmodule
 `endif // XLEN32

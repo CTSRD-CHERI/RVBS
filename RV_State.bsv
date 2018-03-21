@@ -20,6 +20,7 @@ export RV_State :: *;
 typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
   PC#(VAddr) pc;
+  Reg#(VAddr) instByteSz;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
   PMP pmp;
@@ -33,6 +34,7 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
   //s.currentPrivLvl <- mkReg(M);
   s.currentPrivLvl <- mkConfigReg(M);
   s.pc <- mkPC(0);
+  s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
   s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
   s.csrs <- mkCSRs(s.pmp);
@@ -75,10 +77,13 @@ instance State#(RVState);
   function Action reqNextInst(RVState s) = s.fetchInst.start();
   function ActionValue#(Bit#(MaxInstSz)) getNextInst(RVState s) = actionvalue
     let rsp <- s.imem.getRsp();
-    return case (rsp) matches
-      tagged ReadRsp .val: val;
-      default: ?;
-    endcase;
+    case (rsp) matches
+      tagged ReadRsp .val: begin
+        s.instByteSz <= (val[1:0] == 2'b11) ? 4 : 2;
+        return val;
+      end
+      default: return ?;
+    endcase
   endactionvalue;
 
 endinstance
