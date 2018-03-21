@@ -1,10 +1,12 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
-import BitPat :: *;
 import Printf :: *;
+import List :: *;
+import BitPat :: *;
 import BID :: *;
 
 import RV_Common :: *;
+import RV_I :: *;
 
 /*
   example
@@ -20,7 +22,6 @@ import RV_Common :: *;
 function Bool neq (Bit#(n) x, Bit#(n) y) = x != y;
 
 `ifdef XLEN32
-module [InstrDefModule] mkRV32C#(RVArchState s, RVDMem mem) ();
 
 /////////////////////////////////
 // Load and Store Instructions //
@@ -39,12 +40,10 @@ module [InstrDefModule] mkRV32C#(RVArchState s, RVDMem mem) ();
 
 */
 
-  // funct3 = C.LWSP = 010
-  // op = C2 = 10
-  function Action instrC_LWSP (Bit#(1) imm5, Bit#(5) rd, Bit#(3) imm4_2, Bit#(2) imm7_6) = action
-    //TODO logInstCI(s.pc, "c.lwsp", rd, imm);
-  endaction;
-  defineInstr("c.lwsp", pat(n(3'b010), v, gv(neq(0)), v, v, n(2'b10)), instrC_LWSP);
+// funct3 = C.LWSP = 010
+// op = C2 = 10
+function List#(Action) instrC_LWSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(3) imm4_2, Bit#(2) imm7_6) =
+  load(s, LoadArgs{name: "lw",  numBytes: 4, sgnExt: True}, zeroExtend({imm7_6, imm5, imm4_2, 2'b00}), 2, rd);
 
 //TODO C.LQSP
 //TODO C.FLWSP
@@ -60,16 +59,19 @@ module [InstrDefModule] mkRV32C#(RVArchState s, RVDMem mem) ();
 
 */
 
-  // funct3 = C.SWSP = 110
-  // op = C2 = 10
-  function Action instrC_SWSP (Bit#(4) imm5_2, Bit#(2) imm7_6, Bit#(5) rs2) = action
-    //TODO logInstCSS(s.pc, "c.swsp", rs2, imm);
-  endaction;
-  defineInstr("c.swsp", pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP);
+// funct3 = C.SWSP = 110
+// op = C2 = 10
+function List#(Action) instrC_SWSP (RVState s, Bit#(4) imm5_2, Bit#(2) imm7_6, Bit#(5) rs2) =
+  store(s, StrArgs{name: "sw", numBytes: 4}, zeroExtend({imm7_6,imm5_2[3]}), rs2, 2, {imm5_2[2:0], 2'b00});
 
 //TODO C.SQSP
 //TODO C.FSWSP
 //TODO C.FSDSP
+
+module [InstrDefModule] mkRV32C#(RVState s) ();
+
+  defineInstr("c.lwsp", pat(n(3'b010), v, gv(neq(0)), v, v, n(2'b10)), instrC_LWSP(s));
+  defineInstr("c.swsp", pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
 
 endmodule
 `endif // XLEN32
@@ -77,7 +79,6 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 
 `ifdef XLEN64
-module [InstrDefModule] mkRV64C#(RVArchState s, RVDMem mem) ();
 
 /////////////////////////////////
 // Load and Store Instructions //
@@ -96,12 +97,10 @@ module [InstrDefModule] mkRV64C#(RVArchState s, RVDMem mem) ();
 
 */
 
-  // funct3 = C.LDSP = 011
-  // op = C2 = 10
-  function Action instrC_LDSP (Bit#(1) imm5, Bit#(5) rd, Bit#(3) imm4_2, Bit#(2) imm7_6) = action
-    //TODO logInstCI(s.pc, "c.ldsp", rd, imm);
-  endaction;
-  defineInstr("c.ldsp", pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP);
+// funct3 = C.LDSP = 011
+// op = C2 = 10
+function List#(Action) instrC_LDSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(2) imm4_3, Bit#(3) imm8_6) =
+  load(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}, zeroExtend({imm8_6, imm5, imm4_3, 3'b000}), 2, rd);
 
 /*
   CSS-type
@@ -113,12 +112,15 @@ module [InstrDefModule] mkRV64C#(RVArchState s, RVDMem mem) ();
 
 */
 
-  // funct3 = C.SDSP = 111
-  // op = C2 = 10
-  function Action instrC_SDSP (Bit#(4) imm5_2, Bit#(2) imm7_6, Bit#(5) rs2) = action
-    //TODO logInstCSS(s.pc, "c.sdsp", rs2, imm);
-  endaction;
-  defineInstr("c.sdsp", pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP);
+// funct3 = C.SDSP = 111
+// op = C2 = 10
+function List#(Action) instrC_SDSP (RVState s, Bit#(3) imm5_3, Bit#(3) imm8_6, Bit#(5) rs2) =
+  store(s, StrArgs{name: "sd", numBytes: 8}, zeroExtend({imm8_6,imm5_3[2]}), rs2, 2, {imm5_3[1:0], 3'b000});
 
-  endmodule
+module [InstrDefModule] mkRV64C#(RVState s) ();
+
+  defineInstr("c.ldsp", pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP(s));
+  defineInstr("c.sdsp", pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP(s));
+
+endmodule
 `endif // XLEN64

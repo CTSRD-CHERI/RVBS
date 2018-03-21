@@ -9,14 +9,14 @@ import RV_C :: *;
 
 module top ();
 
-  RVArchState s <- mkArchState;
-  RVMem mem <- mkRVMem(16384, "test-prog.hex", s);
+  Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(16384, "test-prog.hex");
+  RVState s <- mkState(mem);
 
   // instanciating simulator
   `ifdef XLEN64
-  mkISASim(mem, s, list(mkRVTrap, mkRV32I, mkRV32C, mkRV64I, mkRV64C));
+  mkISASim(s, list(mkRVTrap, mkRV32I, mkRV32C, mkRV64I, mkRV64C));
   `else
-  mkISASim(mem, s, list(mkRVTrap, mkRV32I, mkRV32C));
+  mkISASim(s, list(mkRVTrap, mkRV32I, mkRV32C));
   `endif
 
 endmodule

@@ -2,6 +2,7 @@
 
 import Vector :: *;
 import ConfigReg :: *;
+import Recipe :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
@@ -22,25 +23,41 @@ typedef struct {
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
   PMP pmp;
-} RVArchState;
+  RecipeFSM fetchInst;
+  Mem#(PAddr, Bit#(InstSz)) imem;
+  Mem#(PAddr, Bit#(XLEN)) dmem;
+} RVState;
 
-module mkArchState (RVArchState);
-  RVArchState s;
+module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
+  RVState s;
   //s.currentPrivLvl <- mkReg(M);
   s.currentPrivLvl <- mkConfigReg(M);
   s.pc <- mkPC(0);
   s.regFile <- mkRegFileZ;
   s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
   s.csrs <- mkCSRs(s.pmp);
+  s.imem = mem.p0;
+  s.dmem = mem.p1;
+  s.fetchInst <- compile(rPar(rBlock(
+    action
+      PMPReq req = PMPReq{addr: toPAddr(s.pc.next), numBytes: 4, reqType: READ};
+      s.pmp.lookup[0].put(req);
+      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+    endaction, action
+      PMPRsp rsp <- s.pmp.lookup[0].get();
+      MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
+      s.imem.sendReq(req);
+      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+    endaction)));
   return s;
 endmodule
 
-// ArchState instance
-instance ArchState#(RVArchState);
+// State instance
+instance State#(RVState);
 
-  function Fmt lightReport (RVArchState s) = fullReport(s);
-
-  function Fmt fullReport (RVArchState s);
+  function Fmt lightReport (RVState s) = fullReport(s);
+  function Fmt fullReport (RVState s);
     Fmt str = $format("regfile\n");
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
@@ -55,5 +72,13 @@ instance ArchState#(RVArchState);
     str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
   endfunction
+  function Action reqNextInst(RVState s) = s.fetchInst.start();
+  function ActionValue#(Bit#(MaxInstSz)) getNextInst(RVState s) = actionvalue
+    let rsp <- s.imem.getRsp();
+    return case (rsp) matches
+      tagged ReadRsp .val: val;
+      default: ?;
+    endcase;
+  endactionvalue;
 
 endinstance

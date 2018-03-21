@@ -6,7 +6,7 @@ BSVPATH = +:$(RECIPEDIR):$(BITPATDIR):$(BIDDIR)
 BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
 BSCFLAGS += -show-schedule -sched-dot
-BSCFLAGS += -show-rule-rel \* \*
+#BSCFLAGS += -show-rule-rel \* \*
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif

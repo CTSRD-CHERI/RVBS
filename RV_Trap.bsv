@@ -6,13 +6,12 @@ import BID :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
 import RV_State :: *;
-import RV_Mem :: *;
 
 ////////////////
 // Trap logic //
 ////////////////////////////////////////////////////////////////////////////////
 
-function Action trap(RVArchState s, MCause cause) = action
+function Action trap(RVState s, MCause cause) = action
   // TODO latch current priv in mstatus
   s.csrs.mcause <= cause;
   s.csrs.mepc <= unpack(s.pc);
@@ -33,7 +32,7 @@ function Action trap(RVArchState s, MCause cause) = action
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
 
-module [InstrDefModule] mkRVTrap#(RVArchState s, RVDMem mem) ();
+module [InstrDefModule] mkRVTrap#(RVState s) ();
 /*
   I-type
 
