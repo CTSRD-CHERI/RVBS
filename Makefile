@@ -14,7 +14,7 @@ BSCFLAGS += -D XLEN32
 ifeq ($(XLEN),64)
 BSCFLAGS += -D XLEN64
 endif
-ifdef $(RVC)
+ifdef RVC
 BSCFLAGS += -D RVC
 endif
 # Bluespec is not compatible with gcc > 4.9
