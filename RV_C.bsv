@@ -11,8 +11,12 @@ import RV_I :: *;
 // RVC 3-bit reg identifier to RVI 5-bit reg identifier
 function Bit#(5) regID (Bit#(3) x) = {2'b01, x};
 // BitPat guarded variable predicates
-function Bool eq (Bit#(n) x, Bit#(n) y) = x == y;
+function Bool ez (Bit#(n) x) = x == 0;
+function Bool eq2 (Bit#(n) x) = x == 2;
 function Bool neq (Bit#(n) x, Bit#(n) y) = x != y;
+function Bool nez (Bit#(n) x) = x != 0;
+function Bool n0_n2 (Bit#(n) x) = x != 0 && x != 2;
+function Bool nzimm (Bit#(16) x) = x[12] != 0 || x[6:2] != 0;
 
 `ifdef XLEN32
 
@@ -180,20 +184,205 @@ function Action instrC_BNEZ (RVState s, Bit#(3) i7_5, Bit#(3) rs1_, Bit#(5) i4_0
   instrBNE(s, o[11], o[9:4], 0, regID(rs1_), o[3:0], o[10]);
 endaction;
 
+////////////////////////////////////////
+// Integer Computational Instructions //
+////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////
+// Integer Constant-Generation Instructions //
+//////////////////////////////////////////////
+
+/*
+  CI-type
+
+   15    13   12  11          7 6            2 1  0
+  +--------+-----+-------------+--------------+----+
+  | funct3 | imm |    rd/rs1   |     imm      | op |
+  +--------+-----+-------------+--------------+----+
+
+*/
+
+// funct3 = C.LI = 010
+// op = C1 = 01
+function Action instrC_LI (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(5) imm4_0) =
+  instrADDI(s, signExtend({imm5, imm4_0}), 0, rd);
+
+// funct3 = C.LUI = 011
+// op = C1 = 01
+function Action instrC_LUI (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(5) imm4_0) =
+  instrLUI(s, signExtend({imm5, imm4_0}), rd);
+
+///////////////////////////////////////////
+// Integer Register-Immediate Operations //
+///////////////////////////////////////////
+
+/*
+  CI-type
+
+   15    13   12  11          7 6            2 1  0
+  +--------+-----+-------------+--------------+----+
+  | funct3 | imm |    rd/rs1   |     imm      | op |
+  +--------+-----+-------------+--------------+----+
+
+*/
+
+// funct3 = C.ADDI = 000
+// op = C1 = 01
+function Action instrC_ADDI (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(5) imm4_0) =
+  instrADDI(s, signExtend({imm5, imm4_0}), rd, rd);
+
+// funct3 = C.ADDI16SP = 011
+// op = C1 = 01
+function Action instrC_ADDI16SP (RVState s, Bit#(1) i5, Bit#(5) rd, Bit#(5) i4_0) =
+  instrADDI(s, signExtend({i5, i4_0[2:1], i4_0[3], i4_0[0], i4_0[4], 4'b0000}), 2, 2);
+
+// funct3 = C.SLLI = 000
+// op = C2 = 10
+function Action instrC_SLLI (RVState s, Bit#(1) i5, Bit#(5) rd, Bit#(5) i4_0) =
+  instrSLLI(s, zeroExtend(i4_0), rd, rd);
+
+`ifndef XLEN128
+/*
+  CIW-type
+
+   15    13 12                     5 4       2 1  0
+  +--------+------------------------+---------+----+
+  | funct3 |           imm          |   rd'   | op |
+  +--------+------------------------+---------+----+
+
+*/
+
+// funct3 = C.ADDI4SPN = 000
+// op = C0 = 00
+function Action instrC_ADDI4SPN (RVState s, Bit#(8) i, Bit#(3) rd_) =
+  instrADDI(s, zeroExtend({i[5:2], i[7:6], i[0], i[1], 2'b00}), 2, regID(rd_));
+`endif
+
+/*
+  CB-type
+
+   15    13  12  11    10 9        7 6       2 1  0
+  +--------+----+--------+----------+---------+----+
+  | funct3 | i5 | funct2 | rd'/rs1' |  i4_0   | op |
+  +--------+----+--------+----------+---------+----+
+
+*/
+
+// funct3 = C.SRLI = 100
+// funct2 = 00
+// op = C1 = 01
+function Action instrC_SRLI (RVState s, Bit#(1) i5, Bit#(3) rd_, Bit#(5) i4_0) =
+  instrSRLI (s, zeroExtend(i4_0), regID(rd_), regID(rd_));
+
+// funct3 = C.SRAI = 100
+// funct2 = 01
+// op = C1 = 01
+function Action instrC_SRAI (RVState s, Bit#(1) i5, Bit#(3) rd_, Bit#(5) i4_0) =
+  instrSRAI (s, zeroExtend(i4_0), regID(rd_), regID(rd_));
+
+// funct3 = C.ANDI = 100
+// funct2 = 10
+// op = C1 = 01
+function Action instrC_ANDI (RVState s, Bit#(1) i5, Bit#(3) rd_, Bit#(5) i4_0) =
+  instrANDI (s, signExtend({i5, i4_0}), regID(rd_), regID(rd_));
+
+//////////////////////////////////////////
+// Integer Register-Register Operations //
+//////////////////////////////////////////
+
+/*
+  CR-type
+
+   15         12 11           7 6            2 1  0
+  +-------------+--------------+--------------+----+
+  |    funct4   |    rd/rs1    |     rs2      | op |
+  +-------------+--------------+--------------+----+
+
+*/
+
+// funct4 = C.MV = 1000
+// op = C2 = 10
+function Action instrC_MV (RVState s, Bit#(5) rd, Bit#(5) rs2) =
+  instrADD(s, rs2, 0, rd);
+
+// funct4 = C.ADD = 1001
+// op = C2 = 10
+function Action instrC_ADD (RVState s, Bit#(5) rd, Bit#(5) rs2) =
+  instrADD(s, rs2, rd, rd);
+
+/*
+  CS-type
+
+   15            10 9        7 6   5 4       2 1  0
+  +----------------+----------+-----+---------+----+
+  |     funct6     |   rs1'   |funct|   rs2'  | op |
+  +----------------+----------+-----+---------+----+
+
+*/
+
+// funct6 = C.AND = 100011
+// funct = 11
+// op = C1 = 01
+function Action instrC_AND (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrAND(s, regID(rs2_), regID(rd_), regID(rd_));
+
+// funct6 = C.OR = 100011
+// funct = 10
+// op = C1 = 01
+function Action instrC_OR (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrOR(s, regID(rs2_), regID(rd_), regID(rd_));
+
+// funct6 = C.XOR = 100011
+// funct = 01
+// op = C1 = 01
+function Action instrC_XOR (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrXOR(s, regID(rs2_), regID(rd_), regID(rd_));
+
+// funct6 = C.SUB = 100011
+// funct = 00
+// op = C1 = 01
+function Action instrC_SUB (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrSUB(s, regID(rs2_), regID(rd_), regID(rd_));
+
 ////////////////////////////////////////////////////////////////////////////////
 
 module [InstrDefModule] mkRV32C#(RVState s) ();
 
-  defineInstr("c.lwsp", pat(n(3'b010), v, gv(neq(0)), v, v, n(2'b10)), instrC_LWSP(s));
-  defineInstr("c.swsp", pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
-  defineInstr("c.lw",   pat(n(3'b010), v, v, v, v, v, n(2'b00)), instrC_LW(s));
-  defineInstr("c.sw",   pat(n(3'b110), v, v, v, v, v, n(2'b00)), instrC_SW(s));
-  defineInstr("c.j",    pat(n(3'b101), v, n(2'b01)), instrC_J(s));
-  defineInstr("c.jal",  pat(n(3'b001), v, n(2'b01)), instrC_JAL(s));
-  defineInstr("c.jr",   pat(n(4'b1000), gv(neq(0)), gv(eq(0)), n(2'b10)), instrC_JR(s));
-  defineInstr("c.jalr", pat(n(4'b1001), gv(neq(0)), gv(eq(0)), n(2'b10)), instrC_JALR(s));
-  defineInstr("c.beqz", pat(n(3'b110), v, v, v, n(2'b01)), instrC_BEQZ(s));
-  defineInstr("c.bnez", pat(n(3'b111), v, v, v, n(2'b01)), instrC_BNEZ(s));
+  defineInstr("c.lwsp",             pat(n(3'b010), v, gv(nez), v, v, n(2'b10)), instrC_LWSP(s));
+  defineInstr("c.swsp",             pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
+  defineInstr("c.lw",               pat(n(3'b010), v, v, v, v, v, n(2'b00)), instrC_LW(s));
+  defineInstr("c.sw",               pat(n(3'b110), v, v, v, v, v, n(2'b00)), instrC_SW(s));
+  defineInstr("c.j",                pat(n(3'b101), v, n(2'b01)), instrC_J(s));
+`ifndef XLEN64
+  defineInstr("c.jal",              pat(n(3'b001), v, n(2'b01)), instrC_JAL(s));
+`endif
+  defineInstr("c.jr",               pat(n(4'b1000), gv(nez), gv(ez), n(2'b10)), instrC_JR(s));
+  defineInstr("c.jalr",             pat(n(4'b1001), gv(nez), gv(ez), n(2'b10)), instrC_JALR(s));
+  defineInstr("c.beqz",             pat(n(3'b110), v, v, v, n(2'b01)), instrC_BEQZ(s));
+  defineInstr("c.bnez",             pat(n(3'b111), v, v, v, n(2'b01)), instrC_BNEZ(s));
+  defineInstr("c.li",               pat(n(3'b010), v, gv(nez), v, n(2'b01)), instrC_LI(s));
+  defineInstr("c.lui",      guarded(pat(n(3'b011), v, gv(n0_n2), v, n(2'b01)), nzimm), instrC_LUI(s));
+  defineInstr("c.addi",     guarded(pat(n(3'b000), v, gv(nez), v, n(2'b01)), nzimm), instrC_ADDI(s));
+  defineInstr("c.addi16sp", guarded(pat(n(3'b011), v, gv(eq2), v, n(2'b01)), nzimm), instrC_ADDI16SP(s));
+  defineInstr("c.slli",             pat(n(3'b000), gv(ez), gv(nez), v, n(2'b10)), instrC_SLLI(s));
+`ifndef XLEN128
+  defineInstr("c.addi4spn",         pat(n(3'b000), gv(nez), v, n(2'b00)), instrC_ADDI4SPN(s));
+`endif
+  defineInstr("c.srli",             pat(n(3'b100), gv(ez), n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
+  defineInstr("c.srai",             pat(n(3'b100), gv(ez), n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
+  defineInstr("c.andi",             pat(n(3'b100), v, n(2'b10), v, v, n(2'b01)), instrC_ANDI(s));
+  defineInstr("c.mv",               pat(n(4'b1000), gv(nez), gv(nez), n(2'b10)), instrC_MV(s));
+  defineInstr("c.add",              pat(n(4'b1001), gv(nez), gv(nez), n(2'b10)), instrC_ADD(s));
+  defineInstr("c.and",              pat(n(6'b100011), v, n(2'b11), v, n(2'b01)), instrC_AND(s));
+  defineInstr("c.or",               pat(n(6'b100011), v, n(2'b10), v, n(2'b01)), instrC_OR(s));
+  defineInstr("c.xor",              pat(n(6'b100011), v, n(2'b01), v, n(2'b01)), instrC_XOR(s));
+  defineInstr("c.sub",              pat(n(6'b100011), v, n(2'b00), v, n(2'b01)), instrC_SUB(s));
+  // Defined Illegal Instruction
+  defineInstr("illegal",            pat(n(16'h0000)), trap(s,Exception(IllegalInst)));
+  // NOP Instruction
+  defineInstr("c.nop",              pat(n(3'b000), gv(ez), gv(ez), gv(ez), n(2'b01)), instrC_ADDI(s));
+  // Breakpoint Instruction
+  defineInstr("c.ebreak",           pat(n(4'b1001), n(10'b0), n(2'b10)), instrEBREAK(s));
 
 endmodule
 `endif // XLEN32
@@ -209,6 +398,7 @@ endmodule
 //////////////////////////////////////////
 // Stack-Pointer-Based Loads and Stores //
 //////////////////////////////////////////
+
 /*
   CI-type
 
@@ -255,8 +445,8 @@ function List#(Action) instrC_SDSP (RVState s, Bit#(3) imm5_3, Bit#(3) imm8_6, B
 
 // funct3 = C.LD = 011
 // op = C0 = 00
-function List#(Action) instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1', Bit#(2) o7_6, Bit#(3) rd') =
-  load(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}, zeroExtend({o7_6, o5_3, 3'b000}), regID(rs1'), regID(rd'));
+function List#(Action) instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rd_) =
+  load(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}, zeroExtend({o7_6, o5_3, 3'b000}), regID(rs1_), regID(rd_));
 
 /*
   CS-type
@@ -270,17 +460,68 @@ function List#(Action) instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1', Bit#(2)
 
 // funct3 = C.SD = 111
 // op = C0 = 00
-function List#(Action) instrC_SD (RVState s, Bit#(3) o5_3, Bit#(3) rs1', Bit#(2) o7_6, Bit#(3) rs2') =
-  store(s, StrArgs{name: "sd", numBytes: 8}, zeroExtend({o7_6, o5_3[2]}), regID(rs2'), regID(rs1'), {o5_3[1:0], 3'b000});
+function List#(Action) instrC_SD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rs2_) =
+  store(s, StrArgs{name: "sd", numBytes: 8}, zeroExtend({o7_6, o5_3[2]}), regID(rs2_), regID(rs1_), {o5_3[1:0], 3'b000});
+
+///////////////////////////////////////////
+// Integer Register-Immediate Operations //
+///////////////////////////////////////////
+
+/*
+  CI-type
+
+   15    13   12  11          7 6            2 1  0
+  +--------+-----+-------------+--------------+----+
+  | funct3 | imm |    rd/rs1   |     imm      | op |
+  +--------+-----+-------------+--------------+----+
+
+*/
+
+// funct3 = C.ADDIW = 001
+// op = C1 = 01
+function Action instrC_ADDIW (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(5) imm4_0) =
+  instrADDIW(s, signExtend({imm5, imm4_0}), rd, rd);
+
+//////////////////////////////////////////
+// Integer Register-Register Operations //
+//////////////////////////////////////////
+
+/*
+  CS-type
+
+   15            10 9        7 6   5 4       2 1  0
+  +----------------+----------+-----+---------+----+
+  |     funct6     |   rs1'   |funct|   rs2'  | op |
+  +----------------+----------+-----+---------+----+
+
+*/
+
+// funct6 = C.ADDW = 100111
+// funct = 01
+// op = C1 = 01
+function Action instrC_ADDW (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrADDW(s, regID(rs2_), regID(rd_), regID(rd_));
+
+// funct6 = C.SUBW = 100111
+// funct = 00
+// op = C1 = 01
+function Action instrC_SUBW (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
+  instrSUBW(s, regID(rs2_), regID(rd_), regID(rd_));
 
 ////////////////////////////////////////////////////////////////////////////////
 
 module [InstrDefModule] mkRV64C#(RVState s) ();
 
-  defineInstr("c.ldsp", pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP(s));
-  defineInstr("c.sdsp", pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP(s));
-  defineInstr("c.ld",   pat(n(3'b011), v, v, v, n(2'b00)), instrC_LD(s));
-  defineInstr("c.sd",   pat(n(3'b111), v, v, v, v, n(2'b00)), instrC_SD(s));
+  defineInstr("c.ldsp",  pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP(s));
+  defineInstr("c.sdsp",  pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP(s));
+  defineInstr("c.ld",    pat(n(3'b011), v, v, v, v, n(2'b00)), instrC_LD(s));
+  defineInstr("c.sd",    pat(n(3'b111), v, v, v, v, n(2'b00)), instrC_SD(s));
+  defineInstr("c.addiw", pat(n(3'b001), v, gv(nez), v, n(2'b01)), instrC_ADDIW(s));
+  defineInstr("c.slli",  pat(n(3'b000), v, gv(nez), v, n(2'b10)), instrC_SLLI(s));
+  defineInstr("c.srli",  pat(n(3'b100), v, n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
+  defineInstr("c.srai",  pat(n(3'b100), v, n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
+  defineInstr("c.addw",  pat(n(6'b100111), v, n(2'b01), v, n(2'b01)), instrC_ADDW(s));
+  defineInstr("c.subw",  pat(n(6'b100111), v, n(2'b00), v, n(2'b01)), instrC_SUBW(s));
 
 endmodule
 `endif // XLEN64
