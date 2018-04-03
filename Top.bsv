@@ -10,7 +10,11 @@ import RV_I :: *;
 import RV_C :: *;
 `endif
 
-module top ();
+interface RVBSProbes;
+  method Bit#(XLEN) peekPC();
+endinterface
+
+module rvbs (RVBSProbes);
 
   Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(16384, "test-prog.hex");
   RVState s <- mkState(mem);
@@ -27,5 +31,7 @@ module top ();
     `endif
   `endif
   mkISASim(s, modList);
+
+  method Bit#(XLEN) peekPC() = s.pc;
 
 endmodule

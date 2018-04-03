@@ -24,7 +24,7 @@ CXX = g++-4.9
 
 # Top level module
 TOPFILE = Top.bsv
-TOPMOD = top
+TOPMOD = rvbs
 
 .PHONY: sim
 sim: $(TOPMOD)
@@ -32,6 +32,9 @@ sim: $(TOPMOD)
 $(TOPMOD): *.bsv
 	$(BSC) $(BSCFLAGS) -sim -g $(TOPMOD) -u $(TOPFILE)
 	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) $(BIDDIR)/*.c
+
+verilog: *.bsv
+	$(BSC) $(BSCFLAGS) -D NO_LOGS -verilog -g $(TOPMOD) -u $(TOPFILE)
 
 .PHONY: clean
 clean:
