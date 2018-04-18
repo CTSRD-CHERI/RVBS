@@ -6,8 +6,10 @@ import Recipe :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+`ifdef PMP
 import RV_PMP :: *;
 export RV_PMP :: *;
+`endif
 import RV_CSRs :: *;
 export RV_CSRs :: *;
 export RV_State :: *;
@@ -23,7 +25,9 @@ typedef struct {
   Reg#(VAddr) instByteSz;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
+  `ifdef PMP
   PMP pmp;
+  `endif
   RecipeFSM fetchInst;
   Mem#(PAddr, Bit#(InstSz)) imem;
   Mem#(PAddr, Bit#(XLEN)) dmem;
@@ -36,20 +40,28 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
   s.pc <- mkPC(0);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
+  `ifdef PMP
   s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
   s.csrs <- mkCSRs(s.pmp);
+  `else
+  s.csrs <- mkCSRs();
+  `endif
   s.imem = mem.p0;
   s.dmem = mem.p1;
   s.fetchInst <- compile(rPar(rBlock(
     action
+    `ifdef PMP
       PMPReq req = PMPReq{addr: toPAddr(s.pc.next), numBytes: 4, reqType: READ};
       s.pmp.lookup[0].put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
       PMPRsp rsp <- s.pmp.lookup[0].get();
       MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
-      s.imem.sendReq(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+    `else
+      MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: toPAddr(s.pc.next), numBytes: 4};
+    `endif
+      s.imem.sendReq(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction)));
   return s;

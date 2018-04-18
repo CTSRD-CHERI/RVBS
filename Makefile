@@ -17,6 +17,9 @@ endif
 ifdef RVC
 BSCFLAGS += -D RVC
 endif
+ifdef PMP
+BSCFLAGS += -D PMP
+endif
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs
 CC = gcc-4.9

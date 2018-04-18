@@ -382,6 +382,7 @@ typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
 function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
   action
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+  `ifdef PMP
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: READ};
     s.pmp.lookup[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
@@ -389,10 +390,13 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   endaction, action
     PMPRsp rsp <- s.pmp.lookup[1].get();
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
-    s.dmem.sendReq(req);
     printTLogPlusArgs("itrace", fshow(rsp));
+  `else
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: toPAddr(addr), numBytes: fromInteger(args.numBytes)};
+  `endif
+    s.dmem.sendReq(req);
     printTLogPlusArgs("itrace", fshow(req));
-    logInstI(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rd, rs1, imm);
+    logInstI(s.pc, sprintf("%s (mem req step)", args.name), rd, rs1, imm);
   endaction, action
     let rsp <- s.dmem.getRsp();
     case (rsp) matches
@@ -407,7 +411,6 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     logInstI(s.pc, sprintf("%s (mem rsp step)", args.name), rd, rs1, imm);
   endaction);
 
-
 /*
   S-type
 
@@ -421,18 +424,24 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
   return list(action
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+  `ifdef PMP
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: WRITE};
     s.pmp.lookup[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
     logInstS(s.pc, sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm);
   endaction, action
     PMPRsp rsp <- s.pmp.lookup[1].get();
-    s.dmem.sendReq(tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]});
+    printTLogPlusArgs("itrace", fshow(rsp));
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
+  `else
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: toPAddr(addr), byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
+  `endif
+    s.dmem.sendReq(req);
     s.pc <= s.pc + s.instByteSz;
-    logInstS(s.pc, sprintf("%s (pmp match + mem req step)", args.name), rs1, rs2, imm);
+    printTLogPlusArgs("itrace", fshow(req));
+    logInstS(s.pc, sprintf("%s (mem req step)", args.name), rs1, rs2, imm);
   endaction);
 endfunction
-
 
 //////////////////
 // Memory Model //
