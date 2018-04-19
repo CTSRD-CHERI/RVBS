@@ -20,6 +20,11 @@ function Bool nzimm (Bit#(16) x) = x[12] != 0 || x[6:2] != 0;
 
 `ifdef XLEN32
 
+function Action instrC_Illegal(RVState s) = action
+  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- c.illegal", s.pc));
+  trap(s, Exception(IllegalInst), action s.csrs.mtval <= 0; endaction);
+endaction;
+
 /////////////////////////////////
 // Load and Store Instructions //
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +383,7 @@ module [InstrDefModule] mkRV32C#(RVState s) ();
   defineInstr("c.xor",              pat(n(6'b100011), v, n(2'b01), v, n(2'b01)), instrC_XOR(s));
   defineInstr("c.sub",              pat(n(6'b100011), v, n(2'b00), v, n(2'b01)), instrC_SUB(s));
   // Defined Illegal Instruction
-  defineInstr("illegal",            pat(n(16'h0000)), trap(s,Exception(IllegalInst)));
+  defineInstr("illegal",            pat(n(16'h0000)), instrC_Illegal(s));
   // NOP Instruction
   defineInstr("c.nop",              pat(n(3'b000), gv(ez), gv(ez), gv(ez), n(2'b01)), instrC_ADDI(s));
   // Breakpoint Instruction

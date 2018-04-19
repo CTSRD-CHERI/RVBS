@@ -65,7 +65,7 @@ typedef struct {
   Reg#(Bit#(XLEN)) mscratch;
   Reg#(MEPC) mepc;
   Reg#(MCause) mcause;
-  // mtval
+  Reg#(Bit#(XLEN)) mtval;
   // mip
 
   // machine protection and translation
@@ -162,7 +162,7 @@ module mkCSRs(CSRs);
   csrs.mscratch <- mkRegU; // mscratch 12'h340
   csrs.mepc <- mkReg(defaultValue); // mepc 12'h341
   csrs.mcause <- mkRegU; // mcause 12'h342
-  // mtval 12'h343
+  csrs.mtval <- mkRegU; // mtval 12'h343
   // mip 12'h344
 
   // machine protection and translation
@@ -246,7 +246,7 @@ module mkCSRs(CSRs);
       12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
       12'h341: ret <- readUpdateCSR(csrs.mepc,r);
       12'h342: ret <- readUpdateCSR(csrs.mcause,r);
-      12'h343: ret = 0; // mtval placeholder
+      12'h343: ret <- readUpdateCSR(csrs.mtval,r);
       `ifdef PMP
       `ifdef XLEN32
       12'h3A0, 12'h3A1, 12'h3A2, 12'h3A3:

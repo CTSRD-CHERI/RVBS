@@ -11,26 +11,43 @@ import RV_State :: *;
 // Trap logic //
 ////////////////////////////////////////////////////////////////////////////////
 
-function Action trap(RVState s, MCause cause) = action
-  // TODO latch current priv in mstatus
-  s.csrs.mcause <= cause;
-  s.csrs.mepc <= unpack(s.pc);
-  // prepare trap handler address
-  Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
-  case (s.csrs.mtvec.mode)
-    Direct: s.pc <= tgt;
-    Vectored: s.pc <= case (cause) matches
-      tagged Interrupt .i: (tgt + zeroExtend({pack(i),2'b00}));
-      default: tgt;
-    endcase;
-    default: begin
-      printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
-      $finish(1);
-    end
-  endcase
-  s.currentPrivLvl <= M;
-  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
-endaction;
+// overloaded trap function that can have either of the following prototypes:
+// function Action trap(RVState s, MCause cause)
+// function Action trap(RVState s, MCause cause, Action side_effect)
+
+typeclass Trap#(type a);
+  a trap;
+endtypeclass
+
+instance Trap#(function Action f(RVState s, MCause cause));
+  function Action trap(RVState s, MCause cause) = action
+    // TODO latch current priv in mstatus
+    s.csrs.mcause <= cause;
+    s.csrs.mepc <= unpack(s.pc);
+    // prepare trap handler address
+    Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+    case (s.csrs.mtvec.mode)
+      Direct: s.pc <= tgt;
+      Vectored: s.pc <= case (cause) matches
+        tagged Interrupt .i: (tgt + zeroExtend({pack(i),2'b00}));
+        default: tgt;
+      endcase;
+      default: begin
+        printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
+        $finish(1);
+      end
+    endcase
+    s.currentPrivLvl <= M;
+    printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
+  endaction;
+endinstance
+
+instance Trap#(function Action f(RVState s, MCause cause, Action side_effect));
+  function Action trap(RVState s, MCause cause, Action side_effect) = action
+    side_effect;
+    trap(s, cause);
+  endaction;
+endinstance
 
 module [InstrDefModule] mkRVTrap#(RVState s) ();
 /*
