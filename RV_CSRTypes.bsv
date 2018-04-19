@@ -146,3 +146,87 @@ instance CSR#(MTVec);
     csr <= newval;
   endaction;
 endinstance
+
+// MIP
+////////////////////////////////////////////////////////////////////////////////
+typedef struct {
+  Bit#(TSub#(XLEN,12)) res3;
+  Bool meip;
+  Bool res2;
+  Bool seip;
+  Bool ueip;
+  Bool mtip;
+  Bool res1;
+  Bool stip;
+  Bool utip;
+  Bool msip;
+  Bool res0;
+  Bool ssip;
+  Bool usip;
+} MIP deriving (Bits, FShow);
+instance DefaultValue#(MIP); // XXX does spec actually specify reboot value ?
+  function MIP defaultValue() = MIP {
+    res3: 0,
+    meip: False,
+    res2: False,
+    seip: False,
+    ueip: False,
+    mtip: False,
+    res1: False,
+    stip: False,
+    utip: False,
+    msip: False,
+    res0: False,
+    ssip: False,
+    usip: False
+  };
+endinstance
+instance CSR#(MIP);
+  function Action updateCSR(Reg#(MIP) csr, MIP val) = action
+    let newval = val;
+    //TODO
+    csr <= newval;
+  endaction;
+endinstance
+
+// MIE
+////////////////////////////////////////////////////////////////////////////////
+typedef struct {
+  Bit#(TSub#(XLEN,12)) res3;
+  Bool meie;
+  Bool res2;
+  Bool seie;
+  Bool ueie;
+  Bool mtie;
+  Bool res1;
+  Bool stie;
+  Bool utie;
+  Bool msie;
+  Bool res0;
+  Bool ssie;
+  Bool usie;
+} MIE deriving (Bits, FShow);
+instance DefaultValue#(MIE); // XXX does spec actually specify reboot value ?
+  function MIE defaultValue() = MIE {
+    res3: 0,
+    meie: False,
+    res2: False,
+    seie: False,
+    ueie: False,
+    mtie: False,
+    res1: False,
+    stie: False,
+    utie: False,
+    msie: False,
+    res0: False,
+    ssie: False,
+    usie: False
+  };
+endinstance
+instance CSR#(MIE);
+  function Action updateCSR(Reg#(MIE) csr, MIE val) = action
+    let newval = val;
+    //TODO
+    csr <= newval;
+  endaction;
+endinstance
