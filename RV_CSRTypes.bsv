@@ -147,6 +147,32 @@ instance CSR#(MTVec);
   endaction;
 endinstance
 
+// MEDeleg
+////////////////////////////////////////////////////////////////////////////////
+typedef struct {Bit#(XLEN) val;} MEDeleg;
+instance DefaultValue#(MEDeleg);
+  function MEDeleg defaultValue() = MEDeleg {val: 0};
+endinstance
+instance CSR#(MEDeleg);
+  function Action updateCSR(Reg#(MEDeleg) csr, MEDeleg val) = action
+    let newval = val;
+    csr <= newval;
+  endaction;
+endinstance
+
+// MIDeleg
+////////////////////////////////////////////////////////////////////////////////
+typedef struct {Bit#(XLEN) val;} MIDeleg;
+instance DefaultValue#(MIDeleg);
+  function MIDeleg defaultValue() = MIDeleg {val: 0};
+endinstance
+instance CSR#(MIDeleg);
+  function Action updateCSR(Reg#(MIDeleg) csr, MIDeleg val) = action
+    let newval = val;
+    csr <= newval;
+  endaction;
+endinstance
+
 // MIP
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct {
