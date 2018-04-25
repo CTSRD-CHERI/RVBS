@@ -20,6 +20,17 @@ endif
 ifdef PMP
 BSCFLAGS += -D PMP
 endif
+ifdef USER_MODE
+BSCFLAGS += -D USER_MODE
+MULTI_MODE=1
+endif
+ifdef SUPERVISOR_MODE
+BSCFLAGS += -D SUPERVISOR_MODE
+MULTI_MODE=1
+endif
+ifdef MULTI_MODE
+BSCFLAGS += -D MULTI_MODE
+endif
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs
 CC = gcc-4.9

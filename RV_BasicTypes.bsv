@@ -37,17 +37,25 @@ function Bool isInstAligned(Bit#(sz) x) provisos (Add#(2, a__, sz)) = x[1:0] == 
 ////////////////////////////////////////////////////////////////////////////////
 
 typeclass CSR#(type a);
-  function Action updateCSR(Reg#(a) csr, a val);
+  function Action updateCSR(Reg#(a) csr, a val, PrivLvl curlvl);
 endtypeclass
 
 instance CSR#(Bit#(XLEN));
-  function Action updateCSR(Reg#(Bit#(XLEN)) csr, Bit#(XLEN) val) = action
+  function Action updateCSR(Reg#(Bit#(XLEN)) csr, Bit#(XLEN) val, PrivLvl _) = action
     csr <= val;
   endaction;
 endinstance
 
 // privilege levels
 typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
+instance Ord#(PrivLvl);
+  function Ordering compare(PrivLvl a, PrivLvl b);
+    if (a == b) return EQ;
+    else if (a == Res) return LT;
+    else if (b == Res) return GT;
+    else return compare(pack(a), pack(b));
+  endfunction
+endinstance
 
 // machine interrupt/exception codes
 
@@ -102,7 +110,7 @@ function Bool isValidMCause(Bit#(XLEN) c) = case (unpack(c)) matches
   endcase
 endcase;
 instance CSR#(MCause);
-  function Action updateCSR(Reg#(MCause) csr, MCause val) = action
+  function Action updateCSR(Reg#(MCause) csr, MCause val, PrivLvl lvl) = action
     if (isValidMCause(pack(val))) csr <= val;
     else begin
       printTLog($format("Illegal MCause value 0x%0x written in mcause register", pack(val)));

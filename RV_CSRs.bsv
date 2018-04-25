@@ -54,9 +54,11 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   Reg#(MStatus)    mstatus;
   Reg#(MISA)       misa;
-  // medeleg
-  // mideleg
-  // mie
+  `ifdef MULTI_MODE
+  Reg#(MEDeleg) medeleg;
+  Reg#(MIDeleg) mideleg;
+  `endif
+  Reg#(MIE) mie;
   Reg#(MTVec) mtvec;
   // mcounteren
 
@@ -66,7 +68,7 @@ typedef struct {
   Reg#(MEPC) mepc;
   Reg#(MCause) mcause;
   Reg#(Bit#(XLEN)) mtval;
-  // mip
+  Reg#(MIP) mip;
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -135,28 +137,11 @@ typedef struct {
 //////////////////////////
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
-
-function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
-provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
-  if (r.rEffects != NOWRITE) begin
-    Bit#(n) newval = ?;
-    case (r.rType)
-      RW: newval = r.val;
-      RS: newval = pack(csr) | r.val;
-      RC: newval = pack(csr) & ~r.val;
-    endcase
-    updateCSR(csr, unpack(newval));
-    printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
-  end else
-    printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", pack(csr)));
-  return pack(csr);
-endactionvalue;
-
+module mkCSRs#(PrivLvl currLvl
 `ifdef PMP
-module mkCSRs#(PMP pmp)(CSRs);
-`else
-module mkCSRs(CSRs);
+,PMP pmp
 `endif
+)(CSRs);
 
   // instance of the CSRs struct
   CSRs csrs;
@@ -172,19 +157,21 @@ module mkCSRs(CSRs);
   //////////////////////////////////////////////////////////////////////////////
   csrs.mstatus <- mkReg(defaultValue); // mstatus 12'h300
   csrs.misa    <- mkReg(defaultValue); // misa 12'h301
-  // medeleg 12'h302
-  // mideleg 12'h303
-  // mie 12'h304
+  `ifdef MULTI_MODE
+  csrs.medeleg <- mkReg(defaultValue); // medeleg 12'h302
+  csrs.mideleg <- mkReg(defaultValue); // mideleg 12'h303
+  `endif
+  csrs.mie     <- mkReg(defaultValue); // mie 12'h304
   csrs.mtvec   <- mkReg(defaultValue); // mtvec 12'h305
   // mcounteren 12'h306
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
   csrs.mscratch <- mkRegU; // mscratch 12'h340
-  csrs.mepc <- mkReg(defaultValue); // mepc 12'h341
-  csrs.mcause <- mkRegU; // mcause 12'h342
-  csrs.mtval <- mkRegU; // mtval 12'h343
-  // mip 12'h344
+  csrs.mepc     <- mkReg(defaultValue); // mepc 12'h341
+  csrs.mcause   <- mkRegU; // mcause 12'h342
+  csrs.mtval    <- mkRegU; // mtval 12'h343
+  csrs.mip      <- mkReg(defaultValue); // mip 12'h344
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -258,16 +245,37 @@ module mkCSRs(CSRs);
   // hpmcounter31 12'hC1F (and 12'hC9F in RV32)
 
   // CSR requests
+  function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
+  provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
+    if (r.rEffects != NOWRITE) begin
+      Bit#(n) newval = ?;
+      case (r.rType)
+        RW: newval = r.val;
+        RS: newval = pack(csr) | r.val;
+        RC: newval = pack(csr) & ~r.val;
+      endcase
+      updateCSR(csr, unpack(newval), currLvl);
+      printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
+    end else
+      printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", pack(csr)));
+    return pack(csr);
+  endactionvalue;
   function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
     Bit#(XLEN) ret = ?;
     case (r.idx) // TODO sort out individual behaviours for each CSR
       12'h300: ret <- readUpdateCSR(csrs.mstatus,r);
       12'h301: ret <- readUpdateCSR(csrs.misa,r);
+      `ifdef MULTI_MODE
+      12'h302: ret <- readUpdateCSR(csrs.medeleg,r);
+      12'h303: ret <- readUpdateCSR(csrs.mideleg,r);
+      `endif
+      12'h304: ret <- readUpdateCSR(csrs.mie,r);
       12'h305: ret <- readUpdateCSR(csrs.mtvec,r);
       12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
       12'h341: ret <- readUpdateCSR(csrs.mepc,r);
       12'h342: ret <- readUpdateCSR(csrs.mcause,r);
       12'h343: ret <- readUpdateCSR(csrs.mtval,r);
+      12'h344: ret <- readUpdateCSR(csrs.mip,r);
       `ifdef PMP
       `ifdef XLEN32
       12'h3A0, 12'h3A1, 12'h3A2, 12'h3A3:

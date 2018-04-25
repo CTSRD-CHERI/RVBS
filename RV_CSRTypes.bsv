@@ -21,7 +21,7 @@ instance DefaultValue#(MISA);
   };
 endinstance
 instance CSR#(MISA);
-  function Action updateCSR(Reg#(MISA) csr, MISA val) = action
+  function Action updateCSR(Reg#(MISA) csr, MISA val, PrivLvl _) = action
     let newval = val;
     if (newval.mxl != nativeXLEN) newval.mxl = nativeXLEN;// only support native XLEN
     csr <= newval;
@@ -36,7 +36,7 @@ instance DefaultValue#(MVendorID);
   function MVendorID defaultValue() = MVendorID {bank: 0, offset: 0};
 endinstance
 instance CSR#(MVendorID);
-  function Action updateCSR(Reg#(MVendorID) csr, MVendorID val) = action
+  function Action updateCSR(Reg#(MVendorID) csr, MVendorID val, PrivLvl _) = action
     csr <= val;
   endaction;
 endinstance
@@ -94,7 +94,7 @@ instance DefaultValue#(MStatus);
   };
 endinstance
 instance CSR#(MStatus);
-  function Action updateCSR(Reg#(MStatus) csr, MStatus val) = action
+  function Action updateCSR(Reg#(MStatus) csr, MStatus val, PrivLvl _) = action
     let newval = val;
     if (newval.mpp != M ) newval.mpp = M;// only support Machine mode so far
     csr <= newval;
@@ -110,7 +110,7 @@ instance DefaultValue#(MEPC);
   function MEPC defaultValue() = MEPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
 endinstance
 instance CSR#(MEPC);
-  function Action updateCSR(Reg#(MEPC) csr, MEPC val) = action
+  function Action updateCSR(Reg#(MEPC) csr, MEPC val, PrivLvl _) = action
     let newval = val;
     if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
     csr <= newval;
@@ -139,7 +139,7 @@ instance DefaultValue#(MTVec);
   function MTVec defaultValue() = MTVec {base: 0, mode: Direct};
 endinstance
 instance CSR#(MTVec);
-  function Action updateCSR(Reg#(MTVec) csr, MTVec val) = action
+  function Action updateCSR(Reg#(MTVec) csr, MTVec val, PrivLvl _) = action
     let newval = val;
     if (newval.mode != Direct || newval.mode != Vectored)
       newval.mode = csr.mode;
@@ -149,25 +149,26 @@ endinstance
 
 // MEDeleg
 ////////////////////////////////////////////////////////////////////////////////
-typedef struct {Bit#(XLEN) val;} MEDeleg;
+typedef struct {Bit#(XLEN) val;} MEDeleg deriving (Bits);
 instance DefaultValue#(MEDeleg);
   function MEDeleg defaultValue() = MEDeleg {val: 0};
 endinstance
 instance CSR#(MEDeleg);
-  function Action updateCSR(Reg#(MEDeleg) csr, MEDeleg val) = action
-    let newval = val;
-    csr <= newval;
+  function Action updateCSR(Reg#(MEDeleg) csr, MEDeleg val, PrivLvl _) = action
+    let newval = val.val;
+    newval[11] = 0;
+    csr <= MEDeleg {val: newval};
   endaction;
 endinstance
 
 // MIDeleg
 ////////////////////////////////////////////////////////////////////////////////
-typedef struct {Bit#(XLEN) val;} MIDeleg;
+typedef struct {Bit#(XLEN) val;} MIDeleg deriving (Bits);
 instance DefaultValue#(MIDeleg);
   function MIDeleg defaultValue() = MIDeleg {val: 0};
 endinstance
 instance CSR#(MIDeleg);
-  function Action updateCSR(Reg#(MIDeleg) csr, MIDeleg val) = action
+  function Action updateCSR(Reg#(MIDeleg) csr, MIDeleg val, PrivLvl _) = action
     let newval = val;
     csr <= newval;
   endaction;
@@ -208,9 +209,31 @@ instance DefaultValue#(MIP); // XXX does spec actually specify reboot value ?
   };
 endinstance
 instance CSR#(MIP);
-  function Action updateCSR(Reg#(MIP) csr, MIP val) = action
+  function Action updateCSR(Reg#(MIP) csr, MIP val, PrivLvl lvl) = action
+    let oldval = csr;
     let newval = val;
-    //TODO
+    // software interrupts
+    newval.msip = oldval.msip; // TODO
+    if (lvl < S) newval.ssip = oldval.ssip;
+    if (lvl < U) newval.usip = oldval.usip;
+    // timer interrupts
+    newval.mtip = oldval.mtip; // TODO
+    if (lvl != M) begin
+      newval.stip = oldval.stip;
+      newval.utip = oldval.utip;
+    end
+    // external interrupts
+    newval.meip = oldval.meip; // TODO
+    if (lvl != M) begin
+      newval.seip = oldval.seip;
+      newval.ueip = oldval.ueip;
+    end
+    // reserved WIRI fields
+    newval.res0 = False;
+    newval.res1 = False;
+    newval.res2 = False;
+    newval.res3 = 0;
+    // fold value
     csr <= newval;
   endaction;
 endinstance
@@ -250,7 +273,7 @@ instance DefaultValue#(MIE); // XXX does spec actually specify reboot value ?
   };
 endinstance
 instance CSR#(MIE);
-  function Action updateCSR(Reg#(MIE) csr, MIE val) = action
+  function Action updateCSR(Reg#(MIE) csr, MIE val, PrivLvl _) = action
     let newval = val;
     //TODO
     csr <= newval;
