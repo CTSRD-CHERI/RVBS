@@ -11,43 +11,52 @@ import RV_State :: *;
 // Trap logic //
 ////////////////////////////////////////////////////////////////////////////////
 
-// overloaded trap function that can have either of the following prototypes:
-// function Action trap(RVState s, MCause cause)
-// function Action trap(RVState s, MCause cause, Action side_effect)
+function Action general_trap(PrivLvl toLvl, MCause cause, RVState s, Action specific_behaviour) = action
+  specific_behaviour;
+  // TODO latch current priv in mstatus
+  s.csrs.mcause <= cause;
+  s.csrs.mepc <= unpack(s.pc);
+  s.currentPrivLvl <= M;
+  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
+endaction;
 
 typeclass Trap#(type a);
   a trap;
 endtypeclass
 
-instance Trap#(function Action f(RVState s, MCause cause));
-  function Action trap(RVState s, MCause cause) = action
-    // TODO latch current priv in mstatus
-    s.csrs.mcause <= cause;
-    s.csrs.mepc <= unpack(s.pc);
-    // prepare trap handler address
-    Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
-    case (s.csrs.mtvec.mode)
-      Direct: s.pc <= tgt;
-      Vectored: s.pc <= case (cause) matches
-        tagged Interrupt .i: (tgt + zeroExtend({pack(i),2'b00}));
-        default: tgt;
-      endcase;
-      default: begin
+instance Trap#(function Action f(RVState s, ExcCode code));
+  function Action trap(RVState s, ExcCode code) =
+    general_trap(M, Exception(code), s, action
+      if (s.csrs.mtvec.mode >= 2) begin
         printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
         $finish(1);
-      end
-    endcase
-    s.currentPrivLvl <= M;
-    printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
+      end else s.pc <= {s.csrs.mtvec.base, 2'b00};
+    endaction);
+endinstance
+
+instance Trap#(function Action f(RVState s, ExcCode code, Action side_effect));
+  function Action trap(RVState s, ExcCode code, Action side_effect) = action
+    side_effect;
+    trap(s, code);
   endaction;
 endinstance
 
-instance Trap#(function Action f(RVState s, MCause cause, Action side_effect));
-  function Action trap(RVState s, MCause cause, Action side_effect) = action
-    side_effect;
-    trap(s, cause);
-  endaction;
+/*
+instance Trap#(function Action f(RVState s, IntCode code));
+  function Action trap(RVState s, IntCode code) =
+    general_trap(M, Interrupt(code), s, action
+      Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+      case (s.csrs.mtvec.mode)
+        Direct: s.pc <= tgt;
+        Vectored: s.pc <= tgt + zeroExtend({pack(code),2'b00});
+        default: begin
+          printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
+          $finish(1);
+        end
+      endcase
+    endaction);
 endinstance
+*/
 
 module [InstrDefModule] mkRVTrap#(RVState s) ();
 /*

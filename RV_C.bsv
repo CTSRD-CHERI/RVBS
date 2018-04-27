@@ -22,7 +22,7 @@ function Bool nzimm (Bit#(16) x) = x[12] != 0 || x[6:2] != 0;
 
 function Action instrC_Illegal(RVState s) = action
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- c.illegal", s.pc));
-  trap(s, Exception(IllegalInst), action s.csrs.mtval <= 0; endaction);
+  trap(s, IllegalInst, action s.csrs.mtval <= 0; endaction);
 endaction;
 
 /////////////////////////////////

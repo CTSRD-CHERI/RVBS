@@ -18,7 +18,7 @@ endaction;
 
 function Action unknownInst(RVState s, Bit#(32) inst) = action
   Bit#(XLEN) mask = ~((~0) << (s.instByteSz<<3));
-  trap(s, Exception(IllegalInst), mtvalWrite(s, mask & zeroExtend(inst)));
+  trap(s, IllegalInst, mtvalWrite(s, mask & zeroExtend(inst)));
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- UNKNOWN INSTRUCTION 0x%0x", s.pc, inst));
 endaction;
 
@@ -276,7 +276,7 @@ function Action instrJAL(RVState s, Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm
   if (isInstAligned(tgt)) begin
     s.pc <= tgt;
     s.regFile[rd] <= s.pc + s.instByteSz;
-  end else trap(s, Exception(InstAddrAlign), mtvalWrite(s, tgt));
+  end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
   logInstJ(s.pc, "jal", rd, imm);
 endaction;
 
@@ -297,7 +297,7 @@ function Action instrJALR (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   if (isInstAligned(tgt)) begin
     s.pc <= tgt;
     s.regFile[rd] <= s.pc + s.instByteSz;
-  end else trap(s, Exception(InstAddrAlign), mtvalWrite(s, tgt));
+  end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
   logInstI(s.pc, "jalr", rd, rs1, imm);
 endaction;
 
@@ -319,7 +319,7 @@ endaction;
 // to BLT, BLTU, BGE, and BGEU, respectivelly.
 
 function Action branchCommon(RVState s, Bit#(XLEN) tgt) = action
-  if (isInstAligned(tgt)) s.pc <= tgt; else trap(s, Exception(InstAddrAlign), mtvalWrite(s, tgt));
+  if (isInstAligned(tgt)) s.pc <= tgt; else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
 endaction;
 
 // funct3 = BEQ = 000
@@ -575,18 +575,18 @@ endaction;
 
 // ECALL
 function Action instrECALL(RVState s) = action
-  MCause cause = case (s.currentPrivLvl)
-    U: Exception(ECallFromU);
-    S: Exception(ECallFromS);
-    M: Exception(ECallFromM);
+  ExcCode code = case (s.currentPrivLvl)
+    U: ECallFromU;
+    S: ECallFromS;
+    M: ECallFromM;
   endcase;
-  trap(s, cause);
+  trap(s, code);
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ecall", s.pc));
 endaction;
 
 // EBREAK
 function Action instrEBREAK(RVState s) = action
-  trap(s, Exception(Breakpoint));
+  trap(s, Breakpoint);
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ebreak", s.pc));
 endaction;
 

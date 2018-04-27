@@ -63,7 +63,7 @@ typedef enum {
   USoftInt = 0, SSoftInt = 1, MSoftInt = 3,
   UtimerInt = 4, STimerInt = 5, MTimerInt = 7,
   UExtInt = 8, SExtInt = 9, MExtInt = 11
-} MIntCode deriving (Bits, Eq, FShow);
+} IntCode deriving (Bits, Eq, FShow);
 
 typedef enum {
   InstAddrAlign = 0, InstAccessFault = 1, IllegalInst = 2,
@@ -71,11 +71,11 @@ typedef enum {
   StrAMOAddrAlign = 6, StrAMOAccessFault = 7,
   ECallFromU = 8, ECallFromS = 9, ECallFromM = 11,
   InstPgFault = 12, LoadPgFault = 13, StrAMOPgFault = 15
-} MExcCode deriving (Bits, Eq, FShow);
+} ExcCode deriving (Bits, Eq, FShow);
 
 typedef union tagged {
-  MIntCode Interrupt;
-  MExcCode Exception;
+  IntCode Interrupt;
+  ExcCode Exception;
 } MCause deriving (Eq);
 instance Bits#(MCause, XLEN);
   function Bit#(XLEN) pack (MCause c) = case (c) matches // n must be at leas 4 + 1

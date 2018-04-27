@@ -1,6 +1,7 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
 import DefaultValue :: *;
+import Printf :: *;
 
 import RV_BasicTypes :: *;
 
@@ -132,6 +133,18 @@ instance Bits#(MTVecMode, 2);
     2'b01: Vectored;
     default: Res;
   endcase;
+endinstance
+instance Ord#(MTVecMode);
+  function Ordering compare(MTVecMode a, MTVecMode b) = compare(pack(a), pack(b));
+endinstance
+instance Literal#(MTVecMode);
+  function MTVecMode fromInteger (Integer x) = case (x)
+    0: Direct;
+    1: Vectored;
+    2, 3: Res;
+    default: error(sprintf("Invalid MTVecMode literal %0d. Use {0, 1, 2, 3}."));
+  endcase;
+  function Bool inLiteralRange (MTVecMode _, Integer x) = (x >= 0 && x < 4);
 endinstance
 typedef struct { Bit#(TSub#(XLEN,2)) base;  MTVecMode mode; }
   MTVec deriving (Bits, FShow);
