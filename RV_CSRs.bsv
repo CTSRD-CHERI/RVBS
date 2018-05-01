@@ -1,6 +1,7 @@
 // 2018, Alexandre Joannou, University of Cambridge
 
 import DefaultValue :: *;
+import Printf :: *;
 import Vector :: *;
 import BID :: *;
 
@@ -54,21 +55,19 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   Reg#(MStatus)    mstatus;
   Reg#(MISA)       misa;
-  `ifdef MULTI_MODE
-  Reg#(MEDeleg) medeleg;
-  Reg#(MIDeleg) mideleg;
-  `endif
-  Reg#(MIE) mie;
-  Reg#(MTVec) mtvec;
+  Reg#(MEDeleg)    medeleg;
+  Reg#(MIDeleg)    mideleg;
+  Reg#(MIE)        mie;
+  Reg#(MTVec)      mtvec;
   // mcounteren
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Bit#(XLEN)) mscratch;
-  Reg#(MEPC) mepc;
-  Reg#(MCause) mcause;
+  Reg#(MEPC)       mepc;
+  Reg#(MCause)     mcause;
   Reg#(Bit#(XLEN)) mtval;
-  Reg#(MIP) mip;
+  Reg#(MIP)        mip;
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -134,6 +133,13 @@ typedef struct {
 
 } CSRs;
 
+module mkRegUndef#(String name) (Reg#(a));
+  method a _read() =
+    error(sprintf("%s register read but not initialised", name));
+  method Action _write(a val) =
+    error(sprintf("%s register written but not initialised", name));
+endmodule
+
 //////////////////////////
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,10 +163,12 @@ module mkCSRs#(PrivLvl currLvl
   //////////////////////////////////////////////////////////////////////////////
   csrs.mstatus <- mkReg(defaultValue); // mstatus 12'h300
   csrs.misa    <- mkReg(defaultValue); // misa 12'h301
-  `ifdef MULTI_MODE
-  csrs.medeleg <- mkReg(defaultValue); // medeleg 12'h302
-  csrs.mideleg <- mkReg(defaultValue); // mideleg 12'h303
-  `endif
+  csrs.medeleg <- mkRegUndef("medeleg");
+  csrs.mideleg <- mkRegUndef("mideleg");
+  if (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)) begin
+    csrs.medeleg <- mkReg(defaultValue); // medeleg 12'h302
+    csrs.mideleg <- mkReg(defaultValue); // mideleg 12'h303
+  end
   csrs.mie     <- mkReg(defaultValue); // mie 12'h304
   csrs.mtvec   <- mkReg(defaultValue); // mtvec 12'h305
   // mcounteren 12'h306
@@ -262,13 +270,13 @@ module mkCSRs#(PrivLvl currLvl
   endactionvalue;
   function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
     Bit#(XLEN) ret = ?;
-    case (r.idx) // TODO sort out individual behaviours for each CSR
+    case (r.idx) matches// TODO sort out individual behaviours for each CSR
       12'h300: ret <- readUpdateCSR(csrs.mstatus,r);
       12'h301: ret <- readUpdateCSR(csrs.misa,r);
-      `ifdef MULTI_MODE
-      12'h302: ret <- readUpdateCSR(csrs.medeleg,r);
-      12'h303: ret <- readUpdateCSR(csrs.mideleg,r);
-      `endif
+      12'h302 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
+        ret <- readUpdateCSR(csrs.medeleg,r);
+      12'h303 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
+        ret <- readUpdateCSR(csrs.mideleg,r);
       12'h304: ret <- readUpdateCSR(csrs.mie,r);
       12'h305: ret <- readUpdateCSR(csrs.mtvec,r);
       12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
@@ -278,14 +286,14 @@ module mkCSRs#(PrivLvl currLvl
       12'h344: ret <- readUpdateCSR(csrs.mip,r);
       `ifdef PMP
       `ifdef XLEN32
-      12'h3A0, 12'h3A1, 12'h3A2, 12'h3A3:
-        ret <- readUpdateCSR(csrs.pmpcfg[r.idx - 12'h3A0],r);
+      .x &&& (12'h3A0 >= x && x <= 12'h3A3):
+        ret <- readUpdateCSR(csrs.pmpcfg[x - 12'h3A0],r);
       `else
       12'h3A0: ret <- readUpdateCSR(csrs.pmpcfg[0],r);
       12'h3A2: ret <- readUpdateCSR(csrs.pmpcfg[1],r);
       `endif
-      12'h3B0, 12'h3B1, 12'h3B2, 12'h3B3, 12'h3B4, 12'h3B5, 12'h3B6, 12'h3B7, 12'h3B8, 12'h3B9, 12'h3BA, 12'h3BB, 12'h3BC, 12'h3BD, 12'h3BE, 12'h3BF:
-        ret <- readUpdateCSR(csrs.pmpaddr[r.idx - 12'h3B0],r);
+      .x &&& (12'h3B0 >= x && x <= 12'h3BF):
+        ret <- readUpdateCSR(csrs.pmpaddr[x - 12'h3B0],r);
       `endif
       12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
       12'hF12: ret <- readUpdateCSR(csrs.marchid,r);

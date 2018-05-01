@@ -2,6 +2,35 @@
 
 import BID :: *;
 
+// static parameters
+Bool static_HAS_M_MODE = True;
+
+`ifdef SUPERVISOR_MODE
+Bool static_HAS_S_MODE = True;
+`else
+Bool static_HAS_S_MODE = False;
+`endif
+
+`ifdef USER_MODE
+Bool static_HAS_U_MODE = True;
+`else
+Bool static_HAS_U_MODE = False;
+`endif
+
+Bool static_HAS_I_EXT  = True;
+
+`ifdef RVC
+Bool static_HAS_C_EXT  = True;
+`else
+Bool static_HAS_C_EXT  = False;
+`endif
+
+`ifdef RVN
+Bool static_HAS_N_EXT  = True;
+`else
+Bool static_HAS_N_EXT  = False;
+`endif
+
 ///////////////////////////////////
 // Utility modules and functions //
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +61,17 @@ function Bool isInstAligned(Bit#(sz) x) provisos (Add#(1, a__, sz)) = x[0] == 0;
 function Bool isInstAligned(Bit#(sz) x) provisos (Add#(2, a__, sz)) = x[1:0] == 0;
 `endif
 
+// privilege levels
+typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
+instance Ord#(PrivLvl);
+  function Ordering compare(PrivLvl a, PrivLvl b);
+    if (a == b) return EQ;
+    else if (a == Res) return LT;
+    else if (b == Res) return GT;
+    else return compare(pack(a), pack(b));
+  endfunction
+endinstance
+
 /////////////////////////////////////
 // RISC-V trap and CSR basic types //
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,17 +84,6 @@ instance CSR#(Bit#(XLEN));
   function Action updateCSR(Reg#(Bit#(XLEN)) csr, Bit#(XLEN) val, PrivLvl _) = action
     csr <= val;
   endaction;
-endinstance
-
-// privilege levels
-typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
-instance Ord#(PrivLvl);
-  function Ordering compare(PrivLvl a, PrivLvl b);
-    if (a == b) return EQ;
-    else if (a == Res) return LT;
-    else if (b == Res) return GT;
-    else return compare(pack(a), pack(b));
-  endfunction
 endinstance
 
 // machine interrupt/exception codes

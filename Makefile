@@ -14,27 +14,25 @@ BSCFLAGS += -D XLEN32
 ifeq ($(XLEN),64)
 BSCFLAGS += -D XLEN64
 endif
-ifdef RVC
-BSCFLAGS += -D RVC
-endif
 ifdef PMP
 BSCFLAGS += -D PMP
 endif
 ifdef USER_MODE
 BSCFLAGS += -D USER_MODE
-MULTI_MODE=1
 endif
 ifdef SUPERVISOR_MODE
 BSCFLAGS += -D SUPERVISOR_MODE
-MULTI_MODE=1
 endif
-ifdef MULTI_MODE
-BSCFLAGS += -D MULTI_MODE
+ifdef RVC
+BSCFLAGS += -D RVC
+endif
+ifdef RVN
+BSCFLAGS += -D RVN
 endif
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs
-CC = gcc-4.9
-CXX = g++-4.9
+CC = gcc-4.8
+CXX = g++-4.8
 
 # Top level module
 TOPFILE = Top.bsv

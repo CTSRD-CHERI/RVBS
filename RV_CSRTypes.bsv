@@ -68,9 +68,9 @@ typedef struct {
   Bool mprv;
   Bit#(2) xs;
   Bit#(2) fs;
-  PrivLvl mpp;
+  Bit#(2) mpp;
   Bit#(2) res2;
-  Bool spp;
+  Bit#(1) spp;
   Bool mpie;
   Bool res1;
   Bool spie;
@@ -89,15 +89,25 @@ instance DefaultValue#(MStatus);
     res3: ?,
     `endif
     tsr: False, tw: False, tvm: False, mxr: False, sum: False, mprv: False,
-    xs: 0, fs: 0, mpp: M, res2: ?, spp: False,
-    mpie: False, res1: ?, spie: False, upie: False,
+    xs: 0, fs: 0,
+    mpp: pack(M), res2: ?, spp: ?,
+    mpie: ?, res1: ?, spie: ?, upie: ?,
     mie: False, res0: ?, sie: False, uie: False
   };
 endinstance
 instance CSR#(MStatus);
   function Action updateCSR(Reg#(MStatus) csr, MStatus val, PrivLvl _) = action
+    let oldval = csr;
     let newval = val;
-    if (newval.mpp != M ) newval.mpp = M;// only support Machine mode so far
+    `ifdef XLEN64 // MAX_XLEN > 32
+    if (!static_HAS_S_MODE) newval.sxl = 0;
+    if (!static_HAS_U_MODE) newval.uxl = 0;
+    `endif
+    if (!static_HAS_S_MODE &&         unpack(newval.mpp) == S) newval.mpp = oldval.mpp;
+    if (!static_HAS_S_MODE && unpack({1'b0, newval.spp}) == S) newval.spp = oldval.spp;
+    if (!static_HAS_U_MODE &&         unpack(newval.mpp) == U) newval.mpp = oldval.mpp;
+    if (!static_HAS_U_MODE && unpack({1'b0, newval.spp}) == U) newval.spp = oldval.spp;
+    $display("DEBUG ==== mstatus.mpp was ", fshow(oldval.mpp), ", is now ", fshow(newval.mpp));
     csr <= newval;
   endaction;
 endinstance
