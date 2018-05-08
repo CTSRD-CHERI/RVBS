@@ -10,6 +10,9 @@ BSCFLAGS += -show-schedule -sched-dot
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif
+ifdef PRINT_ABI_REG_NAME
+BSCFLAGS += -D PRINT_ABI_REG_NAME
+endif
 BSCFLAGS += -D XLEN32
 ifeq ($(XLEN),64)
 BSCFLAGS += -D XLEN64

@@ -167,7 +167,12 @@ function Fmt abiRegName(Bit#(5) r) = case (r)
   18, 19, 20, 21, 22, 23, 24, 25, 26, 27: $format("s%0d", r - 16);
   28, 29, 30, 31: $format("t%0d", r - 25);
 endcase;
+`ifdef PRINT_ABI_REG_NAME
 function Fmt rName(Bit#(5) r) = abiRegName(r);
+`else
+function Fmt rName(Bit#(5) r) = gpRegName(r);
+`endif
+
 /*
   I-type
 
