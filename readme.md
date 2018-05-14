@@ -1,5 +1,5 @@
 #RVBS - RISC-V Bluespec Specification
-RVBS uses the BID library to describe the RISC-V instructions and provide a readable, executable and synthesizeable specification, that could ideally be used as a golden model for fuzz testing in simulation or on FPGA.
+RVBS uses the BID library to describe the RISC-V instructions and provide a readable, executable and synthesizeable specification, that could be used as a golden model.
 
 #usefull references
 - [Nikhil's initial RISC-V spec in Bluespec](https://github.com/rsnikhil/RISCV_ISA_Formal_Spec_in_BSV)
