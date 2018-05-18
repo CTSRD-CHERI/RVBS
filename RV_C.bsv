@@ -204,14 +204,14 @@ function Action instrC_JALR (RVState s, Bit#(5) rs1, Bit#(5) rs2) =
 // funct3 = C.BEQZ = 110
 // op = C1 = 01
 function Action instrC_BEQZ (RVState s, Bit#(3) i7_5, Bit#(3) rs1_, Bit#(5) i4_0) = action
-  Bit#(12) o = signExtend({i7_5[2], i4_0[4:3], i4_0[0], i7_5[1:0], i4_0[2:1],1'b0});
+  Bit#(12) o = signExtend({i7_5[2], i4_0[4:3], i4_0[0], i7_5[1:0], i4_0[2:1]});
   instrBEQ(s, o[11], o[9:4], 0, regID(rs1_), o[3:0], o[10]);
 endaction;
 
 // funct3 = C.BNEZ = 111
 // op = C1 = 01
 function Action instrC_BNEZ (RVState s, Bit#(3) i7_5, Bit#(3) rs1_, Bit#(5) i4_0) = action
-  Bit#(12) o = signExtend({i7_5[2], i4_0[4:3], i4_0[0], i7_5[1:0], i4_0[2:1],1'b0});
+  Bit#(12) o = signExtend({i7_5[2], i4_0[4:3], i4_0[0], i7_5[1:0], i4_0[2:1]});
   instrBNE(s, o[11], o[9:4], 0, regID(rs1_), o[3:0], o[10]);
 endaction;
 
