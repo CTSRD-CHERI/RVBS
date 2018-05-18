@@ -240,7 +240,7 @@ function BitPat#() patRType (Bit#(7) funct7, Bit#(3) funct3, Bit#(7) opcode) =
 */
 function Action logInstR(Bit#(XLEN) pc, String i, Bit#(5) rd, Bit#(5) rs1, Bit#(5) rs2) =
   printTLogPlusArgs("itrace",
-    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", ", rName(rs1), ", ", rs2)
+    $format("pc: 0x%0x -- ", pc, i,"\t", rName(rd), ", ", rName(rs1), ", ", rName(rs2))
   );
 /*
   U-type
