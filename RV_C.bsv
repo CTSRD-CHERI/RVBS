@@ -156,16 +156,16 @@ function List#(Action) instrC_SW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1)
 // funct3 = C.J = 101
 // op = C1 = 01
 function Action instrC_J (RVState s, Bit#(11) i) = action
-  Bit#(11) offset = {i[10], i[6], i[8:7], i[4], i[5], i[9], i[0], i[3:1]};
-  instrJAL(s, offset[10], offset[9:0], offset[10], signExtend(offset[10]), 0);
+  Bit#(20) i20 = {signExtend(i[10]),i[6],i[8:7],i[4],i[5],i[0],i[9],i[3:1]};
+  instrJAL(s, i20[19], i20[9:0], i20[10], i20[18:11], 0);
 endaction;
 
 `ifndef XLEN64
   // funct3 = C.JAL = 001
   // op = C1 = 01
   function Action instrC_JAL (RVState s, Bit#(11) i) = action
-    Bit#(11) offset = {i[10], i[6], i[8:7], i[4], i[5], i[9], i[0], i[3:1]};
-    instrJAL(s, offset[10], offset[9:0], offset[10], signExtend(offset[10]), 1);
+    Bit#(20) i20 = {signExtend(i[10]),i[6],i[8:7],i[4],i[5],i[0],i[9],i[3:1]};
+    instrJAL(s, i20[19], i20[9:0], i20[10], i20[18:11], 1);
   endaction;
 `endif
 
