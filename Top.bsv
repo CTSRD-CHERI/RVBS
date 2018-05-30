@@ -36,13 +36,25 @@ import RV_I :: *;
 import RV_C :: *;
 `endif
 
+(* always_ready *)
 interface RVBSProbes;
   method Bit#(XLEN) peekPC();
+  method Bit#(XLEN) peekCtrlCSR();
 endinterface
 
 module rvbs (RVBSProbes);
 
-  Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(16384, "test-prog.hex");
+  `ifdef MEM_IMG
+  String memimg = `MEM_IMG;
+  `else
+  String memimg = "test-prog.hex";
+  `endif
+  `ifdef MEM_SIZE
+  Integer memsize = `MEM_SIZE;
+  `else
+  Integer memsize = 16384;
+  `endif
+  Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(memsize, memimg);
   RVState s <- mkState(mem);
 
   // instanciating simulator
@@ -59,5 +71,6 @@ module rvbs (RVBSProbes);
   mkISASim(s, modList);
 
   method Bit#(XLEN) peekPC() = s.pc;
+  method Bit#(XLEN) peekCtrlCSR() = s.csrs.ctrl;
 
 endmodule

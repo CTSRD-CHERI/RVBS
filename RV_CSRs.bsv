@@ -153,6 +153,9 @@ typedef struct {
   // ...
   // hpmcounter31
 
+  // XXX for debug purposes:
+  Reg#(Bit#(XLEN)) ctrl;
+
   // CSR request
   //////////////////////////////////////////////////////////////////////////////
   function ActionValue#(Bit#(XLEN)) doReq (CSRReq#(XLEN) r) req;
@@ -278,6 +281,9 @@ module mkCSRs#(PrivLvl currLvl
   // ...
   // hpmcounter31 12'hC1F (and 12'hC9F in RV32)
 
+  // XXX for debug purposes:
+  csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
+
   // CSR requests
   function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
   provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
@@ -331,8 +337,11 @@ module mkCSRs#(PrivLvl currLvl
       //'hC80: ret = cycle[63:32];
       //XXX hack for test suite
       12'hCC0: begin // test success
-        $display("TEST SUCCESS");
-        $finish(0);
+        csrs.ctrl[7:0] <= r.val[7:0];
+        if (genC) begin
+          $display("TEST SUCCESS");
+          $finish(0);
+        end
       end
       12'hCC1: begin // test failure
         $display("TEST FAILURE");

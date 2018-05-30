@@ -1,0 +1,12 @@
+*.elf
+*.dump
+*.ihex
+*.hex
+*.mif
+*.log
+*.trace
+*-bdir
+*-simdir
+test-traces
+.doit.db
+__pycache__

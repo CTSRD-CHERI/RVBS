@@ -26,14 +26,24 @@
 # @BERI_LICENSE_HEADER_END@
 #
 
+#######################################################
+# XXX SET THESE PATHS BASED ON YOUR LOCAL INSTALL XXX #
+################################################################################
 RECIPEDIR = /home/aj443/devstuff/Recipe
 BITPATDIR = /home/aj443/devstuff/BitPat
 BIDDIR = /home/aj443/devstuff/BID
+################################################################################
 BSVPATH = +:$(RECIPEDIR):$(BITPATDIR):$(BIDDIR)
 BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
 BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
+ifdef MEM_SIZE
+BSCFLAGS += -D MEM_SIZE=$(MEM_SIZE)
+endif
+ifdef MEM_IMG
+BSCFLAGS += -D MEM_IMG="\"$(MEM_IMG)\""
+endif
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif
@@ -44,19 +54,19 @@ BSCFLAGS += -D XLEN32
 ifeq ($(XLEN),64)
 BSCFLAGS += -D XLEN64
 endif
-ifdef PMP
+ifeq ($(PMP),1)
 BSCFLAGS += -D PMP
 endif
-ifdef USER_MODE
+ifeq ($(USER_MODE),1)
 BSCFLAGS += -D USER_MODE
 endif
-ifdef SUPERVISOR_MODE
+ifeq ($(SUPERVISOR_MODE),1)
 BSCFLAGS += -D SUPERVISOR_MODE
 endif
-ifdef RVC
+ifeq ($(RVC),1)
 BSCFLAGS += -D RVC
 endif
-ifdef RVN
+ifeq ($(RVN),1)
 BSCFLAGS += -D RVN
 endif
 # Bluespec is not compatible with gcc > 4.9
