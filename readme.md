@@ -57,5 +57,6 @@ TODO, not currently implemented:
 - `RVN` can be used to enable the *N* *User mode* exceptions extention
 
 ## References
+- [l3riscv](https://github.com/SRI-CSL/l3riscv)
+- [RISC-V in Sail](https://github.com/rems-project/sail/tree/sail2/riscv)
 - [Nikhil's initial RISC-V spec in Bluespec](https://github.com/rsnikhil/RISCV_ISA_Formal_Spec_in_BSV)
-- [RISC-V in Sail](https://bitbucket.org/Peter_Sewell/sail/src/f0963618ba927492b0724383040b9922ab41f1dd/risc-v/?at=master)
