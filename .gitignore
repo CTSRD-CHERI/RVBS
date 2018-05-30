@@ -1,3 +1,5 @@
+*.sched
+*.so
 *.elf
 *.dump
 *.ihex

@@ -1,0 +1,3 @@
+[submodule "BID"]
+	path = BID
+	url = git@github.com:CTSRD-CHERI/BID.git

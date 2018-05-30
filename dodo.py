@@ -125,6 +125,8 @@ def flatten(l):
 
 # root dir
 root_dir = os.getcwd()
+def in_root_dir(fname):
+  return op.join(root_dir, fname)
 # markdown docs
 pandoc = sub.run(["which","pandoc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 md_docs = [x for x in os.listdir(root_dir) if x[-3:] == ".md"]
@@ -147,11 +149,9 @@ test_pass_re = re.compile("TEST SUCCESS")
 objcopy = sub.run(["which","riscv64-unknown-elf-objcopy"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 ihex2img = op.expanduser("~/ihex-to-img.py")
 # bluespec
-#forkjoindir=op.expanduser("~/devstuff/ForkJoin")
-recipedir=op.expanduser("~/devstuff/Recipe")
-bitpatdir=op.expanduser("~/devstuff/BitPat")
-biddir=op.expanduser("~/devstuff/BID")
-#bsvpath=":".join(["+",forkjoindir,bitpatdir,biddir])
+biddir=in_root_dir("BID")
+recipedir=op.join(biddir, "Recipe")
+bitpatdir=op.join(biddir, "BitPat")
 bsvpath=":".join(["+",recipedir,bitpatdir,biddir])
 bsc_flags=["-p",bsvpath,"-check-assert"]
 bsc_flags+=["-show-schedule"]
@@ -184,9 +184,6 @@ def silentremove(filename):
   except OSError as e:
     if e.errno != errno.ENOENT:
       raise
-
-def in_root_dir(fname):
-  return op.join(root_dir, fname)
 
 ##########################
 # make bluesim simulator #

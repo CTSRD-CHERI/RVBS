@@ -26,14 +26,10 @@
 # @BERI_LICENSE_HEADER_END@
 #
 
-#######################################################
-# XXX SET THESE PATHS BASED ON YOUR LOCAL INSTALL XXX #
-################################################################################
-RECIPEDIR = /home/aj443/devstuff/Recipe
-BITPATDIR = /home/aj443/devstuff/BitPat
-BIDDIR = /home/aj443/devstuff/BID
-################################################################################
-BSVPATH = +:$(RECIPEDIR):$(BITPATDIR):$(BIDDIR)
+BIDDIR = BID
+RECIPEDIR = $(BIDDIR)/Recipe
+BITPATDIR = $(BIDDIR)/BitPat
+BSVPATH = +:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR)
 BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
 BSCFLAGS += -show-schedule -sched-dot

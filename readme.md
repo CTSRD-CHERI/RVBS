@@ -13,29 +13,18 @@ RVBS supports traps between privilege modes, but *Supervisor mode* is not fully 
 
 ## Build options
 
-In order to build a RVBS Bluesim simulator, you will need a valid installation of Bluespec SystemVerilog on your machine. You will also need the following three Bluespec libraries:
+In order to build a RVBS Bluesim simulator, you will need a valid installation of [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler) on your machine. RVBS relies on the following three Bluespec libraries:
 
 - [Recipe](https://github.com/CTSRD-CHERI/Recipe)
 - [BitPat](https://github.com/CTSRD-CHERI/BitPat)
 - [BID](https://github.com/CTSRD-CHERI/BID)
 
-Each can be cloned from their respective [github](https://github.com/) repo as follows:
+[BID](https://github.com/CTSRD-CHERI/BID) is a submodule of the RVBS repo, and [Recipe](https://github.com/CTSRD-CHERI/Recipe) and [BitPat](https://github.com/CTSRD-CHERI/BitPat) are themselves subrepos in [BID](https://github.com/CTSRD-CHERI/BID). In order to checkout all of them, you need to run:
 ```sh
-$ git clone git@github.com:CTSRD-CHERI/Recipe.git
-$ git clone git@github.com:CTSRD-CHERI/BitPat.git
-$ git clone git@github.com:CTSRD-CHERI/BID.git
+$ git submodule update --init --recursive
 ```
 
-Once the libraries are available locally, you need to specify their paths in the RVBS [Makefile](https://github.com/CTSRD-CHERI/RVBS/blob/master/Makefile):
-```makefile
-# XXX SET THESE PATHS BASED ON YOUR LOCAL INSTALL XXX #
-################################################################################
-RECIPEDIR = /path/to/Recipe
-BITPATDIR = /path/to/BitPat
-BIDDIR = /path/to/BID
-################################################################################
-```
-To build a simulator, type `make`. You can specify a number of build options as environment variables:
+Once the libraries are available, you can build a simulator by typing `make`. You can specify a number of build options as environment variables:
 
 - `MEM_SIZE` can be used to specify the size of the memory in bytes
 - `MEM_IMG` can be used to specify the memory image used to initialize the memory
