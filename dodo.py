@@ -41,8 +41,8 @@ class RVBS:
     size = 32, mem_width = None,
     mem_size = 16384, mem_img="test-prog.hex",
     s_mode = False, u_mode = False,
-    c_ext = False, n_ext = False,
-    pmp = False):
+    m_ext = False, c_ext = False,
+    n_ext = False, pmp = False):
     self.size = size
     if mem_width:
       self.mem_width = mem_width
@@ -52,13 +52,15 @@ class RVBS:
     self.mem_img = mem_img
     self.s_mode = s_mode
     self.u_mode = u_mode
+    self.m_ext = m_ext
     self.c_ext = c_ext
     self.n_ext = n_ext
     self.pmp = pmp
 
   def name(self):
-    name = "rv{:d}i{:s}{:s}".format(
+    name = "rv{:d}i{:s}{:s}{:s}".format(
       self.size,
+      "m" if self.m_ext else "",
       "c" if self.c_ext else "",
       "n" if self.n_ext else "")
     if (self.s_mode or self.u_mode):
@@ -80,6 +82,8 @@ class RVBS:
       flags += ["-D","SUPERVISOR_MODE"]
     if self.u_mode:
       flags += ["-D","USER_MODE"]
+    if self.m_ext:
+      flags += ["-D","RVM"]
     if self.c_ext:
       flags += ["-D","RVC"]
     if self.n_ext:
@@ -91,10 +95,14 @@ class RVBS:
   def rv_tests(self):
     if self.size == 32:
       tests = ["rv32i"]
+      if self.m_ext:
+        tests += ["rv32m"]
       if self.c_ext:
         tests += ["rv32c"]
     elif self.size == 64:
       tests = ["rv64i"]
+      if self.m_ext:
+        tests += ["rv64m"]
       if self.c_ext:
         tests += ["rv64c"]
     return tests
@@ -111,13 +119,22 @@ class RVBS:
 rvbss = [
   RVBS( size = sz,
     s_mode = s, u_mode = u,
-    c_ext = c, n_ext = n,
-    pmp = pmp)
+    m_ext = m, c_ext = c,
+    n_ext = n, pmp = pmp)
   for sz in [32, 64]
   for s in [False, True] for u in [False, True]
-  for c in [False, True] for n in [False, True]
-  for pmp in [False, True]
+  for m in [False, True] for c in [False, True]
+  for n in [False, True] for pmp in [False, True]
 ]
+
+# python generate all one hot for given size
+def all_one_hot(n):
+  l = []
+  for i in range(0,n):
+    tmp = [False]*n
+    tmp[i] = True
+    l.append(tuple(tmp))
+  return l
 
 # python flatten list of list to list
 def flatten(l):
@@ -133,15 +150,20 @@ md_docs = [x for x in os.listdir(root_dir) if x[-3:] == ".md"]
 # test paths
 tests_dir = op.join(root_dir,"rv-tests")
 test32i_re = re.compile("rv32(mi|ui)-(uo|rvbs)-[^.]+$")
+test32m_re = re.compile("rv32um-(uo|rvbs)-[^.]+$")
 test32c_re = re.compile("rv32uc-(uo|rvbs)-[^.]+$")
 test64i_re = re.compile("rv64(mi|ui)-(uo|rvbs)-[^.]+$")
+test64m_re = re.compile("rv64um-(uo|rvbs)-[^.]+$")
 test64c_re = re.compile("rv64uc-(uo|rvbs)-[^.]+$")
 tests = {
   'rv32i': [f for f in os.listdir(tests_dir) if re.match(test32i_re,f)],
+  'rv32m': [f for f in os.listdir(tests_dir) if re.match(test32m_re,f)],
   'rv32c': [f for f in os.listdir(tests_dir) if re.match(test32c_re,f)],
   'rv64i': [f for f in os.listdir(tests_dir) if re.match(test64i_re,f)],
+  'rv64m': [f for f in os.listdir(tests_dir) if re.match(test64m_re,f)],
   'rv64c': [f for f in os.listdir(tests_dir) if re.match(test64c_re,f)]
 }
+nb_exts = 3
 # test pass
 test_pass_re = re.compile("TEST SUCCESS")
 
@@ -164,10 +186,10 @@ cfiles = [op.join(biddir,"BID_SimUtils.c"),op.join(biddir,"BID_Utils_SimMem.c")]
 cc="gcc-4.8"
 cxx="g++-4.8"
 # bluesim simulator
-def fullname (s, hasI, hasC,hasPMP):
-    return "rv{:d}{:s}{:s}{:s}".format(s, "i" if hasI else "", "c" if hasC else "", "-pmp" if hasPMP else "")
-def simname (s, hasC, hasPMP):
-    return fullname(s, True, hasC, hasPMP)
+def fullname (s, hasI, hasM, hasC,hasPMP):
+    return "rv{:d}{:s}{:s}{:s}{:s}".format(s, "i" if hasI else "", "m" if hasM else "", "c" if hasC else "", "-pmp" if hasPMP else "")
+def simname (s, hasM, hasC, hasPMP):
+    return fullname(s, True, hasM, hasC, hasPMP)
 def bdir (rvbs):
   return "{:s}-bdir".format(rvbs.name())
 def simdir (rvbs):
@@ -254,8 +276,7 @@ def task_test_ihex_to_hex () :
     cmd += ["hex","0",str(int(m/8)),str(totalmemsz)]
     sub.run(cmd,stdout=outhex)
 
-  #for t, m in [(x, z) for z in [32, 64] for y in [32,64] for x in tests[fullname(y,True,False,False)]+tests[fullname(y,False,True,False)]]:
-  for t, m in [(x, y) for y in [32,64] for x in tests[fullname(y,True,False,False)]+tests[fullname(y,False,True,False)]]:
+  for t, m in [(x, y) for y in [32,64] for x in flatten([tests[fullname(*(y,)+exts+(False,))] for exts in all_one_hot(nb_exts)])]:
     yield {
       'name'    : test_name(t, m),
       'actions' : [(ihex_to_hex,[op.join(tests_dir,t), m])],

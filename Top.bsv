@@ -32,6 +32,9 @@ import List :: *;
 import BID :: *;
 import RV_Common :: *;
 import RV_I :: *;
+`ifdef RVM
+import RV_M :: *;
+`endif
 `ifdef RVC
 import RV_C :: *;
 `endif
@@ -59,11 +62,17 @@ module rvbs (RVBSProbes);
 
   // instanciating simulator
   let modList = list(mkRVTrap, mkRV32I);
+  `ifdef RVM
+    modList = append(modList, list(mkRV32M));
+  `endif
   `ifdef RVC
     modList = append(modList, list(mkRV32C));
   `endif
   `ifdef XLEN64
   modList = append(modList, list(mkRV64I));
+    `ifdef RVM
+      modList = append(modList, list(mkRV64M));
+    `endif
     `ifdef RVC
       modList = append(modList, list(mkRV64C));
     `endif

@@ -59,6 +59,9 @@ endif
 ifeq ($(SUPERVISOR_MODE),1)
 BSCFLAGS += -D SUPERVISOR_MODE
 endif
+ifeq ($(RVM),1)
+BSCFLAGS += -D RVM
+endif
 ifeq ($(RVC),1)
 BSCFLAGS += -D RVC
 endif
