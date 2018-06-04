@@ -5,6 +5,7 @@ RVBS is an ISA level description of the RISC-V instruction set in [Bluespec Syst
 RVBS currently supports:
 
 - 32-bit and 64-bit RISC-V *I* base integer instructions
+- RISC-V *M* integer multiply/divide instructions
 - RISC-V *C* compressed instructions
 - *Machine mode*
 - *PMP*
@@ -32,6 +33,7 @@ Once the libraries are available, you can build a simulator by typing `make`. Yo
 - `PRINT_ABI_REG_NAME` can be used to use ABI names for registers instead of their index
 - `XLEN` can be used to specify the XLEN to build with (only 32 and 64 are currently supported)
 - `PMP` can be used to enable the Physical Memory Protection unit
+- `RVM` can be used to enable the *M* integer multiply/divide instructions extention
 - `RVC` can be used to enable the *C* compressed instructions extention
 
 For example, to build a 64-bit simulator with support for compressed instructions and 32KB of memory, you can run:
@@ -46,6 +48,7 @@ TODO, not currently implemented:
 - `RVN` can be used to enable the *N* *User mode* exceptions extention
 
 ## References
+
 - [l3riscv](https://github.com/SRI-CSL/l3riscv)
 - [RISC-V in Sail](https://github.com/rems-project/sail/tree/sail2/riscv)
 - [Nikhil's initial RISC-V spec in Bluespec](https://github.com/rsnikhil/RISCV_ISA_Formal_Spec_in_BSV)
