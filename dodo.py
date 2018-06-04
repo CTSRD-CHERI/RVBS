@@ -170,11 +170,14 @@ test_pass_re = re.compile("TEST SUCCESS")
 # tools
 objcopy = sub.run(["which","riscv64-unknown-elf-objcopy"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 ihex2img = op.expanduser("~/ihex-to-img.py")
+elfmanip = op.expanduser("~/devstuff/elfmanip/elfmanip.py")
 # bluespec
 biddir=in_root_dir("BID")
 recipedir=op.join(biddir, "Recipe")
 bitpatdir=op.join(biddir, "BitPat")
 bsvpath=":".join(["+",recipedir,bitpatdir,biddir])
+bsv_re = re.compile(".*\.bsv")
+bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]
 bsc_flags+=["-show-schedule"]
 #bsc_flags+=["-show-rule-rel", "*", "*"]
@@ -231,7 +234,7 @@ def task_build_simulator () :
     yield {
       'name'    : rvbs.name(),
       'actions' : [(build_sim,[rvbs])],
-      #'file_dep': [],
+      'file_dep': []+bsv_sources,
       'clean'   : [CmdAction("rm -rf {:s} {:s} {:s} {:s}.so".format(bdir(rvbs), simdir(rvbs), rvbs.name(), rvbs.name()))],
       'targets' : [in_root_dir(rvbs.name()), in_root_dir(rvbs.name()+".so")],
       'verbosity':2
@@ -245,42 +248,62 @@ def task_build_simulator () :
 def test_name(f, m_sz):
   return "{:s}-mem{:d}".format(f,m_sz)
 
-def task_test_elf_to_ihex () :
-  """Converts an elf test to an ihex"""
+#def task_test_elf_to_ihex () :
+#  """Converts an elf test to an ihex"""
+#
+#  def elf_to_ihex (f):
+#    print("gen ihex for {:s}".format(f))
+#    cmd = [objcopy,"-O","ihex"]
+#    cmd += ["--only-section=.text.init","--only-section=.text","--only-section=.data"]
+#    #cmd += ["--only-section=.text","--only-section=.data"]
+#    cmd += [f,f+".ihex"]
+#    sub.run(cmd)
+#
+#  for t in [x for sublist in tests.values() for x in sublist]:
+#    yield {
+#      'name'    : t,
+#      'actions' : [(elf_to_ihex,[op.join(tests_dir,t)])],
+#      'file_dep': [op.join(tests_dir,t)],
+#      'clean'   : [clean_targets],
+#      'targets' : [op.join(tests_dir, t+".ihex")],
+#      'verbosity':2
+#    }
+#
+#def task_test_ihex_to_hex () :
+#  """Converts an ihex test to a hex"""
+#
+#  def ihex_to_hex (f, m):
+#    print("gen hex for {:s} (mem{:d})".format(f,m))
+#    outhex = open(test_name(f, m)+".hex","w")
+#    cmd = [ihex2img,f+".ihex"]
+#    cmd += ["hex","0",str(int(m/8)),str(totalmemsz)]
+#    sub.run(cmd,stdout=outhex)
+#
+#  for t, m in [(x, y) for y in [32,64] for x in flatten([tests[fullname(*(y,)+exts+(False,))] for exts in all_one_hot(nb_exts)])]:
+#    yield {
+#      'name'    : test_name(t, m),
+#      'actions' : [(ihex_to_hex,[op.join(tests_dir,t), m])],
+#      'file_dep': [op.join(tests_dir,t+".ihex")],
+#      'clean'   : [clean_targets],
+#      'targets' : [op.join(tests_dir, test_name(t, m)+".hex")],
+#      'verbosity':2
+#    }
 
-  def elf_to_ihex (f):
-    print("gen ihex for {:s}".format(f))
-    cmd = [objcopy,"-O","ihex"]
-    cmd += ["--only-section=.text.init","--only-section=.text","--only-section=.data"]
-    #cmd += ["--only-section=.text","--only-section=.data"]
-    cmd += [f,f+".ihex"]
-    sub.run(cmd)
+def task_test_elf_to_hex () :
+  """Converts an elf test to a hex"""
 
-  for t in [x for sublist in tests.values() for x in sublist]:
-    yield {
-      'name'    : t,
-      'actions' : [(elf_to_ihex,[op.join(tests_dir,t)])],
-      'file_dep': [op.join(tests_dir,t)],
-      'clean'   : [clean_targets],
-      'targets' : [op.join(tests_dir, t+".ihex")],
-      'verbosity':2
-    }
-
-def task_test_ihex_to_hex () :
-  """Converts an ihex test to a hex"""
-
-  def ihex_to_hex (f, m):
+  def elf_to_hex (f, m):
     print("gen hex for {:s} (mem{:d})".format(f,m))
-    outhex = open(test_name(f, m)+".hex","w")
-    cmd = [ihex2img,f+".ihex"]
-    cmd += ["hex","0",str(int(m/8)),str(totalmemsz)]
-    sub.run(cmd,stdout=outhex)
+    cmd = [elfmanip,"-f","-o","{:s}.hex".format(test_name(f, m))]
+    cmd += ["--only-section",".text.init",".text",".data","--"]
+    cmd += ["{:s}".format(f),"hex","-w",str(int(m/8))]
+    sub.run(cmd)
 
   for t, m in [(x, y) for y in [32,64] for x in flatten([tests[fullname(*(y,)+exts+(False,))] for exts in all_one_hot(nb_exts)])]:
     yield {
       'name'    : test_name(t, m),
-      'actions' : [(ihex_to_hex,[op.join(tests_dir,t), m])],
-      'file_dep': [op.join(tests_dir,t+".ihex")],
+      'actions' : [(elf_to_hex,[op.join(tests_dir,t), m])],
+      'file_dep': [op.join(tests_dir,t)],
       'clean'   : [clean_targets],
       'targets' : [op.join(tests_dir, test_name(t, m)+".hex")],
       'verbosity':2
