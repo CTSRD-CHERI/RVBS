@@ -80,6 +80,9 @@ endfunction
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
+// casts between types in the same Bits class
+function a cast (b x) provisos (Bits#(a,n), Bits#(b,n)) = unpack(pack(x));
+
 // alignment test
 `ifdef RVC
 function Bool isInstAligned(Bit#(sz) x) provisos (Add#(1, a__, sz)) = x[0] == 0;
@@ -98,28 +101,12 @@ instance Ord#(PrivLvl);
   endfunction
 endinstance
 
-/////////////////////////////////////
-// RISC-V trap and CSR basic types //
-////////////////////////////////////////////////////////////////////////////////
-
-typeclass CSR#(type a);
-  function Action updateCSR(Reg#(a) csr, a val, PrivLvl curlvl);
-endtypeclass
-
-instance CSR#(Bit#(XLEN));
-  function Action updateCSR(Reg#(Bit#(XLEN)) csr, Bit#(XLEN) val, PrivLvl _) = action
-    csr <= val;
-  endaction;
-endinstance
-
 // machine interrupt/exception codes
-
 typedef enum {
   USoftInt = 0, SSoftInt = 1, MSoftInt = 3,
   UtimerInt = 4, STimerInt = 5, MTimerInt = 7,
   UExtInt = 8, SExtInt = 9, MExtInt = 11
 } IntCode deriving (Bits, Eq, FShow);
-
 typedef enum {
   InstAddrAlign = 0, InstAccessFault = 1, IllegalInst = 2,
   Breakpoint = 3, LoadAddrAlign = 4, LoadAccessFault = 5,
@@ -127,52 +114,6 @@ typedef enum {
   ECallFromU = 8, ECallFromS = 9, ECallFromM = 11,
   InstPgFault = 12, LoadPgFault = 13, StrAMOPgFault = 15
 } ExcCode deriving (Bits, Eq, FShow);
-
-typedef union tagged {
-  IntCode Interrupt;
-  ExcCode Exception;
-} MCause deriving (Eq);
-instance Bits#(MCause, XLEN);
-  function Bit#(XLEN) pack (MCause c) = case (c) matches // n must be at leas 4 + 1
-    tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
-    tagged Exception .e: {1'b0, zeroExtend(pack(e))};
-  endcase;
-  function MCause unpack (Bit#(XLEN) c) = (c[valueOf(XLEN)-1] == 1'b1) ?
-    tagged Interrupt unpack(truncate(c)) :
-    tagged Exception unpack(truncate(c));
-endinstance
-instance FShow#(MCause);
-  function Fmt fshow(MCause cause) = case (cause) matches
-    tagged Interrupt .i: $format(fshow(i), " (interrupt)");
-    tagged Exception .e: $format(fshow(e), " (exception)");
-  endcase;
-endinstance
-//function Bool isValidMCause(MCause c) = case (c) matches
-function Bool isValidMCause(Bit#(XLEN) c) = case (unpack(c)) matches
-  tagged Interrupt .i: case (i)
-    USoftInt, SSoftInt, MSoftInt,
-    UtimerInt, STimerInt, MTimerInt,
-    UExtInt, SExtInt, MExtInt: True;
-    default: False;
-  endcase
-  tagged Exception .e: case (e)
-    InstAddrAlign, InstAccessFault, IllegalInst,
-    Breakpoint, LoadAddrAlign, LoadAccessFault,
-    StrAMOAddrAlign, StrAMOAccessFault,
-    ECallFromU, ECallFromS, ECallFromM,
-    InstPgFault, LoadPgFault, StrAMOPgFault: True;
-    default: False;
-  endcase
-endcase;
-instance CSR#(MCause);
-  function Action updateCSR(Reg#(MCause) csr, MCause val, PrivLvl lvl) = action
-    if (isValidMCause(pack(val))) csr <= val;
-    else begin
-      printTLog($format("Illegal MCause value 0x%0x written in mcause register", pack(val)));
-      $finish(1);
-    end
-  endaction;
-endinstance
 
 ///////////////////
 // Logging utils //

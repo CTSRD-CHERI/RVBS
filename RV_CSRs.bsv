@@ -72,28 +72,28 @@ typedef struct {
 
   // machine information registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MVendorID)  mvendorid;
+  Reg#(VendorID)   mvendorid;
   Reg#(Bit#(XLEN)) marchid;
   Reg#(Bit#(XLEN)) mimpid;
   Reg#(Bit#(XLEN)) mhartid;
 
   // machine trap setup registers
   //////////////////////////////////////////////////////////////////////////////
-  Reg#(MStatus)    mstatus;
-  Reg#(MISA)       misa;
-  Reg#(MEDeleg)    medeleg;
-  Reg#(MIDeleg)    mideleg;
-  Reg#(MIE)        mie;
-  Reg#(MTVec)      mtvec;
+  Reg#(Status)     mstatus;
+  Reg#(ISA)        misa;
+  Reg#(EDeleg)     medeleg;
+  Reg#(IDeleg)     mideleg;
+  Reg#(IE)         mie;
+  Reg#(TVec)       mtvec;
   // mcounteren
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Bit#(XLEN)) mscratch;
-  Reg#(MEPC)       mepc;
-  Reg#(MCause)     mcause;
+  Reg#(EPC)        mepc;
+  Reg#(Cause)      mcause;
   Reg#(Bit#(XLEN)) mtval;
-  Reg#(MIP)        mip;
+  Reg#(IP)         mip;
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -285,52 +285,70 @@ module mkCSRs#(PrivLvl currLvl
   csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
 
   // CSR requests
-  function ActionValue#(Bit#(n)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(n) r)
-  provisos(Bits#(csr_t, n), CSR#(csr_t)) = actionvalue
+  function ActionValue#(csr_t) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(XLEN) r)
+    provisos (Bits#(csr_t, XLEN)) = actionvalue
+    csr_t retval = csr;
     if (r.rEffects != NOWRITE) begin
-      Bit#(n) newval = ?;
+      csr_t newval = ?;
       case (r.rType)
-        RW: newval = r.val;
-        RS: newval = pack(csr) | r.val;
-        RC: newval = pack(csr) & ~r.val;
+        RW: newval = unpack(r.val);
+        RS: newval = unpack(pack(csr) | r.val);
+        RC: newval = unpack(pack(csr) & ~r.val);
       endcase
-      updateCSR(csr, unpack(newval), currLvl);
+      csr <= newval;
       printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
-    end else
-      printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", pack(csr)));
-    return pack(csr);
+    end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
+    return retval;
+  endactionvalue;
+  function ActionValue#(csr_t0) readUpdateMultiViewCSR(Reg#(csr_t1) csr, CSRReq#(XLEN) r)
+    provisos(Bits#(csr_t1, XLEN), Bits#(csr_t0, XLEN),
+             Lower#(csr_t1, csr_t0), Lift#(csr_t0, csr_t1)) = actionvalue
+    csr_t0 retval = lower(csr);
+    if (r.rEffects != NOWRITE) begin
+      csr_t0 newval = ?;
+      case (r.rType)
+        RW: newval = unpack(r.val);
+        RS: newval = unpack(pack(csr) | r.val);
+        RC: newval = unpack(pack(csr) & ~r.val);
+      endcase
+      csr <= lift(pack(csr), newval, currLvl);
+      printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
+    end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
+    return retval;
   endactionvalue;
   function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
     Bit#(XLEN) ret = ?;
+    `define CSRUpdate(x, y) begin x tmp <- readUpdateCSR(y,r); ret = pack(tmp); end
+    `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
-      12'h300: ret <- readUpdateCSR(csrs.mstatus,r);
-      12'h301: ret <- readUpdateCSR(csrs.misa,r);
+      12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
+      12'h301: `MVCSRUpdate(MISA, csrs.misa)
       12'h302 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        ret <- readUpdateCSR(csrs.medeleg,r);
+        `MVCSRUpdate(MEDeleg, csrs.medeleg)
       12'h303 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        ret <- readUpdateCSR(csrs.mideleg,r);
-      12'h304: ret <- readUpdateCSR(csrs.mie,r);
-      12'h305: ret <- readUpdateCSR(csrs.mtvec,r);
-      12'h340: ret <- readUpdateCSR(csrs.mscratch,r);
-      12'h341: ret <- readUpdateCSR(csrs.mepc,r);
-      12'h342: ret <- readUpdateCSR(csrs.mcause,r);
-      12'h343: ret <- readUpdateCSR(csrs.mtval,r);
-      12'h344: ret <- readUpdateCSR(csrs.mip,r);
+        `MVCSRUpdate(MIDeleg, csrs.mideleg)
+      12'h304: `MVCSRUpdate(MIE, csrs.mie)
+      12'h305: `MVCSRUpdate(MTVec, csrs.mtvec)
+      12'h340: `CSRUpdate(Bit#(XLEN), csrs.mscratch)
+      12'h341: `MVCSRUpdate(MEPC, csrs.mepc)
+      12'h342: `MVCSRUpdate(MCause, csrs.mcause)
+      12'h343: `CSRUpdate(Bit#(XLEN), csrs.mtval)
+      12'h344: `MVCSRUpdate(MIP, csrs.mip)
       `ifdef PMP
-      `ifdef XLEN32
-      .x &&& (12'h3A0 >= x && x <= 12'h3A3):
-        ret <- readUpdateCSR(csrs.pmpcfg[x - 12'h3A0],r);
+      `ifdef XLEN64
+      12'h3A0: `CSRUpdate(Vector#(8, PMPCfg), csrs.pmpcfg[0])
+      12'h3A2: `CSRUpdate(Vector#(8, PMPCfg), csrs.pmpcfg[1])
       `else
-      12'h3A0: ret <- readUpdateCSR(csrs.pmpcfg[0],r);
-      12'h3A2: ret <- readUpdateCSR(csrs.pmpcfg[1],r);
+      .x &&& (12'h3A0 >= x && x <= 12'h3A3):
+        `CSRUpdate(Vector#(4, PMPCfg), csrs.pmpcfg[x - 12'h3A0])
       `endif
       .x &&& (12'h3B0 >= x && x <= 12'h3BF):
-        ret <- readUpdateCSR(csrs.pmpaddr[x - 12'h3B0],r);
+        `CSRUpdate(PMPAddr, csrs.pmpaddr[x - 12'h3B0])
       `endif
-      12'hF11: ret <- readUpdateCSR(csrs.mvendorid,r);
-      12'hF12: ret <- readUpdateCSR(csrs.marchid,r);
-      12'hF13: ret <- readUpdateCSR(csrs.mimpid,r);
-      12'hF14: ret <- readUpdateCSR(csrs.mhartid,r);
+      12'hF11: `MVCSRUpdate(MVendorID, csrs.mvendorid)
+      12'hF12: `CSRUpdate(Bit#(XLEN), csrs.marchid)
+      12'hF13: `CSRUpdate(Bit#(XLEN), csrs.mimpid)
+      12'hF14: `CSRUpdate(Bit#(XLEN), csrs.mhartid)
       12'hC00: ret = csrs.cycle[valueOf(XLEN)-1:0];
       //12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
       // RV32I only
@@ -352,6 +370,8 @@ module mkCSRs#(PrivLvl currLvl
         printLog($format("CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
       end
     endcase
+    `undef CSRUpdate
+    `undef MVCSRUpdate
     return ret;
   endactionvalue;
   csrs.req = req;

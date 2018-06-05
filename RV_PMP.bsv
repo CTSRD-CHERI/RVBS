@@ -52,11 +52,6 @@ instance DefaultValue#(PMPCfg);
   };
 endinstance
 typedef Vector#(n, PMPCfg) PMPCfgIfc#(numeric type n);
-instance CSR#(PMPCfgIfc#(n));
-  function Action updateCSR(Reg#(PMPCfgIfc#(n)) csr, PMPCfgIfc#(n) val, PrivLvl _) = action
-    csr <= val;
-  endaction;
-endinstance
 module mkPMPCfgIfcReg (Reg#(PMPCfgIfc#(n)));
   Vector#(n, Reg#(PMPCfg)) cfgs <- replicateM(mkReg(defaultValue));
   method Action _write(PMPCfgIfc#(n) vals) = action
@@ -82,11 +77,6 @@ instance DefaultValue#(PMPAddr);
     `endif
     address: 0
   };
-endinstance
-instance CSR#(PMPAddr);
-  function Action updateCSR(Reg#(PMPAddr) csr, PMPAddr val, PrivLvl _) = action
-    csr.address <= val.address;
-  endaction;
 endinstance
 
 typedef enum {READ, WRITE, IFETCH} PMPReqType deriving (Eq, FShow);

@@ -38,8 +38,8 @@ import RV_State :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Global Interrupt-Enable and Privilege stack push
-function Action pushStatusStack(Reg#(MStatus) mstatus, PrivLvl from, PrivLvl to) = action
-  MStatus newval = mstatus;
+function Action pushStatusStack(Reg#(Status) status, PrivLvl from, PrivLvl to) = action
+  Status newval = status;
   case (to)
     M: begin
       newval.mpie = newval.mie;
@@ -52,11 +52,11 @@ function Action pushStatusStack(Reg#(MStatus) mstatus, PrivLvl from, PrivLvl to)
     U: newval.upie = newval.uie;
     default: noAction;
   endcase
-  mstatus <= newval;
+  status <= newval;
 endaction;
 // Global Interrupt-Enable and Privilege stack pop
-function ActionValue#(PrivLvl) popStatusStack(Reg#(MStatus) mstatus, PrivLvl from) = actionvalue
-  MStatus newval = mstatus;
+function ActionValue#(PrivLvl) popStatusStack(Reg#(Status) status, PrivLvl from) = actionvalue
+  Status newval = status;
   PrivLvl to = from;
   case (from)
     M: begin
@@ -72,11 +72,11 @@ function ActionValue#(PrivLvl) popStatusStack(Reg#(MStatus) mstatus, PrivLvl fro
     U: newval.uie = newval.upie; // (and stay in U-mode)
     default: noAction;
   endcase
-  mstatus <= newval;
+  status <= newval;
   return to;
 endactionvalue;
 
-function Action general_trap(PrivLvl toLvl, MCause cause, RVState s, Action specific_behaviour) = action
+function Action general_trap(PrivLvl toLvl, Cause cause, RVState s, Action specific_behaviour) = action
   specific_behaviour;
   // Global Interrupt-Enable Stack and latch current privilege level
   pushStatusStack(s.csrs.mstatus, s.currentPrivLvl, toLvl);
@@ -191,7 +191,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     Bool limit_reached = True;
     case (s.currentPrivLvl) matches
       U &&& (!static_HAS_N_EXT): action trap(s, IllegalInst); endaction
-      S &&& (s.csrs.mstatus.tw && limit_reached): action trap(s, IllegalInst); endaction
+      S &&& (s.csrs.mstatus.tw == 1 && limit_reached): action trap(s, IllegalInst); endaction
     endcase
     printTLogPlusArgs("itrace", $format("pc: 0x%0x -- wfi -- IMPLEMENTED AS NOP", s.pc));
   endaction;
