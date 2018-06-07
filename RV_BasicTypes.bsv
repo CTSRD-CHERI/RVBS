@@ -101,6 +101,25 @@ instance Ord#(PrivLvl);
   endfunction
 endinstance
 
+// effective XLEN mode
+typedef enum {XLUNK = 2'b00, XL32 = 2'b01, XL64 = 2'b10, XL128 = 2'b11} XLMode deriving (Bits, Eq, FShow);
+instance Literal#(XLMode);
+  function fromInteger (x) = case (x)
+    32: XL32;
+    64: XL64;
+    128: XL128;
+    default: XLUNK;
+  endcase;
+  function inLiteralRange (x, i);
+    return (i == 32 || x == 64 || x == 128);
+  endfunction
+endinstance
+`ifdef XLEN64
+XLMode nativeXLEN = XL64;
+`else
+XLMode nativeXLEN = XL32;
+`endif
+
 // machine interrupt/exception codes
 typedef enum {
   USoftInt = 0, SSoftInt = 1, MSoftInt = 3,

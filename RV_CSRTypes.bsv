@@ -189,12 +189,7 @@ endcase;
 /////////
 // ISA //
 /////////
-`ifdef XLEN64
-Bit#(2) nativeXLEN = 2'd2;
-`else
-Bit#(2) nativeXLEN = 2'd1;
-`endif
-typedef struct { Bit#(2) mxl; Bit#(TSub#(XLEN,28)) res; Bit#(26) extensions; }
+typedef struct { XLMode mxl; Bit#(TSub#(XLEN,28)) res; Bit#(26) extensions; }
   ISA deriving (Bits, FShow);
 instance DefaultValue#(ISA);
   function ISA defaultValue() = ISA {
@@ -228,18 +223,12 @@ endinstance
 ////////////
 // Status //
 ////////////
-function Bit#(2) xl_field(Integer xlen) = case (xlen)
-  128: 2'b11; // 3
-  64: 2'b10;  // 2
-  32: 2'b01;  // 1
-  default: 2'b00;
-endcase;
 typedef struct {
   Bit#(1) sd;
   `ifdef XLEN64 // MAX_XLEN > 32
   Bit#(TSub#(XLEN,37)) res4; // WPRI
-  Bit#(2) sxl;
-  Bit#(2) uxl;
+  XLMode sxl;
+  XLMode uxl;
   Bit#(9) res3; // WPRI
   `else // MAX_XLEN == 32
   Bit#(8) res3; // WPRI
@@ -268,7 +257,7 @@ instance DefaultValue#(Status);
   function Status defaultValue() = Status {
     sd: 0,
     `ifdef XLEN64 // MAX_XLEN > 32
-    res4: 0, sxl: xl_field(valueOf(XLEN)), uxl: xl_field(valueOf(XLEN)), res3: 0,
+    res4: 0, sxl: nativeXLEN, uxl: nativeXLEN, res3: 0,
     `else // MAX_XLEN == 32
     res3: 0,
     `endif

@@ -32,6 +32,7 @@ import Recipe :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+import RV_CSRTypes :: *;
 `ifdef PMP
 import RV_PMP :: *;
 export RV_PMP :: *;
@@ -47,6 +48,8 @@ export RV_State :: *;
 // state type
 typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
+  XLMode currentXLEN;
+
   PC#(VAddr) pc;
   Reg#(VAddr) instByteSz;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
@@ -61,8 +64,20 @@ typedef struct {
 
 module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
   RVState s;
+
   //s.currentPrivLvl <- mkReg(M);
   s.currentPrivLvl <- mkConfigReg(M);
+  s.currentXLEN = case (s.currentPrivLvl)
+    M: s.csrs.misa.mxl;
+    `ifdef XLEN64 // MAX_XLEN > 32
+    S: s.csrs.mstatus.sxl;
+    U: s.csrs.mstatus.uxl;
+    `else
+    S, U: XL32;
+    `endif
+    default: XLUNK;
+  endcase;
+
   s.pc <- mkPC(0);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
@@ -90,6 +105,7 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
       s.imem.sendReq(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction)));
+
   return s;
 endmodule
 
