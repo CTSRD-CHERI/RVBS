@@ -189,13 +189,71 @@ endcase;
 /////////
 // ISA //
 /////////
-typedef struct { XLMode mxl; Bit#(TSub#(XLEN,28)) res; Bit#(26) extensions; }
+typedef struct {
+  Bool extZ;
+  Bool extY;
+  Bool extX;
+  Bool extW;
+  Bool extV;
+  Bool extU;
+  Bool extT;
+  Bool extS;
+  Bool extR;
+  Bool extQ;
+  Bool extP;
+  Bool extO;
+  Bool extN;
+  Bool extM;
+  Bool extL;
+  Bool extK;
+  Bool extJ;
+  Bool extI;
+  Bool extH;
+  Bool extG;
+  Bool extF;
+  Bool extE;
+  Bool extD;
+  Bool extC;
+  Bool extB;
+  Bool extA;
+} Extensions deriving (Bits, Eq, FShow);
+instance DefaultValue#(Extensions);
+  function Extensions defaultValue() = Extensions {
+    extZ: False,
+    extY: False,
+    extX: False,
+    extW: False,
+    extV: False,
+    extU: static_HAS_U_MODE,
+    extT: False,
+    extS: static_HAS_S_MODE,
+    extR: False,
+    extQ: False,
+    extP: False,
+    extO: False,
+    extN: static_HAS_N_EXT,
+    extM: static_HAS_M_EXT,
+    extL: False,
+    extK: False,
+    extJ: False,
+    extI: True,
+    extH: False,
+    extG: False,
+    extF: False,
+    extE: False,
+    extD: False,
+    extC: static_HAS_C_EXT,
+    extB: False,
+    extA: False
+  };
+endinstance
+typedef struct { XLMode mxl; Bit#(TSub#(XLEN,28)) res; Extensions extensions; }
   ISA deriving (Bits, FShow);
 instance DefaultValue#(ISA);
   function ISA defaultValue() = ISA {
     mxl: nativeXLEN,
     res: ?, // WIRI
-    extensions: 26'b00000000000000000100000000
+    extensions: defaultValue
   };
 endinstance
 `defM(ISA)
@@ -205,7 +263,8 @@ endinstance
 instance Lift#(MISA, MISA);
   function MISA lift(Bit#(XLEN) x, MISA y, PrivLvl _);
     let newval = y.val;
-    if (newval.mxl != nativeXLEN) newval.mxl = nativeXLEN; // only support native XLEN
+    newval.mxl = nativeXLEN; // no support for dynamic XLMode change
+    newval.extensions = defaultValue; // no support for dynamic Extensions change
     return MISA { val: newval };
   endfunction
 endinstance

@@ -45,6 +45,12 @@ Bool static_HAS_U_MODE = False;
 
 Bool static_HAS_I_EXT  = True;
 
+`ifdef RVM
+Bool static_HAS_M_EXT  = True;
+`else
+Bool static_HAS_M_EXT  = False;
+`endif
+
 `ifdef RVC
 Bool static_HAS_C_EXT  = True;
 `else
