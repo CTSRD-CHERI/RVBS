@@ -98,6 +98,7 @@ function Bool isInstAligned(Bit#(sz) x) provisos (Add#(2, a__, sz)) = x[1:0] == 
 
 // privilege levels
 typedef enum {U = 2'b00, S = 2'b01, Res = 2'b10, M = 2'b11} PrivLvl deriving (Bits, Eq, FShow);
+function PrivLvl toPrivLvl(Bit#(2) x) = unpack(x);
 instance Ord#(PrivLvl);
   function Ordering compare(PrivLvl a, PrivLvl b);
     if (a == b) return EQ;

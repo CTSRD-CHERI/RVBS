@@ -506,6 +506,15 @@ endaction;
   +-------------------------------------+--------+--------+--------+----------+
 */
 
+`define instCSRCommon\
+  if (s.currentPrivLvl >= toPrivLvl(imm[9:8])) begin\
+    // XXX for some reason, bluespec doesn't like this way to write it:\
+    // s.regFile[rd] <- s.csrs.req(r);\
+    let val <- s.csrs.req(r);\
+    s.regFile[rd] <= val;\
+    s.pc <= s.pc + s.instByteSz;\
+  end else trap(s, IllegalInst);
+
 // funct3 = CSRRW = 001
 // opcode = 1110011
 // pseudo-op CSRW
@@ -515,11 +524,7 @@ function Action instrCSRRW(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   Do the write side effect take place ?
   */
   let r = (rd == 0) ? rwCSRReqNoRead(imm, s.regFile[rs1]) : rwCSRReq(imm, s.regFile[rs1]);
-  // XXX for some reason, bluespec doesn't like this way to write it:
-  // s.regFile[rd] <- s.csrs.req(r);
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrw", rd, rs1, imm);
 endaction;
 
@@ -533,9 +538,7 @@ function Action instrCSRRS(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   Do the read side effect take place ?
   */
   let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrs", rd, rs1, imm);
 endaction;
 
@@ -547,9 +550,7 @@ function Action instrCSRRC(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   Do the read side effect take place ?
   */
   let r = (rs1 == 0) ? rcCSRReqNoWrite(imm, s.regFile[rs1]) : rcCSRReq(imm, s.regFile[rs1]);
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrc", rd, rs1, imm);
 endaction;
 
@@ -561,9 +562,7 @@ function Action instrCSRRWI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   Do the write side effect take place ?
   */
   let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrwi", rd, zimm, imm);
 endaction;
 
@@ -575,9 +574,7 @@ function Action instrCSRRSI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   Do the read side effect take place ?
   */
   let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrsi", rd, zimm, imm);
 endaction;
 
@@ -589,11 +586,11 @@ function Action instrCSRRCI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   Do the read side effect take place ?
   */
   let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
-  let val <- s.csrs.req(r);
-  s.regFile[rd] <= val;
-  s.pc <= s.pc + s.instByteSz;
+  `instCSRCommon
   logInstCSR(s.pc, "csrrci", rd, zimm, imm);
 endaction;
+
+`undef instCSRCommon
 
 //////////////////////////////////////
 // Environment Call and Breakpoints //
