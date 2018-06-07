@@ -321,6 +321,9 @@ module mkCSRs#(PrivLvl currLvl
     `define CSRUpdate(x, y) begin x tmp <- readUpdateCSR(y,r); ret = pack(tmp); end
     `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
+      `ifdef SUPERVISOR_MODE
+      12'h100: `MVCSRUpdate(SStatus, csrs.mstatus)
+      `endif
       12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
       12'h301: `MVCSRUpdate(MISA, csrs.misa)
       12'h302 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):

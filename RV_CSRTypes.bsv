@@ -139,7 +139,14 @@ instance Lift#(a, a); function lift(x,y,z) = y; endinstance
                    `defLiftBase(M``t)
 
 // Supervisor mode macros (assumes existance of 't' and 'M``t')
-// XXX
+`define defS(t) typedef struct { t val; } S``t deriving (Bits);
+`define defLower1S(t) `defLower1(M``t, S``t)
+`define defLift1S(t) `defLift1(S``t, M``t)
+`define defAllS(t) `defS(t)\
+                   `defLower1S(t)\
+                   `defLowerBase(M``t)\
+                   `defLift1S(t)\
+                   `defLiftBase(S``t)
 
 ///////////////
 // CSR Types //
@@ -343,10 +350,32 @@ instance Lift#(MStatus, MStatus);
     if (!static_HAS_S_MODE && unpack({1'b0, newval.spp}) == S) newval.spp = oldval.spp;
     if (!static_HAS_U_MODE &&         unpack(newval.mpp) == U) newval.mpp = oldval.mpp;
     if (!static_HAS_U_MODE && unpack({1'b0, newval.spp}) == U) newval.spp = oldval.spp;
-    //$display("DEBUG ==== mstatus.mpp was ", fshow(oldval.mpp), ", is now ", fshow(newval.mpp));
     return MStatus { val: newval };
   endfunction
 endinstance
+`ifdef SUPERVISOR_MODE
+`defS(Status)
+`defLower1S(Status)
+`defLowerBase(MStatus)
+`defLift1S(Status)
+instance Lift#(SStatus, SStatus);
+  function SStatus lift(Bit#(XLEN) x, SStatus y, PrivLvl _);
+    Status oldval = unpack(x);
+    Status newval = y.val;
+    newval.mie = oldval.mie;
+    newval.mpie = oldval.mpie;
+    newval.mpp = oldval.mpp;
+    newval.mprv = oldval.mprv;
+    newval.tvm = oldval.tvm;
+    newval.tw = oldval.tw;
+    newval.tsr = oldval.tsr;
+    `ifdef XLEN64 // MAX_XLEN > 32
+    newval.sxl = oldval.sxl;
+    `endif
+    return SStatus { val: newval };
+  endfunction
+endinstance
+`endif
 
 /////////
 // EPC //
