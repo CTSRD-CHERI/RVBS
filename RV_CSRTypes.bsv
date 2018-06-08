@@ -152,140 +152,6 @@ instance Lift#(a, a); function lift(x,y,z) = y; endinstance
 // CSR Types //
 ////////////////////////////////////////////////////////////////////////////////
 
-///////////
-// Cause //
-///////////
-typedef union tagged {
-  IntCode Interrupt;
-  ExcCode Exception;
-} Cause deriving (Eq);
-instance Bits#(Cause, XLEN);
-  function Bit#(XLEN) pack (Cause c) = case (c) matches // n must be at leas 4 + 1
-    tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
-    tagged Exception .e: {1'b0, zeroExtend(pack(e))};
-  endcase;
-  function Cause unpack (Bit#(XLEN) c) = (c[valueOf(XLEN)-1] == 1'b1) ?
-    tagged Interrupt unpack(truncate(c)) :
-    tagged Exception unpack(truncate(c));
-endinstance
-instance FShow#(Cause);
-  function Fmt fshow(Cause cause) = case (cause) matches
-    tagged Interrupt .i: $format(fshow(i), " (interrupt)");
-    tagged Exception .e: $format(fshow(e), " (exception)");
-  endcase;
-endinstance
-//function Bool isValidCause(Cause c) = case (c) matches
-function Bool isValidCause(Bit#(XLEN) c) = case (unpack(c)) matches
-  tagged Interrupt .i: case (i)
-    USoftInt, SSoftInt, MSoftInt,
-    UtimerInt, STimerInt, MTimerInt,
-    UExtInt, SExtInt, MExtInt: True;
-    default: False;
-  endcase
-  tagged Exception .e: case (e)
-    InstAddrAlign, InstAccessFault, IllegalInst,
-    Breakpoint, LoadAddrAlign, LoadAccessFault,
-    StrAMOAddrAlign, StrAMOAccessFault,
-    ECallFromU, ECallFromS, ECallFromM,
-    InstPgFault, LoadPgFault, StrAMOPgFault: True;
-    default: False;
-  endcase
-endcase;
-`defAllM(Cause)
-
-/////////
-// ISA //
-/////////
-typedef struct {
-  Bool extZ;
-  Bool extY;
-  Bool extX;
-  Bool extW;
-  Bool extV;
-  Bool extU;
-  Bool extT;
-  Bool extS;
-  Bool extR;
-  Bool extQ;
-  Bool extP;
-  Bool extO;
-  Bool extN;
-  Bool extM;
-  Bool extL;
-  Bool extK;
-  Bool extJ;
-  Bool extI;
-  Bool extH;
-  Bool extG;
-  Bool extF;
-  Bool extE;
-  Bool extD;
-  Bool extC;
-  Bool extB;
-  Bool extA;
-} Extensions deriving (Bits, Eq, FShow);
-instance DefaultValue#(Extensions);
-  function Extensions defaultValue() = Extensions {
-    extZ: False,
-    extY: False,
-    extX: False,
-    extW: False,
-    extV: False,
-    extU: static_HAS_U_MODE,
-    extT: False,
-    extS: static_HAS_S_MODE,
-    extR: False,
-    extQ: False,
-    extP: False,
-    extO: False,
-    extN: static_HAS_N_EXT,
-    extM: static_HAS_M_EXT,
-    extL: False,
-    extK: False,
-    extJ: False,
-    extI: True,
-    extH: False,
-    extG: False,
-    extF: False,
-    extE: False,
-    extD: False,
-    extC: static_HAS_C_EXT,
-    extB: False,
-    extA: False
-  };
-endinstance
-typedef struct { XLMode mxl; Bit#(TSub#(XLEN,28)) res; Extensions extensions; }
-  ISA deriving (Bits, FShow);
-instance DefaultValue#(ISA);
-  function ISA defaultValue() = ISA {
-    mxl: nativeXLEN,
-    res: ?, // WIRI
-    extensions: defaultValue
-  };
-endinstance
-`defM(ISA)
-`defLower1M(ISA)
-`defLowerBase(ISA)
-`defLift1M(ISA)
-instance Lift#(MISA, MISA);
-  function MISA lift(Bit#(XLEN) x, MISA y, PrivLvl _);
-    let newval = y.val;
-    newval.mxl = nativeXLEN; // no support for dynamic XLMode change
-    newval.extensions = defaultValue; // no support for dynamic Extensions change
-    return MISA { val: newval };
-  endfunction
-endinstance
-
-//////////////
-// VendorID //
-//////////////
-typedef struct { Bit#(TSub#(XLEN,7)) bank; Bit#(7) offset; }
-  VendorID deriving (Bits, FShow);
-instance DefaultValue#(VendorID);
-  function VendorID defaultValue() = VendorID {bank: 0, offset: 0};
-endinstance
-`defAllM(VendorID)
-
 ////////////
 // Status //
 ////////////
@@ -378,25 +244,164 @@ endinstance
 `endif
 
 /////////
-// EPC //
+// ISA //
 /////////
 typedef struct {
-  Bit#(XLEN) addr;
-} EPC deriving (Bits, FShow);
-instance DefaultValue#(EPC);
-  function EPC defaultValue() = EPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
+  Bool extZ;
+  Bool extY;
+  Bool extX;
+  Bool extW;
+  Bool extV;
+  Bool extU;
+  Bool extT;
+  Bool extS;
+  Bool extR;
+  Bool extQ;
+  Bool extP;
+  Bool extO;
+  Bool extN;
+  Bool extM;
+  Bool extL;
+  Bool extK;
+  Bool extJ;
+  Bool extI;
+  Bool extH;
+  Bool extG;
+  Bool extF;
+  Bool extE;
+  Bool extD;
+  Bool extC;
+  Bool extB;
+  Bool extA;
+} Extensions deriving (Bits, Eq, FShow);
+instance DefaultValue#(Extensions);
+  function Extensions defaultValue() = Extensions {
+    extZ: False,
+    extY: False,
+    extX: False,
+    extW: False,
+    extV: False,
+    extU: static_HAS_U_MODE,
+    extT: False,
+    extS: static_HAS_S_MODE,
+    extR: False,
+    extQ: False,
+    extP: False,
+    extO: False,
+    extN: static_HAS_N_EXT,
+    extM: static_HAS_M_EXT,
+    extL: False,
+    extK: False,
+    extJ: False,
+    extI: True,
+    extH: False,
+    extG: False,
+    extF: False,
+    extE: False,
+    extD: False,
+    extC: static_HAS_C_EXT,
+    extB: False,
+    extA: False
+  };
 endinstance
-`defM(EPC)
-`defLower1M(EPC)
-`defLowerBase(EPC)
-`defLift1M(EPC)
-instance Lift#(MEPC, MEPC);
-  function MEPC lift(Bit#(XLEN) x, MEPC y, PrivLvl _);
-    EPC newval = y.val;
-    if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
-    return MEPC { val: newval };
+typedef struct { XLMode mxl; Bit#(TSub#(XLEN,28)) res; Extensions extensions; }
+  ISA deriving (Bits, FShow);
+instance DefaultValue#(ISA);
+  function ISA defaultValue() = ISA {
+    mxl: nativeXLEN,
+    res: ?, // WIRI
+    extensions: defaultValue
+  };
+endinstance
+`defM(ISA)
+`defLower1M(ISA)
+`defLowerBase(ISA)
+`defLift1M(ISA)
+instance Lift#(MISA, MISA);
+  function MISA lift(Bit#(XLEN) x, MISA y, PrivLvl _);
+    let newval = y.val;
+    newval.mxl = nativeXLEN; // no support for dynamic XLMode change
+    newval.extensions = defaultValue; // no support for dynamic Extensions change
+    return MISA { val: newval };
   endfunction
 endinstance
+
+////////////
+// EDeleg //
+////////////
+typedef struct {Bit#(XLEN) val;} EDeleg deriving (Bits);
+instance DefaultValue#(EDeleg);
+  function EDeleg defaultValue() = EDeleg {val: 0};
+endinstance
+`defM(EDeleg)
+`defLower1M(EDeleg)
+`defLowerBase(EDeleg)
+`defLift1M(EDeleg)
+instance Lift#(MEDeleg, MEDeleg);
+  function MEDeleg lift(Bit#(XLEN) x, MEDeleg y, PrivLvl _);
+    Bit#(XLEN) newval = y.val.val;
+    newval[11] = 0;
+    return MEDeleg { val: EDeleg { val: newval }};
+  endfunction
+endinstance
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(EDeleg)
+`endif
+
+////////////
+// IDeleg //
+////////////
+typedef struct {Bit#(XLEN) val;} IDeleg deriving (Bits);
+instance DefaultValue#(IDeleg);
+  function IDeleg defaultValue() = IDeleg {val: 0};
+endinstance
+`defAllM(IDeleg)
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(IDeleg)
+`endif
+
+////////
+// IE //
+////////
+typedef struct {
+  Bit#(TSub#(XLEN,12)) res3;
+  Bool meie;
+  Bool res2;
+  Bool seie;
+  Bool ueie;
+  Bool mtie;
+  Bool res1;
+  Bool stie;
+  Bool utie;
+  Bool msie;
+  Bool res0;
+  Bool ssie;
+  Bool usie;
+} IE deriving (Bits, FShow);
+instance DefaultValue#(IE); // XXX does spec actually specify reboot value ?
+  function IE defaultValue() = IE {
+    res3: 0,
+    meie: False,
+    res2: False,
+    seie: False,
+    ueie: False,
+    mtie: False,
+    res1: False,
+    stie: False,
+    utie: False,
+    msie: False,
+    res0: False,
+    ssie: False,
+    usie: False
+  };
+endinstance
+`defAllM(IE)
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(IE)
+`endif
 
 //////////
 // TVec //
@@ -445,34 +450,80 @@ instance Lift#(MTVec, MTVec);
     return MTVec { val: newval };
   endfunction
 endinstance
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(TVec)
+`endif
 
-////////////
-// EDeleg //
-////////////
-typedef struct {Bit#(XLEN) val;} EDeleg deriving (Bits);
-instance DefaultValue#(EDeleg);
-  function EDeleg defaultValue() = EDeleg {val: 0};
+/////////
+// EPC //
+/////////
+typedef struct {
+  Bit#(XLEN) addr;
+} EPC deriving (Bits, FShow);
+instance DefaultValue#(EPC);
+  function EPC defaultValue() = EPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
 endinstance
-`defM(EDeleg)
-`defLower1M(EDeleg)
-`defLowerBase(EDeleg)
-`defLift1M(EDeleg)
-instance Lift#(MEDeleg, MEDeleg);
-  function MEDeleg lift(Bit#(XLEN) x, MEDeleg y, PrivLvl _);
-    Bit#(XLEN) newval = y.val.val;
-    newval[11] = 0;
-    return MEDeleg { val: EDeleg { val: newval }};
+`defM(EPC)
+`defLower1M(EPC)
+`defLowerBase(EPC)
+`defLift1M(EPC)
+instance Lift#(MEPC, MEPC);
+  function MEPC lift(Bit#(XLEN) x, MEPC y, PrivLvl _);
+    EPC newval = y.val;
+    if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
+    return MEPC { val: newval };
   endfunction
 endinstance
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(EPC)
+`endif
 
-////////////
-// IDeleg //
-////////////
-typedef struct {Bit#(XLEN) val;} IDeleg deriving (Bits);
-instance DefaultValue#(IDeleg);
-  function IDeleg defaultValue() = IDeleg {val: 0};
+///////////
+// Cause //
+///////////
+typedef union tagged {
+  IntCode Interrupt;
+  ExcCode Exception;
+} Cause deriving (Eq);
+instance Bits#(Cause, XLEN);
+  function Bit#(XLEN) pack (Cause c) = case (c) matches // n must be at leas 4 + 1
+    tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
+    tagged Exception .e: {1'b0, zeroExtend(pack(e))};
+  endcase;
+  function Cause unpack (Bit#(XLEN) c) = (c[valueOf(XLEN)-1] == 1'b1) ?
+    tagged Interrupt unpack(truncate(c)) :
+    tagged Exception unpack(truncate(c));
 endinstance
-`defAllM(IDeleg)
+instance FShow#(Cause);
+  function Fmt fshow(Cause cause) = case (cause) matches
+    tagged Interrupt .i: $format(fshow(i), " (interrupt)");
+    tagged Exception .e: $format(fshow(e), " (exception)");
+  endcase;
+endinstance
+//function Bool isValidCause(Cause c) = case (c) matches
+function Bool isValidCause(Bit#(XLEN) c) = case (unpack(c)) matches
+  tagged Interrupt .i: case (i)
+    USoftInt, SSoftInt, MSoftInt,
+    UtimerInt, STimerInt, MTimerInt,
+    UExtInt, SExtInt, MExtInt: True;
+    default: False;
+  endcase
+  tagged Exception .e: case (e)
+    InstAddrAlign, InstAccessFault, IllegalInst,
+    Breakpoint, LoadAddrAlign, LoadAccessFault,
+    StrAMOAddrAlign, StrAMOAccessFault,
+    ECallFromU, ECallFromS, ECallFromM,
+    InstPgFault, LoadPgFault, StrAMOPgFault: True;
+    default: False;
+  endcase
+endcase;
+`defAllM(Cause)
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(Cause)
+`endif
 
 ////////
 // IP //
@@ -542,43 +593,20 @@ instance Lift#(MIP, MIP);
     return MIP { val: newval };
   endfunction
 endinstance
+`ifdef SUPERVISOR_MODE
+// XXX TODO
+`defAllS(IP)
+`endif
 
-////////
-// IE //
-////////
-typedef struct {
-  Bit#(TSub#(XLEN,12)) res3;
-  Bool meie;
-  Bool res2;
-  Bool seie;
-  Bool ueie;
-  Bool mtie;
-  Bool res1;
-  Bool stie;
-  Bool utie;
-  Bool msie;
-  Bool res0;
-  Bool ssie;
-  Bool usie;
-} IE deriving (Bits, FShow);
-instance DefaultValue#(IE); // XXX does spec actually specify reboot value ?
-  function IE defaultValue() = IE {
-    res3: 0,
-    meie: False,
-    res2: False,
-    seie: False,
-    ueie: False,
-    mtie: False,
-    res1: False,
-    stie: False,
-    utie: False,
-    msie: False,
-    res0: False,
-    ssie: False,
-    usie: False
-  };
+//////////////
+// VendorID //
+//////////////
+typedef struct { Bit#(TSub#(XLEN,7)) bank; Bit#(7) offset; }
+  VendorID deriving (Bits, FShow);
+instance DefaultValue#(VendorID);
+  function VendorID defaultValue() = VendorID {bank: 0, offset: 0};
 endinstance
-`defAllM(IE)
+`defAllM(VendorID)
 
 // undefine macros
 `undef defM
@@ -597,3 +625,7 @@ endinstance
 `undef defLower1M
 `undef defLift1M
 `undef defAllM
+`undef defS
+`undef defLower1S
+`undef defLift1S
+`undef defAllS

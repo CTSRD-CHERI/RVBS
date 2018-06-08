@@ -323,6 +323,18 @@ module mkCSRs#(PrivLvl currLvl
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
       `ifdef SUPERVISOR_MODE
       12'h100: `MVCSRUpdate(SStatus, csrs.mstatus)
+      /*
+      TODO
+      12'h102: `MVCSRUpdate(SEDeleg, csrs.sedeleg)
+      12'h103: `MVCSRUpdate(SIDeleg, csrs.sideleg)
+      12'h104: `MVCSRUpdate(SIE, csrs.sie)
+      12'h105: `MVCSRUpdate(STVec, csrs.stvec)
+      12'h140: `CSRUpdate(Bit#(XLEN), csrs.sscratch)
+      12'h141: `MVCSRUpdate(SEPC, csrs.sepc)
+      12'h142: `MVCSRUpdate(SCause, csrs.mcause)
+      12'h143: `CSRUpdate(Bit#(XLEN), csrs.stval)
+      12'h144: `MVCSRUpdate(SIP, csrs.mip)
+      */
       `endif
       12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
       12'h301: `MVCSRUpdate(MISA, csrs.misa)
