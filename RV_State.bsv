@@ -83,9 +83,9 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
   s.regFile <- mkRegFileZ;
   `ifdef PMP
   s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
-  s.csrs <- mkCSRs(s.currentPrivLvl, s.pmp);
+  s.csrs <- mkCSRs(s.pmp);
   `else
-  s.csrs <- mkCSRs(s.currentPrivLvl);
+  s.csrs <- mkCSRs();
   `endif
   s.imem = mem.p0;
   s.dmem = mem.p1;

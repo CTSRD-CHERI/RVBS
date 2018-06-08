@@ -32,31 +32,51 @@ import Printf :: *;
 import RV_BasicTypes :: *;
 
 //////////////////////
+// Legalize classes //
+////////////////////////////////////////////////////////////////////////////////
+
+typeclass LegalizeRead#(type a);
+  function a legalizeRead(a x);
+endtypeclass
+typeclass LegalizeWrite#(type a);
+  function a legalizeWrite(Bit#(XLEN) oldval, a newval);
+endtypeclass
+
+instance LegalizeRead#(a);
+  function legalizeRead = id;
+endinstance
+instance LegalizeWrite#(a);
+  function legalizeWrite(x, y) = y;
+endinstance
+
+//////////////////////
 // CSRs projections //
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
                            CSR projections
+Some RISC-V CSR can be accessed through restricted views in different privilege
+modes. The following typeclasses are provided to assist in defining these views.
 Note: The two step process of lower+lower1 and lift+lift1 is simply due to a
 BSV limitation (In the recursive instance, not using a separate Lift1 or Lower1
 typeclass leads to a compiler error)
 +----------------------------------------------------------------------+
 
-                                          +---+  lower     +---+
+                                          +---+    lower   +---+
  MACHINE                                  | M <------------+ M |
-                                          +-+-+  (zero)    +-^-+
+                                          +-+-+(legalizeRd)+-^-+
                                      lower1 |                |
 +---------------------------------+         |                | lift1
                                             |                |
-                         +---+  lower     +-v-+    lift    +-+-+
+                         +---+    lower   +-v-+    lift    +-+-+
  SUPERVISOR              | S <------------+ S +------------> S |
-                         +-+-+  (zero)    +-^-+ (legalize) +---+
+                         +-+-+(legalizeRd)+-^-+(legalizeWr)+---+
                     lower1 |                |
 +----------------+         |                | lift1
                            |                |
                          +-v-+    lift    +-+-+
  USER                    | U +------------> U |
-                         +---+ (legalize) +---+
+                         +---+(legalizeRw)+---+
 
 +-----------------------------------------------------------------------+
 
@@ -93,20 +113,20 @@ endinstance
 /////////////////////
 // Lift1, one level lifting (simple cast)
 typeclass Lift1#(type a, type b) dependencies (b determines a);
-  function b lift1(Bit#(XLEN) oldval, a newval, PrivLvl curlvl);
+  function b lift1(a val);
 endtypeclass
 // Lift, multi-level lifting.
 typeclass Lift#(type a, type b);
-  function b lift(Bit#(XLEN) oldval, a newval, PrivLvl curlvl);
+  function b lift(Bit#(XLEN) oldval, a newval);
 endtypeclass
 
 // XXX Lift1 instance, single level transformation, probably masking...
 // XXX Define each base case Lift instance as a same level a -> a legalize
 // Recursive multi-level Lift instance
 instance Lift#(a, b) provisos (Lift#(a,x), Lift1#(x,b));
-  function b lift(Bit#(XLEN) oldval, a newval, PrivLvl curlvl);
-    x tmp = lift(oldval, newval, curlvl); // lift accross levels or same level legalize
-    return lift1(oldval, tmp, curlvl); // lift between two distinct levels
+  function b lift(Bit#(XLEN) oldval, a newval);
+    x tmp = lift(oldval, newval); // lift accross levels or same level legalize
+    return lift1(tmp); // lift between two distinct levels
   endfunction
 endinstance
 
@@ -117,13 +137,13 @@ endinstance
 instance Lower1#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
   function lower1(x) = cast(x); endinstance
 `define defLowerBase(a)\
-instance Lower#(a, a); function lower = id; endinstance
+instance Lower#(a, a); function lower = legalizeRead; endinstance
 
 `define defLift1(a, b)\
 instance Lift1#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
-  function lift1(x,y,z) = cast(y); endinstance
+  function lift1(x) = cast(x); endinstance
 `define defLiftBase(a)\
-instance Lift#(a, a); function lift(x,y,z) = y; endinstance
+instance Lift#(a, a); function lift = legalizeWrite; endinstance
 
 // Machine mode macros (assumes existance of 't')
 `define defM(t)\
@@ -197,10 +217,9 @@ instance DefaultValue#(Status);
     mie: 0, res0: 0, sie: 0, uie: 0
   };
 endinstance
-`defM(Status)
-`defLowerBase(Status)
-instance Lift#(MStatus, MStatus);
-  function MStatus lift(Bit#(XLEN) x, MStatus y, PrivLvl _);
+`defAllM(Status)
+instance LegalizeWrite#(MStatus);
+  function legalizeWrite(x, y);
     Status oldval = unpack(x);
     Status newval = y.val;
     `ifdef XLEN64 // MAX_XLEN > 32
@@ -215,21 +234,36 @@ instance Lift#(MStatus, MStatus);
   endfunction
 endinstance
 `ifdef SUPERVISOR_MODE
-`defS(Status)
-`defLowerBase(MStatus)
-instance Lift#(SStatus, SStatus);
-  function SStatus lift(Bit#(XLEN) x, SStatus y, PrivLvl _);
+`defAllS(Status)
+instance LegalizeRead#(SStatus);
+  function legalizeRead(x);
+    let ret = x.val;
+    ret.mie  = 0;
+    ret.mpie = 0;
+    ret.mpp  = 0;
+    ret.mprv = 0;
+    ret.tvm  = 0;
+    ret.tw   = 0;
+    ret.tsr  = 0;
+    `ifdef XLEN64 // MAX_XLEN > 32
+    ret.sxl  = 0;
+    `endif
+    return SStatus { val: ret };
+  endfunction
+endinstance
+instance LegalizeWrite#(SStatus);
+  function legalizeWrite(x, y);
     Status oldval = unpack(x);
     Status newval = y.val;
-    newval.mie = oldval.mie;
+    newval.mie  = oldval.mie;
     newval.mpie = oldval.mpie;
-    newval.mpp = oldval.mpp;
+    newval.mpp  = oldval.mpp;
     newval.mprv = oldval.mprv;
-    newval.tvm = oldval.tvm;
-    newval.tw = oldval.tw;
-    newval.tsr = oldval.tsr;
+    newval.tvm  = oldval.tvm;
+    newval.tw   = oldval.tw;
+    newval.tsr  = oldval.tsr;
     `ifdef XLEN64 // MAX_XLEN > 32
-    newval.sxl = oldval.sxl;
+    newval.sxl  = oldval.sxl;
     `endif
     return SStatus { val: newval };
   endfunction
@@ -306,36 +340,40 @@ instance DefaultValue#(ISA);
     extensions: defaultValue
   };
 endinstance
-`defM(ISA)
-`defLowerBase(ISA)
-instance Lift#(MISA, MISA);
-  function MISA lift(Bit#(XLEN) x, MISA y, PrivLvl _);
-    let newval = y.val;
+instance LegalizeWrite#(ISA);
+  function ISA legalizeWrite(Bit#(XLEN) x, ISA y);
+    let newval = y;
     newval.mxl = nativeXLEN; // no support for dynamic XLMode change
     newval.extensions = defaultValue; // no support for dynamic Extensions change
-    return MISA { val: newval };
+    return newval;
   endfunction
 endinstance
 
 ////////////
 // EDeleg //
 ////////////
-typedef struct {Bit#(XLEN) val;} EDeleg deriving (Bits);
-instance DefaultValue#(EDeleg);
-  function EDeleg defaultValue() = EDeleg {val: 0};
+`define defEDeleg(x)\
+typedef struct {Bit#(XLEN) val;} x``EDeleg deriving (Bits);\
+instance DefaultValue#(x``EDeleg);\
+  function x``EDeleg defaultValue() = x``EDeleg {val: 0};\
 endinstance
-`defM(EDeleg)
-`defLowerBase(EDeleg)
-instance Lift#(MEDeleg, MEDeleg);
-  function MEDeleg lift(Bit#(XLEN) x, MEDeleg y, PrivLvl _);
-    Bit#(XLEN) newval = y.val.val;
+`defEDeleg(M)
+instance LegalizeWrite#(MEDeleg);
+  function MEDeleg legalizeWrite(Bit#(XLEN) x, MEDeleg y);
+    Bit#(XLEN) newval = y.val;
     newval[11] = 0;
-    return MEDeleg { val: EDeleg { val: newval }};
+    return MEDeleg { val: newval };
   endfunction
 endinstance
 `ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(EDeleg)
+`defEDeleg(S)
+instance LegalizeWrite#(SEDeleg);
+  function SEDeleg legalizeWrite(Bit#(XLEN) x, SEDeleg y);
+    Bit#(XLEN) newval = y.val;
+    newval[11:9] = 0;
+    return SEDeleg { val: newval };
+  endfunction
+endinstance
 `endif
 
 ////////////
@@ -345,10 +383,77 @@ typedef struct {Bit#(XLEN) val;} IDeleg deriving (Bits);
 instance DefaultValue#(IDeleg);
   function IDeleg defaultValue() = IDeleg {val: 0};
 endinstance
-`defAllM(IDeleg)
+
+////////
+// IP //
+////////
+typedef struct {
+  Bit#(TSub#(XLEN,12)) res3;
+  Bool meip;
+  Bool res2;
+  Bool seip;
+  Bool ueip;
+  Bool mtip;
+  Bool res1;
+  Bool stip;
+  Bool utip;
+  Bool msip;
+  Bool res0;
+  Bool ssip;
+  Bool usip;
+} IP deriving (Bits, FShow);
+instance DefaultValue#(IP); // XXX does spec actually specify reboot value ?
+  function IP defaultValue() = IP {
+    res3: 0,
+    meip: False,
+    res2: False,
+    seip: False,
+    ueip: False,
+    mtip: False,
+    res1: False,
+    stip: False,
+    utip: False,
+    msip: False,
+    res0: False,
+    ssip: False,
+    usip: False
+  };
+endinstance
+`defAllM(IP)
+instance LegalizeWrite#(MIP);
+  function legalizeWrite(x, y);
+    IP newval = y.val;
+    IP ret = unpack(x);
+    // software interrupts
+    ret.ssip = newval.ssip;
+    ret.usip = newval.usip;
+    // timer interrupts
+    ret.stip = newval.stip;
+    ret.utip = newval.utip;
+    // external interrupts
+    ret.seip = newval.seip;
+    ret.ueip = newval.ueip;
+    return MIP { val: ret };
+  endfunction
+endinstance
 `ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(IDeleg)
+`defAllS(IP)
+instance LegalizeWrite#(SIP);
+  function legalizeWrite(x, y);
+    IP newval = y.val;
+    IP ret = unpack(x);
+    // software interrupts
+    ret.ssip = newval.ssip;
+    ret.usip = newval.usip;
+    // timer interrupts
+    ret.stip = newval.stip;
+    ret.utip = newval.utip;
+    // external interrupts
+    ret.seip = newval.seip;
+    ret.ueip = newval.ueip;
+    return SIP { val: ret };
+  endfunction
+endinstance
 `endif
 
 ////////
@@ -388,7 +493,6 @@ instance DefaultValue#(IE); // XXX does spec actually specify reboot value ?
 endinstance
 `defAllM(IE)
 `ifdef SUPERVISOR_MODE
-// XXX TODO
 `defAllS(IE)
 `endif
 
@@ -421,49 +525,34 @@ instance Literal#(TVecMode);
   endcase;
   function Bool inLiteralRange (TVecMode _, Integer x) = (x >= 0 && x < 4);
 endinstance
-typedef struct { Bit#(TSub#(XLEN,2)) base;  TVecMode mode; }
-  TVec deriving (Bits, FShow);
+typedef struct { Bit#(TSub#(XLEN,2)) base;  TVecMode mode; } TVec deriving (Bits, FShow);
 instance DefaultValue#(TVec);
   function TVec defaultValue() = TVec {base: 0, mode: Direct};
 endinstance
-`defM(TVec)
-`defLowerBase(TVec)
-instance Lift#(MTVec, MTVec);
-  function MTVec lift(Bit#(XLEN) x, MTVec y, PrivLvl _);
-    TVec oldval = unpack(x);
-    TVec newval = y.val;
+instance LegalizeWrite#(TVec);
+  function legalizeWrite(x, y);
+    let oldval = unpack(x);
+    let newval = y;
     if (newval.mode != Direct || newval.mode != Vectored)
       newval.mode = oldval.mode;
-    return MTVec { val: newval };
+    return newval;
   endfunction
 endinstance
-`ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(TVec)
-`endif
 
 /////////
 // EPC //
 /////////
-typedef struct {
-  Bit#(XLEN) addr;
-} EPC deriving (Bits, FShow);
+typedef struct { Bit#(XLEN) addr; } EPC deriving (Bits, FShow);
 instance DefaultValue#(EPC);
   function EPC defaultValue() = EPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
 endinstance
-`defM(EPC)
-`defLowerBase(EPC)
-instance Lift#(MEPC, MEPC);
-  function MEPC lift(Bit#(XLEN) x, MEPC y, PrivLvl _);
-    EPC newval = y.val;
+instance LegalizeWrite#(EPC);
+  function legalizeWrite(x, y);
+    let newval = y;
     if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
-    return MEPC { val: newval };
+    return newval;
   endfunction
 endinstance
-`ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(EPC)
-`endif
 
 ///////////
 // Cause //
@@ -504,82 +593,6 @@ function Bool isValidCause(Bit#(XLEN) c) = case (unpack(c)) matches
     default: False;
   endcase
 endcase;
-`defAllM(Cause)
-`ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(Cause)
-`endif
-
-////////
-// IP //
-////////
-typedef struct {
-  Bit#(TSub#(XLEN,12)) res3;
-  Bool meip;
-  Bool res2;
-  Bool seip;
-  Bool ueip;
-  Bool mtip;
-  Bool res1;
-  Bool stip;
-  Bool utip;
-  Bool msip;
-  Bool res0;
-  Bool ssip;
-  Bool usip;
-} IP deriving (Bits, FShow);
-instance DefaultValue#(IP); // XXX does spec actually specify reboot value ?
-  function IP defaultValue() = IP {
-    res3: 0,
-    meip: False,
-    res2: False,
-    seip: False,
-    ueip: False,
-    mtip: False,
-    res1: False,
-    stip: False,
-    utip: False,
-    msip: False,
-    res0: False,
-    ssip: False,
-    usip: False
-  };
-endinstance
-`defM(IP)
-`defLowerBase(IP)
-instance Lift#(MIP, MIP);
-  function MIP lift(Bit#(XLEN) x, MIP y, PrivLvl lvl);
-    IP oldval = unpack(x);
-    IP newval = y.val;
-    // software interrupts
-    newval.msip = oldval.msip; // TODO
-    if (lvl < S) newval.ssip = oldval.ssip;
-    if (lvl < U) newval.usip = oldval.usip;
-    // timer interrupts
-    newval.mtip = oldval.mtip; // TODO
-    if (lvl != M) begin
-      newval.stip = oldval.stip;
-      newval.utip = oldval.utip;
-    end
-    // external interrupts
-    newval.meip = oldval.meip; // TODO
-    if (lvl != M) begin
-      newval.seip = oldval.seip;
-      newval.ueip = oldval.ueip;
-    end
-    // reserved WIRI fields
-    newval.res0 = False;
-    newval.res1 = False;
-    newval.res2 = False;
-    newval.res3 = 0;
-    // fold value
-    return MIP { val: newval };
-  endfunction
-endinstance
-`ifdef SUPERVISOR_MODE
-// XXX TODO
-`defAllS(IP)
-`endif
 
 //////////////
 // VendorID //
@@ -589,4 +602,3 @@ typedef struct { Bit#(TSub#(XLEN,7)) bank; Bit#(7) offset; }
 instance DefaultValue#(VendorID);
   function VendorID defaultValue() = VendorID {bank: 0, offset: 0};
 endinstance
-`defAllM(VendorID)

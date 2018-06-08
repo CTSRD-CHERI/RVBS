@@ -81,11 +81,11 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   Reg#(Status)     mstatus;
   Reg#(ISA)        misa;
-  Reg#(EDeleg)     medeleg;
+  Reg#(MEDeleg)    medeleg;
   Reg#(IDeleg)     mideleg;
   Reg#(IE)         mie;
   Reg#(TVec)       mtvec;
-  // mcounteren
+  // TODO mcounteren
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
@@ -108,26 +108,28 @@ typedef struct {
   Vector#(16, Reg#(PMPAddr)) pmpaddr;
   `endif
 
+  `ifdef SUPERVISOR_MODE
   // supervisor trap setup
   //////////////////////////////////////////////////////////////////////////////
-  // sstatus;
-  // sedeleg
-  // sideleg
-  // sie
-  // stvec;
-  // scounteren
+  // sstatus -- S-view of mstatus;
+  Reg#(SEDeleg)    sedeleg;
+  Reg#(IDeleg)     sideleg;
+  // sie -- S-view of mie
+  Reg#(TVec)       stvec;
+  // TODO scounteren
 
   // supervisor trap handling
   //////////////////////////////////////////////////////////////////////////////
-  // sscratch;
-  // sepc;
-  // scause;
-  // stval;
-  // sip
+  Reg#(Bit#(XLEN)) sscratch;
+  Reg#(EPC)        sepc;
+  Reg#(Cause)      scause;
+  Reg#(Bit#(XLEN)) stval;
+  // sip -- S-view of mip
 
   // supervisor protection and translation
   //////////////////////////////////////////////////////////////////////////////
-  // satp
+  // TODO satp
+  `endif
 
   // user trap setup registers
   //////////////////////////////////////////////////////////////////////////////
@@ -172,11 +174,11 @@ endmodule
 //////////////////////////
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
-module mkCSRs#(PrivLvl currLvl
 `ifdef PMP
-,PMP pmp
+module mkCSRs#(PMP pmp)(CSRs);
+`else
+module mkCSRs(CSRs);
 `endif
-)(CSRs);
 
   // instance of the CSRs struct
   CSRs csrs;
@@ -254,6 +256,29 @@ module mkCSRs#(PrivLvl currLvl
   // dpc 12'h7B1
   // dscratch 12'h7B2
 
+  `ifdef SUPERVISOR_MODE
+  // supervisor trap setup
+  //////////////////////////////////////////////////////////////////////////////
+  // sstatus 12'h100 -- S-view of mstatus
+  csrs.sedeleg <- mkRegUndef("sedeleg");
+  csrs.sideleg <- mkRegUndef("sideleg");
+  if (static_HAS_U_MODE && static_HAS_N_EXT) begin
+    csrs.sedeleg <- mkReg(defaultValue); // sedeleg 12'h102
+    csrs.sideleg <- mkReg(defaultValue); // sideleg 12'h103
+  end
+  // sie 12'h104 -- S-view of mie
+  csrs.stvec   <- mkReg(defaultValue); // stvec 12'h105
+  // TODO scounteren 12'h106
+
+  // supervisor trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  csrs.sscratch <- mkRegU; // sscratch 12'h140
+  csrs.sepc     <- mkReg(defaultValue); // sepc 12'h141
+  csrs.scause   <- mkRegU; // scause 12'h142
+  csrs.stval    <- mkRegU; // stval 12'h143
+  // sip 12'h144 -- S-view of mip
+  `endif
+
   // user trap setup registers
   //////////////////////////////////////////////////////////////////////////////
   // ustatus 12'h000
@@ -285,9 +310,10 @@ module mkCSRs#(PrivLvl currLvl
   csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
 
   // CSR requests
-  function ActionValue#(csr_t) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(XLEN) r)
-    provisos (Bits#(csr_t, XLEN)) = actionvalue
-    csr_t retval = csr;
+  function ActionValue#(Bit#(XLEN)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(XLEN) r)
+    provisos (Bits#(csr_t, XLEN), LegalizeRead#(csr_t), LegalizeWrite#(csr_t)) = actionvalue
+    csr_t tmpval = legalizeRead(csr);
+    Bit#(XLEN) retval = pack(tmpval);
     if (r.rEffects != NOWRITE) begin
       csr_t newval = ?;
       case (r.rType)
@@ -295,7 +321,7 @@ module mkCSRs#(PrivLvl currLvl
         RS: newval = unpack(pack(csr) | r.val);
         RC: newval = unpack(pack(csr) & ~r.val);
       endcase
-      csr <= newval;
+      csr <= legalizeWrite(pack(csr), newval);
       printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
     return retval;
@@ -311,59 +337,58 @@ module mkCSRs#(PrivLvl currLvl
         RS: newval = unpack(pack(csr) | r.val);
         RC: newval = unpack(pack(csr) & ~r.val);
       endcase
-      csr <= lift(pack(csr), newval, currLvl);
+      csr <= lift(pack(csr), newval);
       printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
     return retval;
   endactionvalue;
   function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
     Bit#(XLEN) ret = ?;
-    `define CSRUpdate(x, y) begin x tmp <- readUpdateCSR(y,r); ret = pack(tmp); end
+    `define CSRUpdate(x) ret <- readUpdateCSR(x,r);
     `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
       `ifdef SUPERVISOR_MODE
       12'h100: `MVCSRUpdate(SStatus, csrs.mstatus)
-      /*
-      TODO
-      12'h102: `MVCSRUpdate(SEDeleg, csrs.sedeleg)
-      12'h103: `MVCSRUpdate(SIDeleg, csrs.sideleg)
-      12'h104: `MVCSRUpdate(SIE, csrs.sie)
-      12'h105: `MVCSRUpdate(STVec, csrs.stvec)
-      12'h140: `CSRUpdate(Bit#(XLEN), csrs.sscratch)
-      12'h141: `MVCSRUpdate(SEPC, csrs.sepc)
-      12'h142: `MVCSRUpdate(SCause, csrs.mcause)
-      12'h143: `CSRUpdate(Bit#(XLEN), csrs.stval)
+      12'h102 &&& (static_HAS_U_MODE && static_HAS_N_EXT):
+        `CSRUpdate(csrs.sedeleg)
+      12'h103 &&& (static_HAS_U_MODE && static_HAS_N_EXT):
+        `CSRUpdate(csrs.sideleg)
+      12'h104: `MVCSRUpdate(SIE, csrs.mie)
+      12'h105: `CSRUpdate(csrs.stvec)
+      12'h140: `CSRUpdate(csrs.sscratch)
+      12'h141: `CSRUpdate(csrs.sepc)
+      12'h142: `CSRUpdate(csrs.scause)
+      12'h143: `CSRUpdate(csrs.stval)
       12'h144: `MVCSRUpdate(SIP, csrs.mip)
-      */
       `endif
       12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
-      12'h301: `MVCSRUpdate(MISA, csrs.misa)
+      12'h301: `CSRUpdate(csrs.misa)
       12'h302 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        `MVCSRUpdate(MEDeleg, csrs.medeleg)
+        `CSRUpdate(csrs.medeleg)
       12'h303 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        `MVCSRUpdate(MIDeleg, csrs.mideleg)
+        `CSRUpdate(csrs.mideleg)
       12'h304: `MVCSRUpdate(MIE, csrs.mie)
-      12'h305: `MVCSRUpdate(MTVec, csrs.mtvec)
-      12'h340: `CSRUpdate(Bit#(XLEN), csrs.mscratch)
-      12'h341: `MVCSRUpdate(MEPC, csrs.mepc)
-      12'h342: `MVCSRUpdate(MCause, csrs.mcause)
-      12'h343: `CSRUpdate(Bit#(XLEN), csrs.mtval)
+      12'h305: `CSRUpdate(csrs.mtvec)
+      12'h340: `CSRUpdate(csrs.mscratch)
+      12'h341: `CSRUpdate(csrs.mepc)
+      12'h342: `CSRUpdate(csrs.mcause)
+      12'h343: `CSRUpdate(csrs.mtval)
       12'h344: `MVCSRUpdate(MIP, csrs.mip)
       `ifdef PMP
       `ifdef XLEN64
-      12'h3A0: `CSRUpdate(Vector#(8, PMPCfg), csrs.pmpcfg[0])
-      12'h3A2: `CSRUpdate(Vector#(8, PMPCfg), csrs.pmpcfg[1])
+      12'h3A0: `CSRUpdate(csrs.pmpcfg[0])
+      12'h3A2: `CSRUpdate(csrs.pmpcfg[1])
       `else
       .x &&& (12'h3A0 >= x && x <= 12'h3A3):
-        `CSRUpdate(Vector#(4, PMPCfg), csrs.pmpcfg[x - 12'h3A0])
+        `CSRUpdate(csrs.pmpcfg[x - 12'h3A0])
       `endif
       .x &&& (12'h3B0 >= x && x <= 12'h3BF):
-        `CSRUpdate(PMPAddr, csrs.pmpaddr[x - 12'h3B0])
+        `CSRUpdate(csrs.pmpaddr[x - 12'h3B0])
       `endif
-      12'hF11: `MVCSRUpdate(MVendorID, csrs.mvendorid)
-      12'hF12: `CSRUpdate(Bit#(XLEN), csrs.marchid)
-      12'hF13: `CSRUpdate(Bit#(XLEN), csrs.mimpid)
-      12'hF14: `CSRUpdate(Bit#(XLEN), csrs.mhartid)
+      12'hF11: `CSRUpdate(csrs.mvendorid)
+      12'hF12: `CSRUpdate(csrs.marchid)
+      12'hF13: `CSRUpdate(csrs.mimpid)
+      12'hF14: `CSRUpdate(csrs.mhartid)
       12'hC00: ret = csrs.cycle[valueOf(XLEN)-1:0];
       //12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
       // RV32I only
@@ -385,8 +410,6 @@ module mkCSRs#(PrivLvl currLvl
         printLog($format("CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
       end
     endcase
-    `undef CSRUpdate
-    `undef MVCSRUpdate
     return ret;
   endactionvalue;
   csrs.req = req;
