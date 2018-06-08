@@ -37,20 +37,23 @@ import RV_BasicTypes :: *;
 
 /*
                            CSR projections
+Note: The two step process of lower+lower1 and lift+lift1 is simply due to a
+BSV limitation (In the recursive instance, not using a separate Lift1 or Lower1
+typeclass leads to a compiler error)
 +----------------------------------------------------------------------+
 
                                           +---+  lower     +---+
  MACHINE                                  | M <------------+ M |
-                                          +-+-+   (id)     +-^-+
+                                          +-+-+  (zero)    +-^-+
                                      lower1 |                |
-+---------------------------------+  (zero) |                | lift1
-                                            |                | (mask)
++---------------------------------+         |                | lift1
+                                            |                |
                          +---+  lower     +-v-+    lift    +-+-+
  SUPERVISOR              | S <------------+ S +------------> S |
-                         +-+-+   (id)     +-^-+ (legalize) +---+
+                         +-+-+  (zero)    +-^-+ (legalize) +---+
                     lower1 |                |
-+----------------+  (zero) |                | lift1
-                           |                | (mask)
++----------------+         |                | lift1
+                           |                |
                          +-v-+    lift    +-+-+
  USER                    | U +------------> U |
                          +---+ (legalize) +---+
@@ -67,7 +70,7 @@ A -> D as (((A -> B) -> C) -> D) applying each individual steps.
 //////////////////////
 // lowering classes //
 //////////////////////
-// Lower1, one level lowering
+// Lower1, one level lowering (simple cast)
 typeclass Lower1#(type a, type b) dependencies (b determines a);
   function b lower1(a val);
 endtypeclass
@@ -88,7 +91,7 @@ endinstance
 /////////////////////
 // lifting classes //
 /////////////////////
-// Lift1, one level lifting
+// Lift1, one level lifting (simple cast)
 typeclass Lift1#(type a, type b) dependencies (b determines a);
   function b lift1(Bit#(XLEN) oldval, a newval, PrivLvl curlvl);
 endtypeclass
@@ -113,40 +116,34 @@ endinstance
 `define defLower1(a, b)\
 instance Lower1#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
   function lower1(x) = cast(x); endinstance
-`define defLower(a, b)\
-instance Lower#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
-  function lower(x) = cast(x); endinstance
 `define defLowerBase(a)\
 instance Lower#(a, a); function lower = id; endinstance
 
 `define defLift1(a, b)\
 instance Lift1#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
   function lift1(x,y,z) = cast(y); endinstance
-`define defLift(a, b)\
-instance Lift#(a, b) provisos (Bits#(a, n), Bits#(b, n));\
-  function lift(x,y,z) = cast(y); endinstance
 `define defLiftBase(a)\
 instance Lift#(a, a); function lift(x,y,z) = y; endinstance
 
 // Machine mode macros (assumes existance of 't')
-`define defM(t) typedef struct { t val; } M``t deriving (Bits);
-`define defLower1M(t) `defLower1(t, M``t)
-`define defLift1M(t) `defLift1(M``t, t)
-`define defAllM(t) `defM(t)\
-                   `defLower1M(t)\
-                   `defLowerBase(t)\
-                   `defLift1M(t)\
-                   `defLiftBase(M``t)
+`define defM(t)\
+  typedef struct { t val; } M``t deriving (Bits);\
+  `defLower1(t, M``t)\
+  `defLift1(M``t, t)
+`define defAllM(t)\
+  `defM(t)\
+  `defLowerBase(t)\
+  `defLiftBase(M``t)
 
 // Supervisor mode macros (assumes existance of 't' and 'M``t')
-`define defS(t) typedef struct { t val; } S``t deriving (Bits);
-`define defLower1S(t) `defLower1(M``t, S``t)
-`define defLift1S(t) `defLift1(S``t, M``t)
-`define defAllS(t) `defS(t)\
-                   `defLower1S(t)\
-                   `defLowerBase(M``t)\
-                   `defLift1S(t)\
-                   `defLiftBase(S``t)
+`define defS(t)\
+  typedef struct { t val; } S``t deriving (Bits);\
+  `defLower1(M``t, S``t)\
+  `defLift1(S``t, M``t)
+`define defAllS(t)\
+  `defS(t)\
+  `defLowerBase(M``t)\
+  `defLiftBase(S``t)
 
 ///////////////
 // CSR Types //
@@ -201,9 +198,7 @@ instance DefaultValue#(Status);
   };
 endinstance
 `defM(Status)
-`defLower1M(Status)
 `defLowerBase(Status)
-`defLift1M(Status)
 instance Lift#(MStatus, MStatus);
   function MStatus lift(Bit#(XLEN) x, MStatus y, PrivLvl _);
     Status oldval = unpack(x);
@@ -221,9 +216,7 @@ instance Lift#(MStatus, MStatus);
 endinstance
 `ifdef SUPERVISOR_MODE
 `defS(Status)
-`defLower1S(Status)
 `defLowerBase(MStatus)
-`defLift1S(Status)
 instance Lift#(SStatus, SStatus);
   function SStatus lift(Bit#(XLEN) x, SStatus y, PrivLvl _);
     Status oldval = unpack(x);
@@ -314,9 +307,7 @@ instance DefaultValue#(ISA);
   };
 endinstance
 `defM(ISA)
-`defLower1M(ISA)
 `defLowerBase(ISA)
-`defLift1M(ISA)
 instance Lift#(MISA, MISA);
   function MISA lift(Bit#(XLEN) x, MISA y, PrivLvl _);
     let newval = y.val;
@@ -334,9 +325,7 @@ instance DefaultValue#(EDeleg);
   function EDeleg defaultValue() = EDeleg {val: 0};
 endinstance
 `defM(EDeleg)
-`defLower1M(EDeleg)
 `defLowerBase(EDeleg)
-`defLift1M(EDeleg)
 instance Lift#(MEDeleg, MEDeleg);
   function MEDeleg lift(Bit#(XLEN) x, MEDeleg y, PrivLvl _);
     Bit#(XLEN) newval = y.val.val;
@@ -438,9 +427,7 @@ instance DefaultValue#(TVec);
   function TVec defaultValue() = TVec {base: 0, mode: Direct};
 endinstance
 `defM(TVec)
-`defLower1M(TVec)
 `defLowerBase(TVec)
-`defLift1M(TVec)
 instance Lift#(MTVec, MTVec);
   function MTVec lift(Bit#(XLEN) x, MTVec y, PrivLvl _);
     TVec oldval = unpack(x);
@@ -465,9 +452,7 @@ instance DefaultValue#(EPC);
   function EPC defaultValue() = EPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
 endinstance
 `defM(EPC)
-`defLower1M(EPC)
 `defLowerBase(EPC)
-`defLift1M(EPC)
 instance Lift#(MEPC, MEPC);
   function MEPC lift(Bit#(XLEN) x, MEPC y, PrivLvl _);
     EPC newval = y.val;
@@ -561,9 +546,7 @@ instance DefaultValue#(IP); // XXX does spec actually specify reboot value ?
   };
 endinstance
 `defM(IP)
-`defLower1M(IP)
 `defLowerBase(IP)
-`defLift1M(IP)
 instance Lift#(MIP, MIP);
   function MIP lift(Bit#(XLEN) x, MIP y, PrivLvl lvl);
     IP oldval = unpack(x);
@@ -607,25 +590,3 @@ instance DefaultValue#(VendorID);
   function VendorID defaultValue() = VendorID {bank: 0, offset: 0};
 endinstance
 `defAllM(VendorID)
-
-// undefine macros
-`undef defM
-`undef defLower1M
-`undef defLowerM
-`undef defLift1M
-`undef defLiftM
-`undef defAllM
-`undef defLower1
-`undef defLower
-`undef defLowerBase
-`undef defLift1
-`undef defLift
-`undef defLiftBase
-`undef defM
-`undef defLower1M
-`undef defLift1M
-`undef defAllM
-`undef defS
-`undef defLower1S
-`undef defLift1S
-`undef defAllS
