@@ -293,7 +293,7 @@ def task_test_elf_to_hex () :
   """Converts an elf test to a hex"""
 
   def elf_to_hex (f, m):
-    print("gen hex for {:s} (mem{:d})".format(f,m))
+    #print("gen hex for {:s} (mem{:d})".format(f,m))
     cmd = [elfmanip,"-f","-o","{:s}.hex".format(test_name(f, m))]
     cmd += ["--only-section",".text.init",".text",".data","--"]
     cmd += ["{:s}".format(f),"hex","-w",str(int(m/8))]
