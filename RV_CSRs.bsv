@@ -128,7 +128,7 @@ typedef struct {
 
   // supervisor protection and translation
   //////////////////////////////////////////////////////////////////////////////
-  // TODO satp
+  Reg#(SATP) satp;
   `endif
 
   // user trap setup registers
@@ -277,6 +277,10 @@ module mkCSRs(CSRs);
   csrs.scause   <- mkRegU; // scause 12'h142
   csrs.stval    <- mkRegU; // stval 12'h143
   // sip 12'h144 -- S-view of mip
+
+  // supervisor protection and translation
+  //////////////////////////////////////////////////////////////////////////////
+  csrs.satp     <- mkReg(defaultValue); // satp 12h'180
   `endif
 
   // user trap setup registers
@@ -360,6 +364,7 @@ module mkCSRs(CSRs);
       12'h142: `CSRUpdate(csrs.scause)
       12'h143: `CSRUpdate(csrs.stval)
       12'h144: `MVCSRUpdate(SIP, csrs.mip)
+      12'h180: `CSRUpdate(csrs.satp)
       `endif
       12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
       12'h301: `CSRUpdate(csrs.misa)

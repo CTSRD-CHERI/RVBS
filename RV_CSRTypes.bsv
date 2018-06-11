@@ -531,8 +531,8 @@ instance DefaultValue#(TVec);
 endinstance
 instance LegalizeWrite#(TVec);
   function legalizeWrite(x, y);
-    let oldval = unpack(x);
-    let newval = y;
+    TVec oldval = unpack(x);
+    TVec newval = y;
     if (newval.mode != Direct || newval.mode != Vectored)
       newval.mode = oldval.mode;
     return newval;
@@ -602,3 +602,34 @@ typedef struct { Bit#(TSub#(XLEN,7)) bank; Bit#(7) offset; }
 instance DefaultValue#(VendorID);
   function VendorID defaultValue() = VendorID {bank: 0, offset: 0};
 endinstance
+
+`ifdef SUPERVISOR_MODE
+//////////
+// SATP //
+//////////
+`ifdef XLEN64 // MAX_XLEN > 32
+typedef enum { BARE = 4'h0, SV39 = 4'h8, SV48 = 4'h9, SV57 = 4'ha, SV64 = 4'hb } VMMode64 deriving (Bits, Eq, FShow);
+`else
+typedef enum { BARE = 1'b0, SV32 = 1'b1 } VMMode32 deriving (Bits, Eq, FShow);
+`endif
+typedef struct {
+  `ifdef XLEN64 // MAX_XLEN > 32
+  VMMode64 mode;
+  Bit#(16) asid;
+  Bit#(44) ppn;
+  `else
+  VMMode32 mode;
+  Bit#(9) asid;
+  Bit#(22) ppn;
+  `endif
+} SATP deriving (Bits, FShow);
+instance DefaultValue#(SATP);
+  function defaultValue() = SATP { mode: BARE, asid: 0, ppn: 0 };
+endinstance
+instance LegalizeWrite#(SATP);
+  function legalizeWrite(x, y);
+    // TODO (only bare is currently supported)
+    return (y.mode == BARE) ? y : unpack(x);
+  endfunction
+endinstance
+`endif
