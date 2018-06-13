@@ -29,6 +29,9 @@
 import RV_BasicTypes :: *;
 export RV_BasicTypes :: *;
 
+import RV_Traces :: *;
+export RV_Traces :: *;
+
 import RV_CSRTypes :: *;
 export RV_CSRTypes :: *;
 

@@ -147,7 +147,7 @@ instance Lift#(a, a); function lift = legalizeWrite; endinstance
 
 // Machine mode macros (assumes existance of 't')
 `define defM(t)\
-  typedef struct { t val; } M``t deriving (Bits);\
+  typedef struct { t val; } M``t deriving (Bits, FShow);\
   `defLower1(t, M``t)\
   `defLift1(M``t, t)
 `define defAllM(t)\
@@ -157,7 +157,7 @@ instance Lift#(a, a); function lift = legalizeWrite; endinstance
 
 // Supervisor mode macros (assumes existance of 't' and 'M``t')
 `define defS(t)\
-  typedef struct { t val; } S``t deriving (Bits);\
+  typedef struct { t val; } S``t deriving (Bits, FShow);\
   `defLower1(M``t, S``t)\
   `defLift1(S``t, M``t)
 `define defAllS(t)\
@@ -176,8 +176,8 @@ typedef struct {
   Bit#(1) sd;
   `ifdef XLEN64 // MAX_XLEN > 32
   Bit#(TSub#(XLEN,37)) res4; // WPRI
-  XLMode sxl;
-  XLMode uxl;
+  XLMode sxl; // WARL
+  XLMode uxl; // WARL
   Bit#(9) res3; // WPRI
   `else // MAX_XLEN == 32
   Bit#(8) res3; // WPRI
@@ -223,6 +223,9 @@ instance LegalizeWrite#(MStatus);
     Status oldval = unpack(x);
     Status newval = y.val;
     `ifdef XLEN64 // MAX_XLEN > 32
+    // only XLEN 32 or 64 supported
+    if (newval.sxl != XL32 && newval.sxl != XL64) newval.sxl = oldval.sxl;
+    if (newval.uxl != XL32 && newval.uxl != XL64) newval.uxl = oldval.uxl;
     if (!static_HAS_S_MODE) newval.sxl = 0;
     if (!static_HAS_U_MODE) newval.uxl = 0;
     `endif
@@ -353,7 +356,7 @@ endinstance
 // EDeleg //
 ////////////
 `define defEDeleg(x)\
-typedef struct {Bit#(XLEN) val;} x``EDeleg deriving (Bits);\
+typedef struct {Bit#(XLEN) val;} x``EDeleg deriving (Bits, FShow);\
 instance DefaultValue#(x``EDeleg);\
   function x``EDeleg defaultValue() = x``EDeleg {val: 0};\
 endinstance
@@ -379,7 +382,7 @@ endinstance
 ////////////
 // IDeleg //
 ////////////
-typedef struct {Bit#(XLEN) val;} IDeleg deriving (Bits);
+typedef struct {Bit#(XLEN) val;} IDeleg deriving (Bits, FShow);
 instance DefaultValue#(IDeleg);
   function IDeleg defaultValue() = IDeleg {val: 0};
 endinstance
@@ -542,14 +545,22 @@ endinstance
 /////////
 // EPC //
 /////////
-typedef struct { Bit#(XLEN) addr; } EPC deriving (Bits, FShow);
+typedef struct {
+  `ifdef RVC
+  Bit#(TSub#(XLEN, 1)) addr;
+  Bit#(1) z;
+  `else
+  Bit#(TSub#(XLEN, 2)) addr;
+  Bit#(2) z;
+  `endif
+} EPC deriving (Bits, FShow);
 instance DefaultValue#(EPC);
-  function EPC defaultValue() = EPC{addr: {?,2'b00}}; // must not trigger unaligned inst fetch exception
+  function EPC defaultValue() = EPC{addr: ?, z:0}; // must not trigger unaligned inst fetch exception
 endinstance
 instance LegalizeWrite#(EPC);
   function legalizeWrite(x, y);
-    let newval = y;
-    if (newval.addr[1:0] != 0) newval.addr[1:0] = 0; // must not trigger unaligned inst fetch exception
+    EPC newval = unpack(x);
+    newval.addr = y.addr;
     return newval;
   endfunction
 endinstance

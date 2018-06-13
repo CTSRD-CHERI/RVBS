@@ -50,6 +50,8 @@ class RVBS:
       self.mem_width = self.size
     self.mem_size = mem_size
     self.mem_img = mem_img
+    if (s_mode and not u_mode):
+      raise Exception("S mode implies U mode")
     self.s_mode = s_mode
     self.u_mode = u_mode
     self.m_ext = m_ext
@@ -73,6 +75,8 @@ class RVBS:
 
   def bsc_flags(self):
     flags = ["-D", "PRINT_ABI_REG_NAME"]
+    #default: flags += ["+RTS", "-K{:d}".format(8388608), "-RTS"]
+    flags += ["+RTS", "-K{:d}".format(20000000), "-RTS"]
     flags += ["-D", "XLEN32"]
     if self.size >= 64:
       flags += ["-D","XLEN64"]
@@ -125,6 +129,7 @@ rvbss = [
   for s in [False, True] for u in [False, True]
   for m in [False, True] for c in [False, True]
   for n in [False, True] for pmp in [False, True]
+  if (u or not s) # Supervisor mode implies User mode
 ]
 
 # python generate all one hot for given size
@@ -149,9 +154,11 @@ pandoc = sub.run(["which","pandoc"],stdout=sub.PIPE).stdout.decode("utf-8").stri
 md_docs = [x for x in os.listdir(root_dir) if x[-3:] == ".md"]
 # test paths
 tests_dir = op.join(root_dir,"rv-tests")
+#test32i_re = re.compile("rv32(mi|si|ui)-(uo|rvbs)-[^.]+$")
 test32i_re = re.compile("rv32(mi|ui)-(uo|rvbs)-[^.]+$")
 test32m_re = re.compile("rv32um-(uo|rvbs)-[^.]+$")
 test32c_re = re.compile("rv32uc-(uo|rvbs)-[^.]+$")
+#test64i_re = re.compile("rv64(mi|si|ui)-(uo|rvbs)-[^.]+$")
 test64i_re = re.compile("rv64(mi|ui)-(uo|rvbs)-[^.]+$")
 test64m_re = re.compile("rv64um-(uo|rvbs)-[^.]+$")
 test64c_re = re.compile("rv64uc-(uo|rvbs)-[^.]+$")

@@ -46,26 +46,26 @@ typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects deriving (Eq, FShow);
 
 typedef struct {
   Bit#(12) idx;
-  Bit#(n) val;
+  Bit#(XLEN) val;
   CSRReqType rType;
   CSRReqEffects rEffects;
-} CSRReq#(numeric type n) deriving (FShow);
+} CSRReq deriving (FShow);
 
-instance DefaultValue#(CSRReq#(n));
-  function CSRReq#(n) defaultValue =
+instance DefaultValue#(CSRReq);
+  function CSRReq defaultValue =
     CSRReq { idx: ?, val: ?, rType: RW, rEffects: ALL };
 endinstance
-function CSRReq#(n) rwCSRReq(Bit#(12) i, Bit#(n) v) =
+function CSRReq rwCSRReq(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RW, rEffects: ALL };
-function CSRReq#(n) rwCSRReqNoRead(Bit#(12) i, Bit#(n) v) =
+function CSRReq rwCSRReqNoRead(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RW, rEffects: NOREAD };
-function CSRReq#(n) rsCSRReq(Bit#(12) i, Bit#(n) v) =
+function CSRReq rsCSRReq(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RS, rEffects: ALL };
-function CSRReq#(n) rsCSRReqNoWrite(Bit#(12) i, Bit#(n) v) =
+function CSRReq rsCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RS, rEffects: NOWRITE };
-function CSRReq#(n) rcCSRReq(Bit#(12) i, Bit#(n) v) =
+function CSRReq rcCSRReq(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RC, rEffects: ALL };
-function CSRReq#(n) rcCSRReqNoWrite(Bit#(12) i, Bit#(n) v) =
+function CSRReq rcCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
   CSRReq { idx: i, val: v, rType: RC, rEffects: NOWRITE };
 
 typedef struct {
@@ -160,7 +160,7 @@ typedef struct {
 
   // CSR request
   //////////////////////////////////////////////////////////////////////////////
-  function ActionValue#(Bit#(XLEN)) doReq (CSRReq#(XLEN) r) req;
+  function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;
 
 } CSRs;
 
@@ -314,8 +314,9 @@ module mkCSRs(CSRs);
   csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
 
   // CSR requests
-  function ActionValue#(Bit#(XLEN)) readUpdateCSR(Reg#(csr_t) csr, CSRReq#(XLEN) r)
-    provisos (Bits#(csr_t, XLEN), LegalizeRead#(csr_t), LegalizeWrite#(csr_t)) = actionvalue
+  function ActionValue#(Bit#(XLEN)) readUpdateCSR(Reg#(csr_t) csr, CSRReq r)
+    provisos (FShow#(csr_t), Bits#(csr_t, XLEN),
+              LegalizeRead#(csr_t), LegalizeWrite#(csr_t)) = actionvalue
     csr_t tmpval = legalizeRead(csr);
     Bit#(XLEN) retval = pack(tmpval);
     if (r.rEffects != NOWRITE) begin
@@ -325,13 +326,14 @@ module mkCSRs(CSRs);
         RS: newval = unpack(pack(csr) | r.val);
         RC: newval = unpack(pack(csr) & ~r.val);
       endcase
-      csr <= legalizeWrite(pack(csr), newval);
-      printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
+      csr_t newcsr = legalizeWrite(pack(csr), newval);
+      csr <= newcsr;
+      printTLogPlusArgs("CSRs", $format(fshow(csr) + $format(" -> ") + fshow(newcsr)));
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
     return retval;
   endactionvalue;
-  function ActionValue#(csr_t0) readUpdateMultiViewCSR(Reg#(csr_t1) csr, CSRReq#(XLEN) r)
-    provisos(Bits#(csr_t1, XLEN), Bits#(csr_t0, XLEN),
+  function ActionValue#(csr_t0) readUpdateMultiViewCSR(Reg#(csr_t1) csr, CSRReq r)
+    provisos(FShow#(csr_t1), Bits#(csr_t1, XLEN), Bits#(csr_t0, XLEN),
              Lower#(csr_t1, csr_t0), Lift#(csr_t0, csr_t1)) = actionvalue
     csr_t0 retval = lower(csr);
     if (r.rEffects != NOWRITE) begin
@@ -341,12 +343,13 @@ module mkCSRs(CSRs);
         RS: newval = unpack(pack(csr) | r.val);
         RC: newval = unpack(pack(csr) & ~r.val);
       endcase
-      csr <= lift(pack(csr), newval);
-      printTLogPlusArgs("CSRs", $format("overwriting CSR old value 0x%0x with new value 0x%0x", pack(csr), newval));
+      csr_t1 newcsr = lift(pack(csr), newval);
+      csr <= newcsr;
+      printTLogPlusArgs("CSRs", $format(fshow(csr) + $format(" -> ") + fshow(newcsr)));
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
     return retval;
   endactionvalue;
-  function ActionValue#(Bit#(XLEN)) req (CSRReq#(XLEN) r) = actionvalue
+  function ActionValue#(Bit#(XLEN)) req (CSRReq r) = actionvalue
     Bit#(XLEN) ret = ?;
     `define CSRUpdate(x) ret <- readUpdateCSR(x,r);
     `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
@@ -401,15 +404,9 @@ module mkCSRs(CSRs);
       //XXX hack for test suite
       12'hCC0: begin // test success
         csrs.ctrl[7:0] <= r.val[7:0];
-        if (genC) begin
-          $display("TEST SUCCESS");
-          $finish(0);
-        end
+        if (genC) begin $display("TEST SUCCESS"); $finish(0); end
       end
-      12'hCC1: begin // test failure
-        $display("TEST FAILURE");
-        $finish(0);
-      end
+      12'hCC1: if (genC) begin $display("TEST FAILURE"); $finish(0); end // test failure
       default: begin
         ret = ?;
         printLog($format("CSR 0x%0x unimplemented - ", r.idx, fshow(r)));

@@ -32,6 +32,7 @@ import Recipe :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+import RV_Traces :: *;
 import RV_CSRTypes :: *;
 `ifdef PMP
 import RV_PMP :: *;

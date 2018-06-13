@@ -30,6 +30,7 @@ import BitPat :: *;
 import BID :: *;
 
 import RV_BasicTypes :: *;
+import RV_Traces :: *;
 import RV_CSRTypes :: *;
 import RV_State :: *;
 
@@ -61,13 +62,13 @@ function ActionValue#(PrivLvl) popStatusStack(Reg#(Status) status, PrivLvl from)
   case (from)
     M: begin
       newval.mie = newval.mpie;
-      newval.mpp = (static_HAS_U_MODE) ? pack(U) : pack(M);
       to         = unpack(newval.mpp);
+      newval.mpp = (static_HAS_U_MODE) ? pack(U) : pack(M);
     end
     S: begin
       newval.sie = newval.spie;
-      newval.spp = (static_HAS_U_MODE) ? truncate(pack(U)): truncate(pack(M)); // XXX check spec here... Shouldn't it be "lowest supported priv mode" rather than "U if supported, M otherwise"?
       to         = unpack({1'b0, newval.spp});
+      newval.spp = (static_HAS_U_MODE) ? truncate(pack(U)): truncate(pack(M)); // XXX check spec here... Shouldn't it be "lowest supported priv mode" rather than "U if supported, M otherwise"?
     end
     U: newval.uie = newval.upie; // (and stay in U-mode)
     default: noAction;
@@ -81,23 +82,36 @@ function Action general_trap(PrivLvl toLvl, Cause cause, RVState s, Action speci
   // Global Interrupt-Enable Stack and latch current privilege level
   pushStatusStack(s.csrs.mstatus, s.currentPrivLvl, toLvl);
   // others
-  s.csrs.mcause <= cause;
-  s.csrs.mepc <= unpack(s.pc);
+  case (toLvl)
+    M: begin
+      s.csrs.mcause <= cause;
+      s.csrs.mepc.addr <= truncateLSB(s.pc);
+    end
+    `ifdef SUPERVISOR_MODE
+    S: begin
+      s.csrs.scause <= cause;
+      s.csrs.sepc.addr <= truncateLSB(s.pc);
+    end
+    `endif
+    `ifdef RVN
+    U: begin
+      // TODO s.csrs.ucause <= cause;
+      // TODO s.csrs.uepc.addr <= truncateLSB(s.pc);
+    end
+    `endif
+    default: terminateSim(s, $format("TRAP INTO UNKNOWN PRIVILEGE MODE ", fshow(s.currentPrivLvl)));
+  endcase
   s.currentPrivLvl <= M;
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
 endaction;
 
-typeclass Trap#(type a);
-  a trap;
-endtypeclass
+typeclass Trap#(type a); a trap; endtypeclass
 
 instance Trap#(function Action f(RVState s, ExcCode code));
   function Action trap(RVState s, ExcCode code) =
     general_trap(M, Exception(code), s, action
-      if (s.csrs.mtvec.mode >= 2) begin
-        printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
-        $finish(1);
-      end else s.pc <= {s.csrs.mtvec.base, 2'b00};
+      if (s.csrs.mtvec.mode >= 2) terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
+      else s.pc <= {s.csrs.mtvec.base, 2'b00};
     endaction);
 endinstance
 
@@ -116,10 +130,7 @@ instance Trap#(function Action f(RVState s, IntCode code));
       case (s.csrs.mtvec.mode)
         Direct: s.pc <= tgt;
         Vectored: s.pc <= tgt + zeroExtend({pack(code),2'b00});
-        default: begin
-          printTLog($format("Unknown mtvec mode 0x%0x", pack(s.csrs.mtvec.mode)));
-          $finish(1);
-        end
+        default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
       endcase
     endaction);
 endinstance
@@ -146,29 +157,37 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
   function Action instrMRET () = action
     if (s.currentPrivLvl < M) begin
       trap(s, IllegalInst);
-    end
-    else begin
-      assignM(s.currentPrivLvl, popStatusStack(s.csrs.mstatus, M));
+      logInst(s.pc, $format("mret"));
+    end else begin
+      PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, M);
+      s.currentPrivLvl <= toLvl;
       s.pc <= pack(s.csrs.mepc);
+      logInst(s.pc, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
-    // trace
-    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- mret", s.pc));
   endaction;
   defineInstr("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
 
+  `ifdef SUPERVISOR_MODE
   // funct12 = SRET = 000100000010
   // rs1 = 00000
   // funct3 = PRIV = 000
   // rd = 00000
   // opcode = SYSTEM = 1110011
   function Action instrSRET () = action
-    if (s.currentPrivLvl < S) trap(s, IllegalInst);
-    else assignM(s.currentPrivLvl, popStatusStack(s.csrs.mstatus, S));
-    // trace
-    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- sret", s.pc));
+    if (s.currentPrivLvl < S) begin
+      trap(s, IllegalInst);
+      logInst(s.pc, $format("sret"));
+    end else begin
+      PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, S);
+      s.currentPrivLvl <= toLvl;
+      s.pc <= pack(s.csrs.sepc);
+      logInst(s.pc, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
+    end
   endaction;
   defineInstr("sret", pat(n(12'b000100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrSRET);
+  `endif
 
+  `ifdef USER_MODE
   // funct12 = URET = 000000000010
   // rs1 = 00000
   // funct3 = PRIV = 000
@@ -178,9 +197,10 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     if (s.currentPrivLvl < U || !static_HAS_N_EXT) trap(s, IllegalInst);
     else assignM(s.currentPrivLvl, popStatusStack(s.csrs.mstatus, U));
     // trace
-    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- uret", s.pc));
+    logInst(s.pc, $format("uret"));
   endaction;
   defineInstr("uret", pat(n(12'b000000000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrURET);
+  `endif
 
   // funct12 = WFI = 000100000101
   // rs1 = 00000
@@ -192,8 +212,9 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     case (s.currentPrivLvl) matches
       U &&& (!static_HAS_N_EXT): action trap(s, IllegalInst); endaction
       S &&& (s.csrs.mstatus.tw == 1 && limit_reached): action trap(s, IllegalInst); endaction
+      default: s.pc <= s.pc + s.instByteSz;
     endcase
-    printTLogPlusArgs("itrace", $format("pc: 0x%0x -- wfi -- IMPLEMENTED AS NOP", s.pc));
+    logInst(s.pc, $format("wfi"), $format("IMPLEMENTED AS NOP"));
   endaction;
   defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 
