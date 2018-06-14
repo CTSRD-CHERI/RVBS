@@ -31,7 +31,7 @@ Once the libraries are available, you can build a simulator by typing `make`. Yo
 - `MEM_IMG` can be used to specify the memory image used to initialize the memory
 - `NO_LOGS` can be used to skip print statements (accelerates simulation)
 - `PRINT_ABI_REG_NAME` can be used to use ABI names for registers instead of their index
-- `XLEN` can be used to specify the XLEN to build with (only 32 and 64 are currently supported)
+- `XLEN` can be used to specify the XLEN to build with (only `32` and `64` are currently supported)
 - `PMP` can be used to enable the Physical Memory Protection unit
 - `RVM` can be used to enable the *M* integer multiply/divide instructions extention
 - `RVC` can be used to enable the *C* compressed instructions extention
@@ -41,11 +41,11 @@ For example, to build a 64-bit simulator with support for compressed instruction
 $ make RVC=1 XLEN=64 MEM_SIZE=32768
 ```
 
-TODO, not currently implemented:
+**TODO**, not currently implemented:
 
 - `USER_MODE` can be used to enable *User mode* support
-- `SUPERVISOR_MODE` can be used to enable *Supervisor mode* support
-- `RVN` can be used to enable the *N* *User mode* exceptions extention
+- `SUPERVISOR_MODE` can be used to enable *Supervisor mode* support (implies *User mode*)
+- `RVN` can be used to enable the *N* extention for *User mode* interrupt and exception support
 
 ## References
 
