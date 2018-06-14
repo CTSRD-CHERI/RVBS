@@ -493,6 +493,17 @@ function Action instrFENCE_I(RVState s) = action
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence.i", s.pc));
 endaction;
 
+`ifdef SUPERVISOR_MODE
+// funct7 = SFENCE.VMA = 0001001
+// funct3 = PRIV = 000
+// opcode = SYSTEM = 1110011
+function Action instrSFENCE_VMA(RVState s, Bit#(5) rs2, Bit#(5) rs1) = action
+  if (s.currentPrivLvl == S && s.csrs.mstatus.tvm == 1) trap(s, IllegalInst);
+  else s.pc <= s.pc + s.instByteSz;//TODO
+  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- sfence.vma %0d, %0d", s.pc, rs1, rs2));
+endaction;
+`endif
+
 //////////////////////////////////////////////
 // Control and Status Register Instructions //
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,9 +518,11 @@ endaction;
 */
 
 `define instCSRCommon\
-  // check for privilege level access and writes to read-only registers\
-  if (s.currentPrivLvl < toPrivLvl(r.idx[9:8]) || (r.rEffects != NOWRITE && r.idx[11:10] == 2'b11))\
-    trap(s, IllegalInst);\
+  Bool shouldTrap; // is the csr access authorized?\
+  shouldTrap = s.currentPrivLvl < toPrivLvl(r.idx[9:8]); // privilege level access\
+  shouldTrap = shouldTrap || (r.rEffects != NOWRITE && r.idx[11:10] == 2'b11); // writes to read-only registers\
+  shouldTrap = shouldTrap || (r.idx == 12'h180 && s.currentPrivLvl == S && s.csrs.mstatus.tvm == 1); // satp register accessed with TVM = 1\
+  if (shouldTrap) trap(s, IllegalInst);\
   else begin\
     // XXX for some reason, bluespec doesn't like this way to write it:\
     // s.regFile[rd] <- s.csrs.req(r);\
@@ -658,6 +671,9 @@ module [InstrDefModule] mkRV32I#(RVState s) ();
   defineInstr("sw",      pat(v, v, v, n(3'b010), v, n(7'b0100011)), store(s, StrArgs{name: "sw", numBytes: 4}));
   defineInstr("fence",   pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE(s));
   defineInstr("fence.i", pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I(s));
+  `ifdef SUPERVISOR_MODE
+  defineInstr("sfence.vma", pat(n(7'b0001001), v, v, n(3'b000), n(5'b00000), n(7'b1110011)), instrSFENCE_VMA(s));
+  `endif
   defineInstr("csrrw",   pat(v, v, n(3'b001), v, n(7'b1110011)), instrCSRRW(s));
   defineInstr("csrrs",   pat(v, v, n(3'b010), v, n(7'b1110011)), instrCSRRS(s));
   defineInstr("csrrc",   pat(v, v, n(3'b011), v, n(7'b1110011)), instrCSRRC(s));

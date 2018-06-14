@@ -174,7 +174,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
   // rd = 00000
   // opcode = SYSTEM = 1110011
   function Action instrSRET () = action
-    if (s.currentPrivLvl < S) begin
+    if (s.currentPrivLvl < S || (s.currentPrivLvl == S && s.csrs.mstatus.tsr == 1)) begin
       trap(s, IllegalInst);
       logInst(s.pc, $format("sret"));
     end else begin

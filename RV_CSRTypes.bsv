@@ -201,7 +201,32 @@ typedef struct {
   Bit#(1) res0; // WPRI
   Bit#(1) sie;
   Bit#(1) uie;
-} Status deriving (Bits, FShow);
+} Status deriving (Bits);
+instance FShow#(Status);
+  function fshow(x) = $format("Status {")
+    + $format("sd.%1b", x.sd)
+    `ifdef XLEN64 // MAX_XLEN > 32
+    + $format("|sxl.") + fshow(x.sxl)
+    + $format("|uxl.") + fshow(x.uxl)
+    `endif
+    + $format("|tsr.%1b", x.tsr)
+    + $format("|tw.%1b", x.tw)
+    + $format("|tvm.%1b", x.tvm)
+    + $format("|mxr.%1b", x.mxr)
+    + $format("|sum.%1b", x.sum)
+    + $format("|mprv.%1b", x.mprv)
+    + $format("|xs.%2b", x.xs)
+    + $format("|fs.%2b", x.fs)
+    + $format("|mpp.") + fshow(toPrivLvl(x.mpp))
+    + $format("|spp.") + fshow(toPrivLvl({1'b0,x.spp}))
+    + $format("|mpie.%1b", x.mpie)
+    + $format("|spie.%1b", x.spie)
+    + $format("|upie.%1b", x.upie)
+    + $format("|mie.%1b", x.mie)
+    + $format("|sie.%1b", x.sie)
+    + $format("|uie.%1b", x.uie)
+    + $format("}");
+endinstance
 instance DefaultValue#(Status);
   function Status defaultValue() = Status {
     sd: 0,
@@ -303,7 +328,37 @@ typedef struct {
   Bool extC;
   Bool extB;
   Bool extA;
-} Extensions deriving (Bits, Eq, FShow);
+} Extensions deriving (Bits, Eq);
+instance FShow#(Extensions);
+  function fshow(x) = $format("Extensions {")
+    + $format("Z.%1b", pack(x.extZ))
+    + $format("|Y.%1b", pack(x.extY))
+    + $format("|X.%1b", pack(x.extX))
+    + $format("|W.%1b", pack(x.extW))
+    + $format("|V.%1b", pack(x.extV))
+    + $format("|U.%1b", pack(x.extU))
+    + $format("|T.%1b", pack(x.extT))
+    + $format("|S.%1b", pack(x.extS))
+    + $format("|R.%1b", pack(x.extR))
+    + $format("|Q.%1b", pack(x.extQ))
+    + $format("|P.%1b", pack(x.extP))
+    + $format("|O.%1b", pack(x.extO))
+    + $format("|N.%1b", pack(x.extN))
+    + $format("|M.%1b", pack(x.extM))
+    + $format("|L.%1b", pack(x.extL))
+    + $format("|K.%1b", pack(x.extK))
+    + $format("|J.%1b", pack(x.extJ))
+    + $format("|I.%1b", pack(x.extI))
+    + $format("|H.%1b", pack(x.extH))
+    + $format("|G.%1b", pack(x.extG))
+    + $format("|F.%1b", pack(x.extF))
+    + $format("|E.%1b", pack(x.extE))
+    + $format("|D.%1b", pack(x.extD))
+    + $format("|C.%1b", pack(x.extC))
+    + $format("|B.%1b", pack(x.extB))
+    + $format("|A.%1b", pack(x.extA))
+    + $format("}");
+endinstance
 instance DefaultValue#(Extensions);
   function Extensions defaultValue() = Extensions {
     extZ: False,
@@ -404,7 +459,20 @@ typedef struct {
   Bool res0;
   Bool ssip;
   Bool usip;
-} IP deriving (Bits, FShow);
+} IP deriving (Bits);
+instance FShow#(IP);
+  function fshow(x) = $format("IP {")
+    + $format("me.%1b", x.meip)
+    + $format("|se.%1b", x.seip)
+    + $format("|ue.%1b", x.ueip)
+    + $format("|mt.%1b", x.mtip)
+    + $format("|st.%1b", x.stip)
+    + $format("|ut.%1b", x.utip)
+    + $format("|ms.%1b", x.msip)
+    + $format("|ss.%1b", x.ssip)
+    + $format("|us.%1b", x.usip)
+    + $format("}");
+endinstance
 instance DefaultValue#(IP); // XXX does spec actually specify reboot value ?
   function IP defaultValue() = IP {
     res3: 0,
@@ -476,7 +544,20 @@ typedef struct {
   Bool res0;
   Bool ssie;
   Bool usie;
-} IE deriving (Bits, FShow);
+} IE deriving (Bits);
+instance FShow#(IE);
+  function fshow(x) = $format("IE {")
+    + $format("me.%1b", x.meie)
+    + $format("|se.%1b", x.seie)
+    + $format("|ue.%1b", x.ueie)
+    + $format("|mt.%1b", x.mtie)
+    + $format("|st.%1b", x.stie)
+    + $format("|ut.%1b", x.utie)
+    + $format("|ms.%1b", x.msie)
+    + $format("|ss.%1b", x.ssie)
+    + $format("|us.%1b", x.usie)
+    + $format("}");
+endinstance
 instance DefaultValue#(IE); // XXX does spec actually specify reboot value ?
   function IE defaultValue() = IE {
     res3: 0,
@@ -528,7 +609,10 @@ instance Literal#(TVecMode);
   endcase;
   function Bool inLiteralRange (TVecMode _, Integer x) = (x >= 0 && x < 4);
 endinstance
-typedef struct { Bit#(TSub#(XLEN,2)) base;  TVecMode mode; } TVec deriving (Bits, FShow);
+typedef struct { Bit#(TSub#(XLEN,2)) base;  TVecMode mode; } TVec deriving (Bits);
+instance FShow#(TVec);
+  function fshow(x) = $format("TVec {0x%0x - %s}", {x.base,2'b00}, fshow(x.mode));
+endinstance
 instance DefaultValue#(TVec);
   function TVec defaultValue() = TVec {base: 0, mode: Direct};
 endinstance
@@ -553,7 +637,10 @@ typedef struct {
   Bit#(TSub#(XLEN, 2)) addr;
   Bit#(2) z;
   `endif
-} EPC deriving (Bits, FShow);
+} EPC deriving (Bits);
+instance FShow#(EPC);
+  function fshow(x) = $format("EPC {0x%0x}", pack(x));
+endinstance
 instance DefaultValue#(EPC);
   function EPC defaultValue() = EPC{addr: ?, z:0}; // must not trigger unaligned inst fetch exception
 endinstance
@@ -583,8 +670,8 @@ instance Bits#(Cause, XLEN);
 endinstance
 instance FShow#(Cause);
   function Fmt fshow(Cause cause) = case (cause) matches
-    tagged Interrupt .i: $format(fshow(i), " (interrupt)");
-    tagged Exception .e: $format(fshow(e), " (exception)");
+    tagged Interrupt .i: $format(fshow(i) + $format(" (interrupt %0d)", pack(i)));
+    tagged Exception .e: $format(fshow(e) + $format(" (exception %0d)", pack(e)));
   endcase;
 endinstance
 //function Bool isValidCause(Cause c) = case (c) matches
