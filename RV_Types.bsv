@@ -26,61 +26,18 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import FIFO :: *;
-import List :: *;
+package RV_Types;
 
-import BID :: *;
-import RV_State :: *;
-import RV_Common :: *;
-import RV_I :: *;
-`ifdef RVM
-import RV_M :: *;
-`endif
-`ifdef RVC
-import RV_C :: *;
-`endif
+import RV_BasicTypes :: *;
+export RV_BasicTypes :: *;
 
-(* always_ready *)
-interface RVBSProbes;
-  method Bit#(XLEN) peekPC();
-  method Bit#(XLEN) peekCtrlCSR();
-endinterface
+import RV_CSRTypes :: *;
+export RV_CSRTypes :: *;
 
-module rvbs (RVBSProbes);
+import RV_PMPTypes :: *;
+export RV_PMPTypes :: *;
 
-  `ifdef MEM_IMG
-  String memimg = `MEM_IMG;
-  `else
-  String memimg = "test-prog.hex";
-  `endif
-  `ifdef MEM_SIZE
-  Integer memsize = `MEM_SIZE;
-  `else
-  Integer memsize = 16384;
-  `endif
-  Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(memsize, memimg);
-  RVState s <- mkState(mem);
+import RV_StateTypes :: *;
+export RV_StateTypes :: *;
 
-  // instanciating simulator
-  let modList = list(mkRVTrap, mkRV32I);
-  `ifdef RVM
-    modList = append(modList, list(mkRV32M));
-  `endif
-  `ifdef RVC
-    modList = append(modList, list(mkRV32C));
-  `endif
-  `ifdef XLEN64
-  modList = append(modList, list(mkRV64I));
-    `ifdef RVM
-      modList = append(modList, list(mkRV64M));
-    `endif
-    `ifdef RVC
-      modList = append(modList, list(mkRV64C));
-    `endif
-  `endif
-  mkISASim(s, modList);
-
-  method Bit#(XLEN) peekPC() = s.pc;
-  method Bit#(XLEN) peekCtrlCSR() = s.csrs.ctrl;
-
-endmodule
+endpackage: RV_Types

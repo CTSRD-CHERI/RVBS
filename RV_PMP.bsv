@@ -26,89 +26,13 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import Vector :: *;
 import FIFO :: *;
 import SpecialFIFOs :: *;
+import Vector :: *;
 import DefaultValue :: *;
+
 import BID :: *;
-
-import RV_BasicTypes :: *;
-
-typedef enum {
-  OFF = 2'b00, TOR = 2'b01, NA4 = 2'b10, NAPOT = 2'b11
-} AddrMatchMode deriving (Bits, Eq, FShow);
-
-typedef struct {
-  Bool l;
-  Bit#(2) wiri;
-  AddrMatchMode a;
-  Bool x;
-  Bool w;
-  Bool r;
-} PMPCfg deriving (Bits, FShow);
-instance DefaultValue#(PMPCfg);
-  function defaultValue = PMPCfg {
-    l: False, wiri: 2'b00, a: OFF, x: True, w: True, r: True
-  };
-endinstance
-typedef Vector#(n, PMPCfg) PMPCfgIfc#(numeric type n);
-module mkPMPCfgIfcReg (Reg#(PMPCfgIfc#(n)));
-  Vector#(n, Reg#(PMPCfg)) cfgs <- replicateM(mkReg(defaultValue));
-  method Action _write(PMPCfgIfc#(n) vals) = action
-    function Action doWrite(Reg#(PMPCfg) r, PMPCfg v) = action
-      if (!r.l) r <= v;
-    endaction;
-    joinActions(zipWith(doWrite, cfgs, vals));
-  endaction;
-  method PMPCfgIfc#(n) _read() = readVReg(cfgs);
-endmodule
-
-typedef TSub#(PAddrSz, 2) SmallPASz;
-typedef struct {
-  `ifdef XLEN64
-  Bit#(10) wiri;
-  `endif
-  Bit#(SmallPASz) address;
-} PMPAddr deriving (Bits, FShow);
-instance DefaultValue#(PMPAddr);
-  function defaultValue = PMPAddr {
-    `ifdef XLEN64
-    wiri: 0,
-    `endif
-    address: 0
-  };
-endinstance
-
-typedef enum {READ, WRITE, IFETCH} PMPReqType deriving (Eq, FShow);
-typedef struct
-{
-  PAddr addr;
-  BitPO#(TLog#(XLEN)) numBytes;
-  PMPReqType reqType;
-} PMPReq deriving (FShow);
-typedef struct {
-  Bool matched;
-  Bool authorized;
-  PAddr addr;
-} PMPRsp deriving (Bits, FShow);
-instance DefaultValue#(PMPRsp);
-  function defaultValue = PMPRsp {matched: False, authorized: False, addr: 0};
-endinstance
-
-typedef struct {
-  function Action f(PMPReq req) put;
-  function ActionValue#(PMPRsp) f() get;
-} PMPLookup;
-
-typedef struct {
-  `ifdef XLEN64
-  Vector#(2, Reg#(PMPCfgIfc#(8))) cfg;
-  `else
-  Vector#(4, Reg#(PMPCfgIfc#(4))) cfg;
-  `endif
-  Vector#(16, Reg#(PMPAddr)) addr;
-  Array#(PMPLookup) lookup;
-} PMP;
+import RV_Types :: *;
 
 module mkPMP#(Integer width, PrivLvl plvl) (PMP);
 

@@ -26,20 +26,15 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import RV_BasicTypes :: *;
-export RV_BasicTypes :: *;
+package RV_Common;
+
+import RV_Types :: *;
+export RV_Types :: *;
 
 import RV_Traces :: *;
 export RV_Traces :: *;
 
-import RV_CSRTypes :: *;
-export RV_CSRTypes :: *;
-
-import RV_CSRs :: *;
-export RV_CSRs :: *;
-
-import RV_State :: *;
-export RV_State :: *;
-
 import RV_Trap :: *;
 export RV_Trap :: *;
+
+endpackage: RV_Common

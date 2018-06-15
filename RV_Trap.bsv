@@ -26,13 +26,10 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import BitPat :: *;
 import BID :: *;
-
-import RV_BasicTypes :: *;
+import BitPat :: *;
 import RV_Traces :: *;
-import RV_CSRTypes :: *;
-import RV_State :: *;
+import RV_Types :: *;
 
 ////////////////
 // Trap logic //
