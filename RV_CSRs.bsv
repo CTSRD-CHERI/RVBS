@@ -27,7 +27,6 @@
  */
 
 import DefaultValue :: *;
-import Printf :: *;
 import Vector :: *;
 import BID :: *;
 
@@ -163,13 +162,6 @@ typedef struct {
   function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;
 
 } CSRs;
-
-module mkRegUndef#(String name) (Reg#(a));
-  method a _read() =
-    error(sprintf("%s register read but not initialised", name));
-  method Action _write(a val) =
-    error(sprintf("%s register written but not initialised", name));
-endmodule
 
 //////////////////////////
 // CSRs' implementation //
