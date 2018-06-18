@@ -98,12 +98,4 @@ typedef struct {
   function ActionValue#(PMPRsp) f() get;
 } PMPLookup;
 
-typedef struct {
-  `ifdef XLEN64
-  Vector#(2, Reg#(PMPCfgIfc#(8))) cfg;
-  `else
-  Vector#(4, Reg#(PMPCfgIfc#(4))) cfg;
-  `endif
-  Vector#(16, Reg#(PMPAddr)) addr;
-  Array#(PMPLookup) lookup;
-} PMP;
+typedef Array#(PMPLookup) PMP;

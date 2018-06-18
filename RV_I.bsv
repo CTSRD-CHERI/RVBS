@@ -414,11 +414,11 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
   `ifdef PMP
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: READ};
-    s.pmp.lookup[1].put(req);
+    s.pmp[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm));
   endaction, action
-    PMPRsp rsp <- s.pmp.lookup[1].get();
+    PMPRsp rsp <- s.pmp[1].get();
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
     printTLogPlusArgs("itrace", fshow(rsp));
   `else
@@ -456,11 +456,11 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
   `ifdef PMP
     PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: WRITE};
-    s.pmp.lookup[1].put(req);
+    s.pmp[1].put(req);
     printTLogPlusArgs("itrace", fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm));
   endaction, action
-    PMPRsp rsp <- s.pmp.lookup[1].get();
+    PMPRsp rsp <- s.pmp[1].get();
     printTLogPlusArgs("itrace", fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `else

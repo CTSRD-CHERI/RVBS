@@ -797,9 +797,9 @@ typedef struct {
   `ifdef PMP
   // pmpcfg0, pmpcfg1, pmpcfg2, pmpcfg3
   `ifdef XLEN64
-  Vector#(2, Reg#(Vector#(8, PMPCfg))) pmpcfg;
+  Vector#(2, Reg#(PMPCfgIfc#(8))) pmpcfg;
   `else
-  Vector#(4, Reg#(Vector#(4, PMPCfg))) pmpcfg;
+  Vector#(4, Reg#(PMPCfgIfc#(4))) pmpcfg;
   `endif
   // pmpaddr0, pmpaddr1, ..., pmpaddr15
   Vector#(16, Reg#(PMPAddr)) pmpaddr;

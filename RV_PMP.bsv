@@ -34,14 +34,10 @@ import DefaultValue :: *;
 import BID :: *;
 import RV_Types :: *;
 
-module mkPMP#(Integer width, PrivLvl plvl) (PMP);
+module mkPMP#(Integer width, CSRs csrs, PrivLvl plvl) (PMP);
 
-  PMP pmp;
   FIFO#(PMPRsp) rsp[width];
   for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkBypassFIFO;
-  // mapped CSRs
-  pmp.cfg <- replicateM(mkPMPCfgIfcReg);
-  pmp.addr <- replicateM(mkReg(defaultValue));
   // lookup method
   function Action lookup (Integer i, PMPReq req) = action
     // inner helper for zipwith
@@ -73,10 +69,10 @@ module mkPMP#(Integer width, PrivLvl plvl) (PMP);
     // return first match or default response
     function isMatch(x) = x.matched;
     function Bit#(SmallPASz) getAddr(Reg#(PMPAddr) x) = x.address;
-    Vector#(16, Bit#(SmallPASz)) addrs = map(getAddr, pmp.addr);
+    Vector#(16, Bit#(SmallPASz)) addrs = map(getAddr, csrs.pmpaddr);
     rsp[i].enq(fromMaybe(
       PMPRsp {matched: False, authorized: (plvl == M), addr: req.addr},
-      find(isMatch, zipWith3(doLookup, concat(readVReg(pmp.cfg)), addrs, shiftInAt0(addrs,0)))
+      find(isMatch, zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0)))
     ));
   endaction;
   // build the multiple lookup interfaces
@@ -85,8 +81,7 @@ module mkPMP#(Integer width, PrivLvl plvl) (PMP);
     ifc[i].put = lookup(i);
     ifc[i].get = actionvalue rsp[i].deq(); return rsp[i].first(); endactionvalue;
   end
-  pmp.lookup = ifc;
   // returning PMP interface
-  return pmp;
+  return ifc;
 
 endmodule

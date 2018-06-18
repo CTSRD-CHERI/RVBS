@@ -60,11 +60,9 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
   s.pc <- mkPC(0);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
-  `ifdef PMP
-  s.pmp <- mkPMP(2, s.currentPrivLvl); // PMP with two lookup interfaces
-  s.csrs <- mkCSRs(s.pmp);
-  `else
   s.csrs <- mkCSRs();
+  `ifdef PMP
+  s.pmp <- mkPMP(2, s.csrs, s.currentPrivLvl); // PMP with two lookup interfaces
   `endif
   s.imem = mem.p0;
   s.dmem = mem.p1;
@@ -72,10 +70,10 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
     action
     `ifdef PMP
       PMPReq req = PMPReq{addr: toPAddr(s.pc.next), numBytes: 4, reqType: READ};
-      s.pmp.lookup[0].put(req);
+      s.pmp[0].put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      PMPRsp rsp <- s.pmp.lookup[0].get();
+      PMPRsp rsp <- s.pmp[0].get();
       MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
     `else

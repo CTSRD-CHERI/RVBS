@@ -38,11 +38,7 @@ import RV_PMP :: *;
 //////////////////////////
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
-`ifdef PMP
-module mkCSRs#(PMP pmp)(CSRs);
-`else
 module mkCSRs(CSRs);
-`endif
 
   // instance of the CSRs struct
   CSRs csrs;
@@ -87,8 +83,8 @@ module mkCSRs(CSRs);
   // pmpaddr1 12'h3B1
   // ...
   // pmpaddr15 12'h3BF
-  csrs.pmpcfg = pmp.cfg;
-  csrs.pmpaddr = pmp.addr;
+  csrs.pmpcfg  <- replicateM(mkPMPCfgIfcReg);
+  csrs.pmpaddr <- replicateM(mkReg(defaultValue));
   `endif
 
   // machine counter / timers
