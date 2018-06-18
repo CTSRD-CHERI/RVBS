@@ -27,12 +27,13 @@
  */
 
 import DefaultValue :: *;
+import ConfigReg :: *;
 import Vector :: *;
 import BID :: *;
 
 import RV_Types :: *;
 `ifdef PMP
-import RV_PMP :: *;
+import RV_PMPTypes :: *;
 `endif
 
 //////////////////////////
@@ -84,7 +85,7 @@ module mkCSRs(CSRs);
   // ...
   // pmpaddr15 12'h3BF
   csrs.pmpcfg  <- replicateM(mkPMPCfgIfcReg);
-  csrs.pmpaddr <- replicateM(mkReg(defaultValue));
+  csrs.pmpaddr <- replicateM(mkConfigReg(defaultValue));
   `endif
 
   // machine counter / timers

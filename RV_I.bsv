@@ -411,21 +411,33 @@ endaction;
 typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
 function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
   action
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    VAddr vaddr = s.regFile[rs1] + signExtend(imm);
+  `ifdef SUPERVISOR_MODE
+    VMReq req = VMReq {addr: vaddr};
+    s.vmTranslate[1].put(req);
+    itrace(s.pc, fshow(req));
+    logInst(s.pc, fmtInstI(sprintf("%s (vmTranslate lookup step)", args.name), rd, rs1, imm));
+  endaction, action
+    VMRsp rsp <- s.vmTranslate[1].get();
+    itrace(s.pc, fshow(rsp));
+    PAddr paddr = rsp.addr;
+  `else
+    PAddr paddr = toPAddr(vaddr);
+  `endif
   `ifdef PMP
-    PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: READ};
+    PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: READ};
     s.pmp[1].put(req);
-    printTLogPlusArgs("itrace", fshow(req));
+    itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm));
   endaction, action
     PMPRsp rsp <- s.pmp[1].get();
+    itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
-    printTLogPlusArgs("itrace", fshow(rsp));
   `else
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: toPAddr(addr), numBytes: fromInteger(args.numBytes)};
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
   `endif
     s.dmem.sendReq(req);
-    printTLogPlusArgs("itrace", fshow(req));
+    itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (mem req step)", args.name), rd, rs1, imm));
   endaction, action
     let rsp <- s.dmem.getRsp();
@@ -437,7 +449,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
       end
     endcase
     s.pc <= s.pc + s.instByteSz;
-    printTLogPlusArgs("itrace", fshow(rsp));
+    itrace(s.pc, fshow(rsp));
     logInst(s.pc, fmtInstI(sprintf("%s (mem rsp step)", args.name), rd, rs1, imm));
   endaction);
 
@@ -453,22 +465,34 @@ typedef struct { String name; Integer numBytes; } StrArgs;
 function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
   return list(action
-    Bit#(XLEN) addr = s.regFile[rs1] + signExtend(imm);
+    VAddr vaddr = s.regFile[rs1] + signExtend(imm);
+  `ifdef SUPERVISOR_MODE
+    VMReq req = VMReq {addr: vaddr};
+    s.vmTranslate[1].put(req);
+    itrace(s.pc, fshow(req));
+    logInst(s.pc, fmtInstS(sprintf("%s (vmTranslate lookup step)", args.name), rs1, rs2, imm));
+  endaction, action
+    VMRsp rsp <- s.vmTranslate[1].get();
+    itrace(s.pc, fshow(rsp));
+    PAddr paddr = rsp.addr;
+  `else
+    PAddr paddr = toPAddr(vaddr);
+  `endif
   `ifdef PMP
-    PMPReq req = PMPReq{addr: toPAddr(addr), numBytes: fromInteger(args.numBytes), reqType: WRITE};
+    PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: WRITE};
     s.pmp[1].put(req);
-    printTLogPlusArgs("itrace", fshow(req));
+    itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm));
   endaction, action
     PMPRsp rsp <- s.pmp[1].get();
-    printTLogPlusArgs("itrace", fshow(rsp));
+    itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `else
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: toPAddr(addr), byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
+    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `endif
     s.dmem.sendReq(req);
     s.pc <= s.pc + s.instByteSz;
-    printTLogPlusArgs("itrace", fshow(req));
+    itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (mem req step)", args.name), rs1, rs2, imm));
   endaction);
 endfunction

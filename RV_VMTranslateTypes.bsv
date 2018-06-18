@@ -26,25 +26,19 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-package RV_Types;
-
 import RV_BasicTypes :: *;
-export RV_BasicTypes :: *;
 
-import RV_CSRTypes :: *;
-export RV_CSRTypes :: *;
+typedef struct
+{
+  VAddr addr;
+} VMReq deriving (FShow);
+typedef struct {
+  PAddr addr;
+} VMRsp deriving (Bits, FShow);
 
-`ifdef PMP
-import RV_PMPTypes :: *;
-export RV_PMPTypes :: *;
-`endif
+typedef struct {
+  function Action f(VMReq req) put;
+  function ActionValue#(VMRsp) f() get;
+} VMLookup;
 
-`ifdef SUPERVISOR_MODE
-export RV_VMTranslateTypes :: *;
-import RV_VMTranslateTypes :: *;
-`endif
-
-import RV_StateTypes :: *;
-export RV_StateTypes :: *;
-
-endpackage: RV_Types
+typedef Array#(VMLookup) VMTranslate;

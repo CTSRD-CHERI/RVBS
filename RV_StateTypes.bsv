@@ -33,7 +33,12 @@ import Recipe :: *;
 import RV_Traces :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
+`ifdef PMP
 import RV_PMPTypes :: *;
+`endif
+`ifdef SUPERVISOR_MODE
+import RV_VMTranslateTypes :: *;
+`endif
 
 ////////////////////////////////
 // RISC-V architectural state //
@@ -50,6 +55,9 @@ typedef struct {
   CSRs csrs;
   `ifdef PMP
   PMP pmp;
+  `endif
+  `ifdef SUPERVISOR_MODE
+  VMTranslate vmTranslate;
   `endif
   RecipeFSM fetchInst;
   Mem#(PAddr, Bit#(InstSz)) imem;

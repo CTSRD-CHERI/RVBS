@@ -26,25 +26,28 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-package RV_Types;
+import FIFO :: *;
+import SpecialFIFOs :: *;
 
 import RV_BasicTypes :: *;
-export RV_BasicTypes :: *;
-
 import RV_CSRTypes :: *;
-export RV_CSRTypes :: *;
-
-`ifdef PMP
-import RV_PMPTypes :: *;
-export RV_PMPTypes :: *;
-`endif
-
-`ifdef SUPERVISOR_MODE
-export RV_VMTranslateTypes :: *;
 import RV_VMTranslateTypes :: *;
-`endif
 
-import RV_StateTypes :: *;
-export RV_StateTypes :: *;
-
-endpackage: RV_Types
+module mkVMTranslate#(Integer width, CSRs csrs) (VMTranslate);
+  FIFO#(VMRsp) rsp[width];
+  //for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkBypassFIFO;
+  for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkFIFO;
+  // lookup method
+  function Action lookup (Integer i, VMReq req) = action
+    // TODO
+    rsp[i].enq(VMRsp {addr: toPAddr(req.addr)});
+  endaction;
+  // build the multiple lookup interfaces
+  VMLookup ifc[width];
+  for (Integer i  = 0; i < width; i = i + 1) begin
+    ifc[i].put = lookup(i);
+    ifc[i].get = actionvalue rsp[i].deq(); return rsp[i].first(); endactionvalue;
+  end
+  // returning interface
+  return ifc;
+endmodule
