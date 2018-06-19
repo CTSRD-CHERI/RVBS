@@ -33,21 +33,39 @@ import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
 import RV_VMTranslateTypes :: *;
 
-module mkVMTranslate#(Integer width, CSRs csrs) (VMTranslate);
-  FIFO#(VMRsp) rsp[width];
-  //for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkBypassFIFO;
-  for (Integer i  = 0; i < width; i = i + 1) rsp[i] <- mkFIFO;
+module mkVMLookup#(CSRs csrs) (VMLookup);
+  FIFO#(VMRsp) rsp <- mkBypassFIFO;
   // lookup method
-  function Action lookup (Integer i, VMReq req) = action
+  function Action lookup (VMReq req) = action
     // TODO
-    rsp[i].enq(VMRsp {addr: toPAddr(req.addr)});
+    `ifdef XLEN64
+    if (csrs.mstatus.sxl == XL64)
+    case (csrs.satp.mode)
+      BARE: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+      default: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+    endcase
+    else begin
+    `endif
+    case (csrs.satp.mode)
+      BARE: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+      default: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+    endcase
+    `ifdef XLEN64
+     end
+    `endif
   endaction;
   // build the multiple lookup interfaces
+  VMLookup ifc;
+  ifc.put = lookup;
+  ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
+  // returning interface
+  return ifc;
+endmodule
+
+module mkVMTranslate#(Integer width, CSRs csrs) (VMTranslate);
+  // build the multiple lookup interfaces
   VMLookup ifc[width];
-  for (Integer i  = 0; i < width; i = i + 1) begin
-    ifc[i].put = lookup(i);
-    ifc[i].get = actionvalue rsp[i].deq(); return rsp[i].first(); endactionvalue;
-  end
+  for (Integer i = 0; i < width; i = i + 1) ifc[i] <- mkVMLookup(csrs);
   // returning interface
   return ifc;
 endmodule
