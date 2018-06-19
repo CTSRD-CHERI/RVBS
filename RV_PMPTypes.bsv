@@ -79,13 +79,13 @@ instance DefaultValue#(PMPAddr);
   };
 endinstance
 
-typedef enum {READ, WRITE, IFETCH} PMPReqType deriving (Eq, FShow);
+typedef enum {READ, WRITE, IFETCH} PMPReqType deriving (Bits, Eq, FShow);
 typedef struct
 {
   PAddr addr;
   BitPO#(TLog#(XLEN)) numBytes;
   PMPReqType reqType;
-} PMPReq deriving (FShow);
+} PMPReq deriving (Bits, FShow);
 typedef struct {
   Bool matched;
   Bool authorized;

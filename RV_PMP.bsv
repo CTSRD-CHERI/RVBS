@@ -30,6 +30,7 @@ import FIFO :: *;
 import SpecialFIFOs :: *;
 import Vector :: *;
 import DefaultValue :: *;
+import UniqueWrappers :: * ;
 
 import BID :: *;
 import RV_Types :: *;
@@ -38,7 +39,7 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
 
   FIFO#(PMPRsp) rsp <- mkBypassFIFO;
   // lookup method
-  function Action lookup (PMPReq req) = action
+  function PMPRsp lookup (PMPReq req);
     // inner helper for zipwith
     function PMPRsp doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
       // authorisation after match
@@ -69,14 +70,15 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
     function isMatch(x) = x.matched;
     function Bit#(SmallPAWidth) getAddr(Reg#(PMPAddr) x) = x.address;
     Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, csrs.pmpaddr);
-    rsp.enq(fromMaybe(
+    return fromMaybe(
       PMPRsp {matched: False, authorized: (plvl == M), addr: req.addr},
       find(isMatch, zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0)))
-    ));
-  endaction;
+    );
+  endfunction
   // build the lookup interfaces
+  let wrapper <- mkUniqueWrapper(lookup);
   PMPLookup ifc;
-  ifc.put = lookup;
+  ifc.put = composeM(wrapper.func, rsp.enq); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
   ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
   // returning interface
   return ifc;

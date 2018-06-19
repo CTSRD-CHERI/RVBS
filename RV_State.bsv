@@ -83,8 +83,8 @@ module [Module] mkState#(
   s.ipmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   s.dpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   `ifdef SUPERVISOR_MODE
-  s.ivmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  s.dvmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  s.ivmpmp = s.ipmp;
+  s.dvmpmp = s.dpmp;
   `endif
   `endif
   // Virtual Memory lookup interfaces
