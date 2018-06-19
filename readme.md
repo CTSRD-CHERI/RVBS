@@ -1,6 +1,6 @@
 # RVBS - RISC-V Bluespec SystemVerilog Specification
 
-RVBS is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, that could be used as a golden model.
+RVBS (pronounced "rubs") is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, that could be used as a golden model.
 
 RVBS currently supports:
 
