@@ -29,11 +29,18 @@
 import FIFO :: *;
 import SpecialFIFOs :: *;
 
+import BID :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
+import RV_PMPTypes :: *;
 import RV_VMTranslateTypes :: *;
 
-module mkVMLookup#(CSRs csrs) (VMLookup);
+module mkVMLookup#(CSRs csrs
+  , Mem#(PAddr, Bit#(n)) mem
+  `ifdef PMP
+  , PMPLookup pmp
+  `endif
+  ) (VMLookup);
   FIFO#(VMRsp) rsp <- mkBypassFIFO;
   // lookup method
   function Action lookup (VMReq req) = action
@@ -58,14 +65,6 @@ module mkVMLookup#(CSRs csrs) (VMLookup);
   VMLookup ifc;
   ifc.put = lookup;
   ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
-  // returning interface
-  return ifc;
-endmodule
-
-module mkVMTranslate#(Integer width, CSRs csrs) (VMTranslate);
-  // build the multiple lookup interfaces
-  VMLookup ifc[width];
-  for (Integer i = 0; i < width; i = i + 1) ifc[i] <- mkVMLookup(csrs);
   // returning interface
   return ifc;
 endmodule

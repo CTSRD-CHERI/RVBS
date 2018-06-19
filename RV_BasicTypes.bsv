@@ -65,21 +65,27 @@ Bool static_HAS_N_EXT  = False;
 // Utility modules and functions //
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef 32 InstSz;
-
 `ifdef XLEN64
 typedef 64 XLEN;
-typedef 56 PAddrSz;
+typedef 56 PAddrWidth;
 `else
 typedef 32 XLEN;
-typedef 34 PAddrSz;
+typedef 34 PAddrWidth;
 `endif
 typedef Bit#(XLEN) VAddr;
-typedef Bit#(PAddrSz) PAddr;
+typedef Bit#(PAddrWidth) PAddr;
 function PAddr toPAddr (VAddr addr);
-  Bit#(TMax#(PAddrSz, XLEN)) tmp = zeroExtend(addr);
+  Bit#(TMax#(PAddrWidth, XLEN)) tmp = zeroExtend(addr);
   return truncate(tmp);
 endfunction
+
+typedef 32 InstWidth;
+typedef XLEN IMemWidth;
+typedef XLEN DMemWidth;
+typedef XLEN IVMMemWidth;
+typedef XLEN DVMMemWidth;
+
+function Bit#(InstWidth) extractInst (Bit#(IMemWidth) blob) = truncate(blob);
 
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;

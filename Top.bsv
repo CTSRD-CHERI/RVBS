@@ -58,8 +58,12 @@ module rvbs (RVBSProbes);
   `else
   Integer memsize = 16384;
   `endif
-  Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem <- mkSharedMem2(memsize, memimg);
-  RVState s <- mkState(mem);
+  Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) mem <- mkSharedMem2(memsize, memimg);
+  `ifdef SUPERVISOR_MODE
+  RVState s <- mkState(mem.p0, mem.p1, mem.p0, mem.p1);
+  `else
+  RVState s <- mkState(mem.p0, mem.p1);
+  `endif
 
   // instanciating simulator
   let modList = list(mkRVTrap, mkRV32I);

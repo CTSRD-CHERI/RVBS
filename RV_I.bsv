@@ -414,11 +414,11 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
     VMReq req = VMReq {addr: vaddr};
-    s.vmTranslate[1].put(req);
+    s.dvm.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (vmTranslate lookup step)", args.name), rd, rs1, imm));
   endaction, action
-    VMRsp rsp <- s.vmTranslate[1].get();
+    VMRsp rsp <- s.dvm.get();
     itrace(s.pc, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
@@ -426,11 +426,11 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   `endif
   `ifdef PMP
     PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: READ};
-    s.pmp[1].put(req);
+    s.dpmp.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm));
   endaction, action
-    PMPRsp rsp <- s.pmp[1].get();
+    PMPRsp rsp <- s.dpmp.get();
     itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
   `else
@@ -468,11 +468,11 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
     VMReq req = VMReq {addr: vaddr};
-    s.vmTranslate[1].put(req);
+    s.dvm.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (vmTranslate lookup step)", args.name), rs1, rs2, imm));
   endaction, action
-    VMRsp rsp <- s.vmTranslate[1].get();
+    VMRsp rsp <- s.dvm.get();
     itrace(s.pc, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
@@ -480,11 +480,11 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   `endif
   `ifdef PMP
     PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: WRITE};
-    s.pmp[1].put(req);
+    s.dpmp.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm));
   endaction, action
-    PMPRsp rsp <- s.pmp[1].get();
+    PMPRsp rsp <- s.dpmp.get();
     itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `else

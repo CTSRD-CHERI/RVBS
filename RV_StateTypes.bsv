@@ -53,15 +53,23 @@ typedef struct {
   Reg#(VAddr) instByteSz;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
+  Mem#(PAddr, Bit#(IMemWidth)) imem;
+  Mem#(PAddr, Bit#(DMemWidth)) dmem;
+  Mem#(PAddr, Bit#(IVMMemWidth)) ivmmem;
+  Mem#(PAddr, Bit#(DVMMemWidth)) dvmmem;
   `ifdef PMP
-  PMP pmp;
+  PMPLookup ipmp;
+  PMPLookup dpmp;
+  `ifdef SUPERVISOR_MODE
+  PMPLookup ivmpmp;
+  PMPLookup dvmpmp;
+  `endif
   `endif
   `ifdef SUPERVISOR_MODE
-  VMTranslate vmTranslate;
+  VMLookup ivm;
+  VMLookup dvm;
   `endif
   RecipeFSM fetchInst;
-  Mem#(PAddr, Bit#(InstSz)) imem;
-  Mem#(PAddr, Bit#(XLEN)) dmem;
 } RVState;
 
 // State instance
@@ -89,7 +97,7 @@ instance State#(RVState);
     case (rsp) matches
       tagged ReadRsp .val: begin
         s.instByteSz <= (val[1:0] == 2'b11) ? 4 : 2;
-        return val;
+        return extractInst(val);
       end
       default: return ?;
     endcase

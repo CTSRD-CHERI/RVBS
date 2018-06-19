@@ -44,7 +44,14 @@ import RV_VMTranslate :: *;
 // RISC-V architectural state //
 ////////////////////////////////////////////////////////////////////////////////
 
-module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
+module [Module] mkState#(
+  Mem#(PAddr, Bit#(IMemWidth)) imem
+  , Mem#(PAddr, Bit#(DMemWidth)) dmem
+  `ifdef SUPERVISOR_MODE
+  , Mem#(PAddr, Bit#(IVMMemWidth)) ivmmem
+  , Mem#(PAddr, Bit#(DVMMemWidth)) dvmmem
+  `endif
+  ) (RVState);
   RVState s;
 
   //s.currentPrivLvl <- mkReg(M);
@@ -59,28 +66,47 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
     `endif
     default: XLUNK;
   endcase;
-
+  // basic state
   s.pc <- mkPC(0);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
   s.csrs <- mkCSRs();
-  `ifdef PMP
-  s.pmp <- mkPMP(2, s.csrs, s.currentPrivLvl); // PMP with two lookup interfaces
-  `endif
+  // Memory interfaces
+  s.imem = imem;
+  s.dmem = dmem;
   `ifdef SUPERVISOR_MODE
-  s.vmTranslate <- mkVMTranslate(2, s.csrs);
+  s.ivmmem = ivmmem;
+  s.dvmmem = dvmmem;
   `endif
-  s.imem = mem.p0;
-  s.dmem = mem.p1;
+  // PMP lookup interfaces
+  `ifdef PMP
+  s.ipmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  s.dpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  `ifdef SUPERVISOR_MODE
+  s.ivmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  s.dvmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  `endif
+  `endif
+  // Virtual Memory lookup interfaces
+  `ifdef SUPERVISOR_MODE
+  `ifdef PMP
+  s.ivm <- mkVMLookup(s.csrs, s.ivmmem, s.ivmpmp);
+  s.dvm <- mkVMLookup(s.csrs, s.dvmmem, s.dvmpmp);
+  `else
+  s.ivm <- mkVMLookup(s.csrs, s.ivmmem);
+  s.dvm <- mkVMLookup(s.csrs, s.dvmmem);
+  `endif
+  `endif
+  // Instruction fetch machine
   s.fetchInst <- compile(rPar(rBlock(
     action
       VAddr vaddr = s.pc.next;
     `ifdef SUPERVISOR_MODE
       VMReq req = VMReq {addr: vaddr};
-      s.vmTranslate[0].put(req);
+      s.ivm.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      VMRsp rsp <- s.vmTranslate[0].get();
+      VMRsp rsp <- s.ivm.get();
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
       PAddr paddr = rsp.addr;
     `else
@@ -88,14 +114,14 @@ module [Module] mkState#(Mem2#(PAddr, Bit#(InstSz), Bit#(XLEN)) mem) (RVState);
     `endif
     `ifdef PMP
       PMPReq req = PMPReq{addr: paddr, numBytes: 4, reqType: READ};
-      s.pmp[0].put(req);
+      s.ipmp.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      PMPRsp rsp <- s.pmp[0].get();
-      MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
+      PMPRsp rsp <- s.ipmp.get();
+      MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
     `else
-      MemReq#(PAddr, Bit#(InstSz)) req = tagged ReadReq {addr: paddr, numBytes: 4};
+      MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
     `endif
       s.imem.sendReq(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));

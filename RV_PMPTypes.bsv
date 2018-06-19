@@ -63,12 +63,12 @@ module mkPMPCfgIfcReg (Reg#(PMPCfgIfc#(n)));
   method PMPCfgIfc#(n) _read() = readVReg(cfgs);
 endmodule
 
-typedef TSub#(PAddrSz, 2) SmallPASz;
+typedef TSub#(PAddrWidth, 2) SmallPAWidth;
 typedef struct {
   `ifdef XLEN64
   Bit#(10) wiri;
   `endif
-  Bit#(SmallPASz) address;
+  Bit#(SmallPAWidth) address;
 } PMPAddr deriving (Bits, FShow);
 instance DefaultValue#(PMPAddr);
   function defaultValue = PMPAddr {
@@ -99,5 +99,3 @@ typedef struct {
   function Action f(PMPReq req) put;
   function ActionValue#(PMPRsp) f() get;
 } PMPLookup;
-
-typedef Array#(PMPLookup) PMP;

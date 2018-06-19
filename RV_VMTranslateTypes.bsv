@@ -40,5 +40,3 @@ typedef struct {
   function Action f(VMReq req) put;
   function ActionValue#(VMRsp) f() get;
 } VMLookup;
-
-typedef Array#(VMLookup) VMTranslate;
