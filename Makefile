@@ -69,6 +69,7 @@ BSCFLAGS += -D RVC
 endif
 ifeq ($(RVN),1)
 BSCFLAGS += -D RVN
+BSCFLAGS += -D USER_MODE
 endif
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs

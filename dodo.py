@@ -130,6 +130,7 @@ rvbss = [
   for m in [False, True] for c in [False, True]
   for n in [False, True] for pmp in [False, True]
   if (u or not s) # Supervisor mode implies User mode
+  if (u or not n) # N ext implies User mode
 ]
 
 # python generate all one hot for given size
