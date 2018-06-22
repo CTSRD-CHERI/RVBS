@@ -28,15 +28,6 @@
 
 import RV_BasicTypes :: *;
 
-typedef struct
-{
-  VAddr addr;
-} VMReq deriving (FShow);
-typedef struct {
-  PAddr addr;
-} VMRsp deriving (Bits, FShow);
-
-typedef struct {
-  function Action f(VMReq req) put;
-  function ActionValue#(VMRsp) f() get;
-} VMLookup;
+typedef AddrReq#(VAddr) VMReq;
+typedef AddrRsp#(PAddr) VMRsp;
+typedef AddrLookup#(VMReq, VMRsp) VMLookup;

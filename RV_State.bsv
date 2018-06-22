@@ -102,7 +102,7 @@ module [Module] mkState#(
     action
       VAddr vaddr = s.pc.next;
     `ifdef SUPERVISOR_MODE
-      VMReq req = VMReq {addr: vaddr};
+      VMReq req = aReqIFetch(vaddr, 4, Invalid);
       s.ivm.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
@@ -113,7 +113,11 @@ module [Module] mkState#(
       PAddr paddr = toPAddr(vaddr);
     `endif
     `ifdef PMP
-      PMPReq req = PMPReq{addr: paddr, numBytes: 4, reqType: READ};
+    `ifdef SUPERVISOR_MODE
+      PMPReq req = aReqIFetch(paddr, 4, rsp.mExc);
+    `else
+      PMPReq req = aReqIFetch(paddr, 4, Invalid);
+    `endif
       s.ipmp.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
@@ -126,6 +130,7 @@ module [Module] mkState#(
       s.imem.sendReq(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction)));
+    // TODO deal with exceptions
 
   return s;
 endmodule

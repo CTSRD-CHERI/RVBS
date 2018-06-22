@@ -28,6 +28,7 @@
 
 import FIFO :: *;
 import SpecialFIFOs :: *;
+import UniqueWrappers :: * ;
 
 import BID :: *;
 import RV_BasicTypes :: *;
@@ -43,27 +44,32 @@ module mkVMLookup#(CSRs csrs
   ) (VMLookup);
   FIFO#(VMRsp) rsp <- mkBypassFIFO;
   // lookup method
-  function Action lookup (VMReq req) = action
+  function VMRsp lookup (VMReq req);
     // TODO
     `ifdef XLEN64
     if (csrs.mstatus.sxl == XL64)
     case (csrs.satp.mode)
-      BARE: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
-      default: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+      BARE: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
+      default: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
     endcase
     else begin
     `endif
     case (csrs.satp.mode)
-      BARE: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
-      default: rsp.enq(VMRsp {addr: toPAddr(req.addr)});
+      BARE: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
+      default: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
     endcase
     `ifdef XLEN64
      end
     `endif
+  endfunction
+  let lookupWrapper <- mkUniqueWrapper(lookup);
+  function Action doPut (VMReq req) = action
+    if (isValid(req.mExc)) rsp.enq(VMRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
   endaction;
-  // build the multiple lookup interfaces
+  // build the lookup interface
   VMLookup ifc;
-  ifc.put = lookup;
+  ifc.put = doPut;
   ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
   // returning interface
   return ifc;

@@ -40,45 +40,55 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
   FIFO#(PMPRsp) rsp <- mkBypassFIFO;
   // lookup method
   function PMPRsp lookup (PMPReq req);
+    // authorisation after match
+    Maybe#(ExcCode) excCode = case (req.reqType)
+      READ: return Valid(LoadAccessFault);
+      WRITE: return Valid(StrAMOAccessFault);
+      IFETCH: return Valid(InstAccessFault);
+      default: return Invalid; // XXX TODO should never happen, put an assertion
+    endcase;
     // inner helper for zipwith
-    function PMPRsp doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
-      // authorisation after match
-      Bool auth = (!cfg1.l && plvl == M) ? True :
-        (case (req.reqType)
-          READ: return cfg1.r;
-          WRITE: return cfg1.w;
-          IFETCH: return cfg1.x;
-          default: return False;
+    function Maybe#(PMPRsp) doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
+      Maybe#(ExcCode) mExc = (!cfg1.l && plvl == M) ? Invalid :
+        (case (req.reqType) matches
+          READ &&& cfg1.r: return Invalid;
+          WRITE &&& cfg1.w: return Invalid;
+          IFETCH &&& cfg1.x: return Invalid;
+          default: excCode;
         endcase);
       // prepare match entry
-      PMPRsp matchRsp = PMPRsp {matched: True, authorized: auth, addr: req.addr};
+      PMPRsp matchRsp = PMPRsp {addr: req.addr, mExc: mExc};
       // matching
       PAddr mask = ((~0) << 3) << countZerosLSB(~a0); // 3 because bottom 2 bits + 1 terminating 0
       PAddr baseAddr = req.addr;
       PAddr topAddr = req.addr + zeroExtend(readBitPO(req.numBytes));
       case (cfg1.a)
         // Top Of Range mode
-        TOR: return ({a0,2'b00} <= baseAddr && topAddr <= {a1,2'b00}) ? matchRsp : defaultValue;
+        TOR: return ({a0,2'b00} <= baseAddr && topAddr <= {a1,2'b00}) ? Valid(matchRsp) : Invalid;
         // Naturally Aligned Power Of Two region (4-bytes region)
-        NA4: return (a0 == truncateLSB(baseAddr) && a0 == truncateLSB(topAddr)) ? matchRsp : defaultValue;
+        NA4: return (a0 == truncateLSB(baseAddr) && a0 == truncateLSB(topAddr)) ? Valid(matchRsp) : Invalid;
         // Naturally Aligned Power Of Two region (>= 8-bytes region)
-        NAPOT: return (({a0,2'b00} & mask) == (baseAddr & mask) && ({a0,2'b00} & mask) == (topAddr & mask)) ? matchRsp : defaultValue;
-        default: return defaultValue; // OFF
+        NAPOT: return (({a0,2'b00} & mask) == (baseAddr & mask) && ({a0,2'b00} & mask) == (topAddr & mask)) ? Valid(matchRsp) : Invalid;
+        default: return Invalid; // OFF
       endcase
     endfunction
     // return first match or default response
-    function isMatch(x) = x.matched;
     function Bit#(SmallPAWidth) getAddr(Reg#(PMPAddr) x) = x.address;
     Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, csrs.pmpaddr);
+    let pmpMatches = zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0));
     return fromMaybe(
-      PMPRsp {matched: False, authorized: (plvl == M), addr: req.addr},
-      find(isMatch, zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0)))
+      PMPRsp {addr: req.addr, mExc: plvl == M ? Invalid : excCode},
+      fromMaybe(Invalid, find(isValid, pmpMatches)) // flatten the Maybe#(Maybe#(PMPRsp))
     );
   endfunction
-  // build the lookup interfaces
-  let wrapper <- mkUniqueWrapper(lookup);
+  let lookupWrapper <- mkUniqueWrapper(lookup);
+  function Action doPut (PMPReq req) = action
+    if (isValid(req.mExc)) rsp.enq(PMPRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+  endaction;
+  // build the lookup interface
   PMPLookup ifc;
-  ifc.put = composeM(wrapper.func, rsp.enq); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+  ifc.put = doPut;
   ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
   // returning interface
   return ifc;

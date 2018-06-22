@@ -30,7 +30,6 @@ import DefaultValue :: *;
 import ConfigReg :: *;
 import Vector :: *;
 
-import BID :: *;
 import RV_BasicTypes :: *;
 
 typedef enum {
@@ -79,23 +78,6 @@ instance DefaultValue#(PMPAddr);
   };
 endinstance
 
-typedef enum {READ, WRITE, IFETCH} PMPReqType deriving (Bits, Eq, FShow);
-typedef struct
-{
-  PAddr addr;
-  BitPO#(TLog#(XLEN)) numBytes;
-  PMPReqType reqType;
-} PMPReq deriving (Bits, FShow);
-typedef struct {
-  Bool matched;
-  Bool authorized;
-  PAddr addr;
-} PMPRsp deriving (Bits, FShow);
-instance DefaultValue#(PMPRsp);
-  function defaultValue = PMPRsp {matched: False, authorized: False, addr: 0};
-endinstance
-
-typedef struct {
-  function Action f(PMPReq req) put;
-  function ActionValue#(PMPRsp) f() get;
-} PMPLookup;
+typedef AddrReq#(PAddr) PMPReq;
+typedef AddrRsp#(PAddr) PMPRsp;
+typedef AddrLookup#(PMPReq, PMPRsp) PMPLookup;

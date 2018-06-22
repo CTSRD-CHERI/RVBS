@@ -26,6 +26,8 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import BID :: *;
+
 // static parameters
 Bool static_HAS_M_MODE = True;
 
@@ -84,6 +86,32 @@ typedef XLEN IMemWidth;
 typedef XLEN DMemWidth;
 typedef XLEN IVMMemWidth;
 typedef XLEN DVMMemWidth;
+
+// RV load/store/ifetch util types
+typedef enum {READ, WRITE, IFETCH} RVMemReqType deriving (Bits, Eq, FShow);
+
+typedef struct
+{
+  addr_t addr;
+  BitPO#(TLog#(XLEN)) numBytes;
+  RVMemReqType reqType;
+  Maybe#(ExcCode) mExc;
+} AddrReq#(type addr_t) deriving (Bits, FShow);
+function AddrReq#(addr_t) aReqRead(addr_t a, Integer n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: fromInteger(n), reqType: READ, mExc: mE};
+function AddrReq#(addr_t) aReqWrite(addr_t a, Integer n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: fromInteger(n), reqType: WRITE, mExc: mE};
+function AddrReq#(addr_t) aReqIFetch(addr_t a, Integer n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: fromInteger(n), reqType: IFETCH, mExc: mE};
+typedef struct {
+  addr_t addr;
+  Maybe#(ExcCode) mExc;
+} AddrRsp#(type addr_t) deriving (Bits, FShow);
+
+typedef struct {
+  function Action f(req_t req) put;
+  function ActionValue#(rsp_t) f() get;
+} AddrLookup#(type req_t, type rsp_t);
 
 function Bit#(InstWidth) extractInst (Bit#(IMemWidth) blob) = truncate(blob);
 

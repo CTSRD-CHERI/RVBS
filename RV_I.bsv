@@ -413,7 +413,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   action
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
-    VMReq req = VMReq {addr: vaddr};
+    VMReq req = aReqRead(vaddr, args.numBytes, Invalid);
     s.dvm.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (vmTranslate lookup step)", args.name), rd, rs1, imm));
@@ -425,7 +425,11 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     PAddr paddr = toPAddr(vaddr);
   `endif
   `ifdef PMP
-    PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: READ};
+  `ifdef SUPERVISOR_MODE
+    PMPReq req = aReqRead(paddr, args.numBytes, rsp.mExc);
+  `else
+    PMPReq req = aReqRead(paddr, args.numBytes, Invalid);
+  `endif
     s.dpmp.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm));
@@ -452,6 +456,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     itrace(s.pc, fshow(rsp));
     logInst(s.pc, fmtInstI(sprintf("%s (mem rsp step)", args.name), rd, rs1, imm));
   endaction);
+// TODO deal with exceptions
 
 /*
   S-type
@@ -467,7 +472,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   return list(action
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
-    VMReq req = VMReq {addr: vaddr};
+    VMReq req = aReqWrite(vaddr, args.numBytes, Invalid);
     s.dvm.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (vmTranslate lookup step)", args.name), rs1, rs2, imm));
@@ -479,7 +484,11 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     PAddr paddr = toPAddr(vaddr);
   `endif
   `ifdef PMP
-    PMPReq req = PMPReq{addr: paddr, numBytes: fromInteger(args.numBytes), reqType: WRITE};
+  `ifdef SUPERVISOR_MODE
+    PMPReq req = aReqWrite(paddr, args.numBytes, rsp.mExc);
+  `else
+    PMPReq req = aReqWrite(paddr, args.numBytes, Invalid);
+  `endif
     s.dpmp.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm));
@@ -496,6 +505,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     logInst(s.pc, fmtInstS(sprintf("%s (mem req step)", args.name), rs1, rs2, imm));
   endaction);
 endfunction
+// TODO deal with exceptions
 
 //////////////////
 // Memory Model //
