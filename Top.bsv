@@ -46,8 +46,8 @@ interface RVBSProbes;
   method Bit#(XLEN) peekCtrlCSR();
 endinterface
 
-module rvbs (RVBSProbes);
-
+// memory subsystem module
+module rvbsMem (Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)));
   `ifdef MEM_IMG
   String memimg = `MEM_IMG;
   `else
@@ -56,9 +56,18 @@ module rvbs (RVBSProbes);
   `ifdef MEM_SIZE
   Integer memsize = `MEM_SIZE;
   `else
-  Integer memsize = 16384;
+  //Integer memsize = 16384;
+  Integer memsize = 'h10000;
   `endif
   Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) mem <- mkSharedMem2(memsize, memimg);
+  interface p0 = mem.p0;
+  interface p1 = mem.p1;
+endmodule
+
+module rvbs (RVBSProbes);
+
+  // instanciating memory subsystem
+  let mem <- rvbsMem;
   `ifdef SUPERVISOR_MODE
   RVState s <- mkState(mem.p0, mem.p1, mem.p0, mem.p1);
   `else

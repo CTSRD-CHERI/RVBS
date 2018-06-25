@@ -416,7 +416,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     VMReq req = aReqRead(vaddr, args.numBytes, Invalid);
     s.dvm.put(req);
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(sprintf("%s (vmTranslate lookup step)", args.name), rd, rs1, imm));
+    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "vmTranslate lookup step");
   endaction, action
     VMRsp rsp <- s.dvm.get();
     itrace(s.pc, fshow(rsp));
@@ -432,7 +432,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   `endif
     s.dpmp.put(req);
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(sprintf("%s (pmp lookup step)", args.name), rd, rs1, imm));
+    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "pmp lookup step");
   endaction, action
     PMPRsp rsp <- s.dpmp.get();
     itrace(s.pc, fshow(rsp));
@@ -442,7 +442,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   `endif
     s.dmem.sendReq(req);
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(sprintf("%s (mem req step)", args.name), rd, rs1, imm));
+    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem req step");
   endaction, action
     let rsp <- s.dmem.getRsp();
     case (rsp) matches
@@ -454,7 +454,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     endcase
     s.pc <= s.pc + s.instByteSz;
     itrace(s.pc, fshow(rsp));
-    logInst(s.pc, fmtInstI(sprintf("%s (mem rsp step)", args.name), rd, rs1, imm));
+    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem rsp step");
   endaction);
 // TODO deal with exceptions
 
@@ -475,7 +475,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     VMReq req = aReqWrite(vaddr, args.numBytes, Invalid);
     s.dvm.put(req);
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(sprintf("%s (vmTranslate lookup step)", args.name), rs1, rs2, imm));
+    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "vmTranslate lookup step");
   endaction, action
     VMRsp rsp <- s.dvm.get();
     itrace(s.pc, fshow(rsp));
@@ -491,7 +491,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   `endif
     s.dpmp.put(req);
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(sprintf("%s (pmp lookup step)", args.name), rs1, rs2, imm));
+    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "pmp lookup step");
   endaction, action
     PMPRsp rsp <- s.dpmp.get();
     itrace(s.pc, fshow(rsp));
@@ -502,7 +502,7 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     s.dmem.sendReq(req);
     s.pc <= s.pc + s.instByteSz;
     itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(sprintf("%s (mem req step)", args.name), rs1, rs2, imm));
+    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");
   endaction);
 endfunction
 // TODO deal with exceptions

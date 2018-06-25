@@ -613,7 +613,7 @@ instance Literal#(TVecMode);
 endinstance
 typedef struct { Bit#(TSub#(XLEN,2)) base;  TVecMode mode; } TVec deriving (Bits);
 instance FShow#(TVec);
-  function fshow(x) = $format("TVec {0x%0x - %s}", {x.base,2'b00}, fshow(x.mode));
+  function fshow(x) = $format("TVec {0x%0x - ", {x.base,2'b00}, fshow(x.mode), "}");
 endinstance
 instance DefaultValue#(TVec);
   function TVec defaultValue() = TVec {base: 0, mode: Direct};

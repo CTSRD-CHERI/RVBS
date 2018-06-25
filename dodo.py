@@ -39,7 +39,7 @@ from doit.action import CmdAction
 class RVBS:
   def __init__(self,
     size = 32, mem_width = None,
-    mem_size = 16384, mem_img="test-prog.hex",
+    mem_size = 0x10000, mem_img="test-prog.hex",
     s_mode = False, u_mode = False,
     m_ext = False, c_ext = False,
     n_ext = False, pmp = False):
@@ -109,6 +109,8 @@ class RVBS:
         tests += ["rv64m"]
       if self.c_ext:
         tests += ["rv64c"]
+    if self.s_mode:
+      tests += list(map(lambda x: "v"+x, tests))
     return tests
     #tests = ["rv32i"]
     #if self.c_ext:
@@ -163,13 +165,27 @@ test32c_re = re.compile("rv32uc-(uo|rvbs)-[^.]+$")
 test64i_re = re.compile("rv64(mi|ui)-(uo|rvbs)-[^.]+$")
 test64m_re = re.compile("rv64um-(uo|rvbs)-[^.]+$")
 test64c_re = re.compile("rv64uc-(uo|rvbs)-[^.]+$")
+
+vtest32i_re = re.compile("rv32ui-vrvbs-[^.]+$")
+vtest32m_re = re.compile("rv32um-vrvbs-[^.]+$")
+vtest32c_re = re.compile("rv32uc-vrvbs-[^.]+$")
+vtest64i_re = re.compile("rv64ui-vrvbs-[^.]+$")
+vtest64m_re = re.compile("rv64um-vrvbs-[^.]+$")
+vtest64c_re = re.compile("rv64uc-vrvbs-[^.]+$")
+
 tests = {
   'rv32i': [f for f in os.listdir(tests_dir) if re.match(test32i_re,f)],
   'rv32m': [f for f in os.listdir(tests_dir) if re.match(test32m_re,f)],
   'rv32c': [f for f in os.listdir(tests_dir) if re.match(test32c_re,f)],
   'rv64i': [f for f in os.listdir(tests_dir) if re.match(test64i_re,f)],
   'rv64m': [f for f in os.listdir(tests_dir) if re.match(test64m_re,f)],
-  'rv64c': [f for f in os.listdir(tests_dir) if re.match(test64c_re,f)]
+  'rv64c': [f for f in os.listdir(tests_dir) if re.match(test64c_re,f)],
+  'vrv32i': [f for f in os.listdir(tests_dir) if re.match(vtest32i_re,f)],
+  'vrv32m': [f for f in os.listdir(tests_dir) if re.match(vtest32m_re,f)],
+  'vrv32c': [f for f in os.listdir(tests_dir) if re.match(vtest32c_re,f)],
+  'vrv64i': [f for f in os.listdir(tests_dir) if re.match(vtest64i_re,f)],
+  'vrv64m': [f for f in os.listdir(tests_dir) if re.match(vtest64m_re,f)],
+  'vrv64c': [f for f in os.listdir(tests_dir) if re.match(vtest64c_re,f)]
 }
 nb_exts = 3
 # test pass
@@ -307,7 +323,9 @@ def task_test_elf_to_hex () :
     cmd += ["{:s}".format(f),"hex","-w",str(int(m/8))]
     sub.run(cmd)
 
-  for t, m in [(x, y) for y in [32,64] for x in flatten([tests[fullname(*(y,)+exts+(False,))] for exts in all_one_hot(nb_exts)])]:
+  def get_tests(s, vm=False):
+    return [tests[("v" if vm else "")+fullname(*(s,)+exts+(False,))] for exts in all_one_hot(nb_exts)]
+  for t, m in [(x, y) for y in [32,64] for x in flatten(get_tests(y)+get_tests(y,vm=True))]:
     yield {
       'name'    : test_name(t, m),
       'actions' : [(elf_to_hex,[op.join(tests_dir,t), m])],

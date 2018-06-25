@@ -64,7 +64,11 @@ instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y));
 endinstance
 
 instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y, Fmt z));
-  function logInst(pc, msg0, msg1) = itrace(pc, $format(msg0, " -- ", msg1));
+  function logInst(pc, msg0, msg1) = itrace(pc, $format(msg0, "  \t--\t", msg1));
+endinstance
+
+instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y, String z));
+  function logInst(pc, msg0, msg1) = itrace(pc, $format(msg0, "  \t--\t", msg1));
 endinstance
 
 /*
