@@ -729,7 +729,8 @@ endinstance
 instance LegalizeWrite#(SATP);
   function legalizeWrite(x, y);
     // TODO (only bare is currently supported)
-    return (y.mode == BARE) ? y : unpack(x);
+    // "if satp is written with an unsupported MODE, the entire write has no effect; no fields in satp are modified"
+    return y;
   endfunction
 endinstance
 `endif

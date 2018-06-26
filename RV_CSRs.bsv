@@ -187,7 +187,9 @@ module mkCSRs(CSRs);
         RS: newval = unpack(pack(csr) | r.val);
         RC: newval = unpack(pack(csr) & ~r.val);
       endcase
+      //printTLogPlusArgs("CSRs", $format("newval before legalize: 0x%0x", newval));
       csr_t newcsr = legalizeWrite(pack(csr), newval);
+      //printTLogPlusArgs("CSRs", $format("newval after legalize: 0x%0x", pack(newcsr)));
       csr <= newcsr;
       printTLogPlusArgs("CSRs", $format(fshow(csr) + $format(" -> ") + fshow(newcsr)));
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));

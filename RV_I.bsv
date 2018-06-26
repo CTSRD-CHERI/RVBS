@@ -575,7 +575,8 @@ function Action instrCSRRW(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rd == 0) ? rwCSRReqNoRead(imm, s.regFile[rs1]) : rwCSRReq(imm, s.regFile[rs1]);
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrw", rd, rs1, imm), csrName(imm));
+  //logInst(s.pc, fmtInstI("csrrw", rd, rs1, imm), csrName(imm));
+  logInst(s.pc, fmtInstI("csrrw", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.regFile[rs1], csrName(imm)));
 endaction;
 
 // funct3 = CSRRS = 010
@@ -589,7 +590,8 @@ function Action instrCSRRS(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.regFile[rs1]) : rsCSRReq(imm, s.regFile[rs1]);
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrs", rd, rs1, imm), csrName(imm));
+  //logInst(s.pc, fmtInstI("csrrs", rd, rs1, imm), csrName(imm));
+  logInst(s.pc, fmtInstI("csrrs", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.regFile[rs1], csrName(imm)));
 endaction;
 
 // funct3 = CSRRC = 011
@@ -601,7 +603,8 @@ function Action instrCSRRC(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rs1 == 0) ? rcCSRReqNoWrite(imm, s.regFile[rs1]) : rcCSRReq(imm, s.regFile[rs1]);
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrc", rd, rs1, imm), csrName(imm));
+  //logInst(s.pc, fmtInstI("csrrc", rd, rs1, imm), csrName(imm));
+  logInst(s.pc, fmtInstI("csrrc", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.regFile[rs1], csrName(imm)));
 endaction;
 
 // funct3 = CSRRWI = 101
