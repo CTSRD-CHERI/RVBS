@@ -727,10 +727,14 @@ instance DefaultValue#(SATP);
   function defaultValue() = SATP { mode: BARE, asid: 0, ppn: 0 };
 endinstance
 instance LegalizeWrite#(SATP);
-  function legalizeWrite(x, y);
-    // TODO (only bare is currently supported)
+  function legalizeWrite(oldval, newval);
+    `ifdef XLEN64 // MAX_XLEN > 32
     // "if satp is written with an unsupported MODE, the entire write has no effect; no fields in satp are modified"
-    return y;
+    // TODO (only bare is currently supported)
+    return (newval.mode != BARE) ? unpack(oldval) : newval;
+    `else
+    return newval;
+    `endif
   endfunction
 endinstance
 `endif

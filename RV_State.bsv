@@ -80,11 +80,18 @@ module [Module] mkState#(
   `endif
   // PMP lookup interfaces
   `ifdef PMP
+  PMPLookup pmp0 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  PMPLookup pmp1 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  `ifdef SUPERVISOR_MODE
+  //PMPLookup ipmp[2] <- virtualize(pmp0, 2);
+  //PMPLookup dpmp[2] <- virtualize(pmp1, 2);
   s.ipmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   s.dpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  `ifdef SUPERVISOR_MODE
-  s.ivmpmp = s.ipmp;
-  s.dvmpmp = s.dpmp;
+  s.ivmpmp = pmp0;
+  s.dvmpmp = pmp1;
+  `else
+  s.ipmp = pmp0;
+  s.dpmp = pmp1;
   `endif
   `endif
   // Virtual Memory lookup interfaces

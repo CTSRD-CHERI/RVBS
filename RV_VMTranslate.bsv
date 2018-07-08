@@ -28,44 +28,212 @@
 
 import FIFO :: *;
 import SpecialFIFOs :: *;
-import UniqueWrappers :: * ;
+//import UniqueWrappers :: * ;
 
 import BID :: *;
+import Recipe :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;
 import RV_PMPTypes :: *;
 import RV_VMTranslateTypes :: *;
 
-module mkVMLookup#(CSRs csrs
-  , Mem#(PAddr, Bit#(n)) mem
+interface PageWalker;
+  method Action lookup (VMReq r);
+endinterface
+
+`ifndef XLEN64 // MAX_XLEN = 32
+
+/////////////////
+// Sv32 walker //
+/////////////////
+
+`define PTESIZE 4
+`define PAGESIZE 2**12
+
+typedef struct {
+  Bit#(10) vpn1;
+  Bit#(10) vpn0;
+  Bit#(12) pgoffset;
+} Sv32VAddr deriving (Bits, FShow);
+
+typedef struct {
+  Bit#(12) ppn1;
+  Bit#(10) ppn0;
+  Bit#(12) pgoffset;
+} Sv32PAddr deriving (Bits, FShow);
+
+typedef struct {
+  Bit#(12) ppn1;
+  Bit#(10) ppn0;
+  Bit#(2) rsw;
+  Bool d;
+  Bool a;
+  Bool g;
+  Bool u;
+  Bool x;
+  Bool w;
+  Bool r;
+  Bool v;
+} Sv32PTE deriving (Bits, FShow);
+
+module [Module] mkSv32PageWalker#(
+  FIFO#(VMRsp) rsp
+  , SATP satp
+  , Mem#(PAddr, Bit#(XLEN)) mem // XXX TODO sort out physical address width (34)
+  `ifdef PMP
+  , PMPLookup pmp
+  `endif
+  ) (PageWalker);
+
+  // required page walker mechanism "variable"
+  Reg#(Bool) activeLookup[2] <- mkCReg(2, False);
+  Reg#(Bit#(1))    i[2] <- mkCReg(2, 1);
+  Reg#(Sv32PAddr)  a[2] <- mkCReg(2, ?);
+  Reg#(Sv32VAddr) va[2] <- mkCReg(2, ?);
+  Reg#(RVMemReqType) rType[2] <- mkCReg(2, ?);
+  //PulseWire startReq <- mkPulseWire;
+
+  // physical memory request machine
+  // XXX TODO sort out physical memory addr width (34)
+  PAddr pteAddr = unpack(pack(a[1]) + (((i[1] == 1) ? zeroExtend(va[1].vpn1) : zeroExtend(va[1].vpn0)) << log2(`PTESIZE)));
+  RecipeFSM memReq <- compile(rPar(rBlock(
+    `ifdef PMP
+    action
+      pmp.put(PMPReq {
+        addr: pteAddr,
+        numBytes: `PTESIZE,
+        reqType: rType[1],
+        mExc: Invalid
+      });
+    endaction, action
+      PMPRsp r <- pmp.get();
+      if (isValid(r.mExc)) rsp.enq(r); // terminate early on PMP exception
+      else begin
+        MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: r.addr, numBytes: `PTESIZE}; // XXX TODO sort out paddr size
+    `else
+    action
+      MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: pteAddr, numBytes: `PTESIZE}; // XXX TODO sort out paddr size
+    `endif
+      printTLogPlusArgs("debug", $format("DEBUG - a[1] = 0x%0x", a[1]));
+      printTLogPlusArgs("debug", $format("DEBUG - i[1] = %0d", i[1]));
+      printTLogPlusArgs("debug", $format("DEBUG - va[1].vpn1 = 0x%0x", va[1].vpn1));
+      printTLogPlusArgs("debug", $format("DEBUG - va[1].vpn0 = 0x%0x", va[1].vpn0));
+      printTLogPlusArgs("debug", $format("DEBUG - log2(PTESIZE) = %0d", log2(`PTESIZE)));
+      printTLogPlusArgs("vmem", $format("VMEM - Sv32 mem access, sending ", fshow(req)));
+      mem.sendReq(req);
+    `ifdef PMP
+    end
+    `endif
+    endaction
+    )));
+
+    // rule observing the received pte
+    let pgFault = case (rType[1])
+      READ: return Valid(LoadPgFault);
+      WRITE: return Valid(StrAMOPgFault);
+      IFETCH: return Valid(InstPgFault);
+    endcase;
+    let pgFaultRsp = VMRsp {addr: ?, mExc: pgFault};
+    rule checkPTE (activeLookup[1]);
+      printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule"));
+      function finishLookup(x) = action
+        printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - returning ", fshow(x)));
+        activeLookup[1] <= False;
+        rsp.enq(x);
+      endaction;
+      let tmp <- mem.getRsp();
+      case (tmp) matches
+        tagged ReadRsp .r: begin
+          Sv32PTE pte = unpack(r);
+          printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - ", fshow(pte)));
+          // invalid pte
+          if (!pte.v || (!pte.r && pte.w)) finishLookup(pgFaultRsp);
+          // leaf pte
+          else if (pte.r || pte.x) begin
+            finishLookup(VMRsp {
+              addr: {pte.ppn1, (i[1] > 0) ? va[1].vpn0 : pte.ppn0, va[1].pgoffset},
+              mExc: Invalid
+            });
+            // TODO more checks on pte and stuff
+            //if(exc) rsp.enq(exc);
+            //else rsp.enq(PAddr);
+          // non leaf pte
+          end else begin
+            if (i[0] == 0) finishLookup(pgFaultRsp);
+            else begin
+              i[0] <= i[0] - 1;
+              a[0] <= unpack(zeroExtend({pte.ppn1, pte.ppn0}) << log2(`PAGESIZE));
+              //startReq.send();
+              memReq.start();
+            end
+          end
+        end
+        default: begin $display("Received a non read response when fetching a PTE"); $finish(0); end // XXX TODO add assertion
+      endcase
+    endrule
+
+    //rule doStartReq (startReq);
+    //  memReq.start();
+    //endrule
+
+    // lookup method
+    method Action lookup (VMReq r) if (!activeLookup[0]);
+      i[0] <= 1;
+      a[0] <= unpack(zeroExtend(satp.ppn) << log2(`PAGESIZE));
+      va[0] <= unpack(r.addr);
+      rType[0] <= r.reqType;
+      activeLookup[0] <= True;
+      //startReq.send();
+      memReq.start();
+      printTLogPlusArgs("vmem", "VMEM - Sv32 starting lookup");
+    endmethod
+
+endmodule
+
+`endif
+
+module [Module] mkVMLookup#(CSRs csrs
+  , Mem#(PAddr, Bit#(XLEN)) mem // XXX TODO sort out the physical address width (34)
   `ifdef PMP
   , PMPLookup pmp
   `endif
   ) (VMLookup);
+  // local module instances
   FIFO#(VMRsp) rsp <- mkBypassFIFO;
+  `ifndef XLEN64 // MAX_XLEN = 32
+  PageWalker sv32PageWalker <- mkSv32PageWalker(
+    rsp
+    , csrs.satp
+    , mem
+    `ifdef PMP
+    , pmp
+    `endif
+    );
+  `endif
   // lookup method
-  function VMRsp lookup (VMReq req);
+  function Action lookup (VMReq req) = action
     // TODO
-    `ifdef XLEN64
-    if (csrs.mstatus.sxl == XL64)
+    printTLogPlusArgs("vmem", $format("VMEM - lookup ", fshow(req)));
+    printTLogPlusArgs("vmem", $format("VMEM - lookup ", fshow(csrs.satp)));
     case (csrs.satp.mode)
-      BARE: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
-      default: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
+      BARE: begin
+        let r = VMRsp {addr: toPAddr(req.addr), mExc: Invalid};
+        rsp.enq(r);
+        printTLogPlusArgs("vmem", $format("VMEM - BARE mode, returning ", fshow(r)));
+      end
+      `ifdef XLEN64 // MAX_XLEN > 32
+      `else // MAX_XLEN = 32
+      SV32: sv32PageWalker.lookup(req);
+      `endif
+      default: begin $display("Unsupported STAP mode for translation. Should not happen."); $finish(0); end // XXX TODO add assertion
     endcase
-    else begin
-    `endif
-    case (csrs.satp.mode)
-      BARE: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
-      default: return VMRsp {addr: toPAddr(req.addr), mExc: req.mExc};
-    endcase
-    `ifdef XLEN64
-     end
-    `endif
-  endfunction
-  let lookupWrapper <- mkUniqueWrapper(lookup);
+  endaction;
   function Action doPut (VMReq req) = action
-    if (isValid(req.mExc)) rsp.enq(VMRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+    if (isValid(req.mExc)) begin
+      printTLogPlusArgs("vmem", $format("VMEM - incomming %s, pass it down", fshow(req.mExc)));
+      rsp.enq(VMRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+    end else lookup(req);
+    //else rsp.enq(VMRsp {addr: toPAddr(req.addr), mExc: Invalid});
   endaction;
   // build the lookup interface
   VMLookup ifc;

@@ -34,7 +34,7 @@ BSC = bsc
 BSCFLAGS = -p $(BSVPATH) -check-assert
 BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
-#BSCFLAGS += +RTS -K18388608 -RTS
+BSCFLAGS += +RTS -K18388608 -RTS
 ifdef MEM_SIZE
 BSCFLAGS += -D MEM_SIZE=$(MEM_SIZE)
 endif

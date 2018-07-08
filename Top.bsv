@@ -69,7 +69,10 @@ module rvbs (RVBSProbes);
   // instanciating memory subsystem
   let mem <- rvbsMem;
   `ifdef SUPERVISOR_MODE
-  RVState s <- mkState(mem.p0, mem.p1, mem.p0, mem.p1);
+  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.p0, 2);
+  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.p1, 2);
+  RVState s <- mkState(imem[1], dmem[1], imem[0], dmem[0]);
+  //RVState s <- mkState(mem.p0, mem.p1, mem.p0, mem.p1);
   `else
   RVState s <- mkState(mem.p0, mem.p1);
   `endif
