@@ -7,8 +7,9 @@ RVBS currently supports:
 - 32-bit and 64-bit RISC-V *I* base integer instructions
 - RISC-V *M* integer multiply/divide instructions
 - RISC-V *C* compressed instructions
-- *Machine mode*
-- *PMP*
+- *Machine/Supervisor/User privilege modes*
+- *Sv32* virtual memory translation mechanism **without Sv32 memory protection features**
+- *PMP* physical memory protection mechanism
 
 RVBS supports traps between privilege modes, but *Supervisor mode* is not fully implemented.
 
@@ -32,6 +33,8 @@ Once the libraries are available, you can build a simulator by typing `make`. Yo
 - `NO_LOGS` can be used to skip print statements (accelerates simulation)
 - `PRINT_ABI_REG_NAME` can be used to use ABI names for registers instead of their index
 - `XLEN` can be used to specify the XLEN to build with (only `32` and `64` are currently supported)
+- `USER_MODE` can be used to enable *User mode* support
+- `SUPERVISOR_MODE` can be used to enable *Supervisor mode* support (implies *User mode*)
 - `PMP` can be used to enable the Physical Memory Protection unit
 - `RVM` can be used to enable the *M* integer multiply/divide instructions extention
 - `RVC` can be used to enable the *C* compressed instructions extention
@@ -43,8 +46,6 @@ $ make RVC=1 XLEN=64 MEM_SIZE=32768
 
 **TODO**, not currently implemented:
 
-- `USER_MODE` can be used to enable *User mode* support
-- `SUPERVISOR_MODE` can be used to enable *Supervisor mode* support (implies *User mode*)
 - `RVN` can be used to enable the *N* extention for *User mode* interrupt and exception support
 
 ## References
