@@ -27,6 +27,8 @@
  */
 
 import Vector :: *;
+import ClientServer :: *;
+import GetPut :: *;
 
 import BID :: *;
 import Recipe :: *;
@@ -93,7 +95,7 @@ instance State#(RVState);
   endfunction
   function Action reqNextInst(RVState s) = s.fetchInst.start();
   function ActionValue#(Bit#(MaxInstSz)) getNextInst(RVState s) = actionvalue
-    let rsp <- s.imem.getRsp();
+    let rsp <- s.imem.response.get();
     case (rsp) matches
       tagged ReadRsp .val: begin
         s.instByteSz <= (val[1:0] == 2'b11) ? 4 : 2;

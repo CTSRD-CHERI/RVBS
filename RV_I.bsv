@@ -27,10 +27,12 @@
  */
 
 import Vector :: *;
-import BitPat :: *;
 import Printf :: *;
-import BID :: *;
+import ClientServer :: *;
+import GetPut :: *;
 
+import BID :: *;
+import BitPat :: *;
 import RV_Common :: *;
 
 `ifdef XLEN32
@@ -413,12 +415,12 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   action
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
-    VMReq req = aReqRead(vaddr, args.numBytes, Invalid);
-    s.dvm.put(req);
+    let req = aReqRead(vaddr, args.numBytes, Invalid);
+    s.dvm.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "vmTranslate lookup step");
   endaction, action
-    VMRsp rsp <- s.dvm.get();
+    let rsp <- s.dvm.response.get();
     itrace(s.pc, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
@@ -426,25 +428,25 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   `endif
   `ifdef PMP
   `ifdef SUPERVISOR_MODE
-    PMPReq req = aReqRead(paddr, args.numBytes, rsp.mExc);
+    let req = aReqRead(paddr, args.numBytes, rsp.mExc);
   `else
-    PMPReq req = aReqRead(paddr, args.numBytes, Invalid);
+    let req = aReqRead(paddr, args.numBytes, Invalid);
   `endif
-    s.dpmp.put(req);
+    s.dpmp.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "pmp lookup step");
   endaction, action
-    PMPRsp rsp <- s.dpmp.get();
+    let rsp <- s.dpmp.response.get();
     itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
   `else
     MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
   `endif
-    s.dmem.sendReq(req);
+    s.dmem.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem req step");
   endaction, action
-    let rsp <- s.dmem.getRsp();
+    let rsp <- s.dmem.response.get();
     case (rsp) matches
       tagged ReadRsp .r: begin
         Bool isNeg = unpack(r[(args.numBytes*8)-1]);
@@ -472,12 +474,12 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   return list(action
     VAddr vaddr = s.regFile[rs1] + signExtend(imm);
   `ifdef SUPERVISOR_MODE
-    VMReq req = aReqWrite(vaddr, args.numBytes, Invalid);
-    s.dvm.put(req);
+    let req = aReqWrite(vaddr, args.numBytes, Invalid);
+    s.dvm.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "vmTranslate lookup step");
   endaction, action
-    VMRsp rsp <- s.dvm.get();
+    let rsp <- s.dvm.response.get();
     itrace(s.pc, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
@@ -485,21 +487,21 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   `endif
   `ifdef PMP
   `ifdef SUPERVISOR_MODE
-    PMPReq req = aReqWrite(paddr, args.numBytes, rsp.mExc);
+    let req = aReqWrite(paddr, args.numBytes, rsp.mExc);
   `else
-    PMPReq req = aReqWrite(paddr, args.numBytes, Invalid);
+    let req = aReqWrite(paddr, args.numBytes, Invalid);
   `endif
-    s.dpmp.put(req);
+    s.dpmp.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "pmp lookup step");
   endaction, action
-    PMPRsp rsp <- s.dpmp.get();
+    let rsp <- s.dpmp.response.get();
     itrace(s.pc, fshow(rsp));
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `else
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: s.regFile[rs2]};
   `endif
-    s.dmem.sendReq(req);
+    s.dmem.request.put(req);
     s.pc <= s.pc + s.instByteSz;
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");

@@ -31,15 +31,17 @@ import SpecialFIFOs :: *;
 import Vector :: *;
 import DefaultValue :: *;
 import UniqueWrappers :: * ;
+import ClientServer :: * ;
+import GetPut :: * ;
 
 import BID :: *;
 import RV_Types :: *;
 
 module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
 
-  FIFO#(PMPRsp) rsp <- mkBypassFIFO;
+  FIFO#(AddrRsp#(PAddr)) rsp <- mkBypassFIFO;
   // lookup method
-  function PMPRsp lookup (PMPReq req);
+  function lookup (req);
     // authorisation after match
     Maybe#(ExcCode) excCode = case (req.reqType)
       READ: return Valid(LoadAccessFault);
@@ -48,7 +50,7 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
       default: return Invalid; // XXX TODO should never happen, put an assertion
     endcase;
     // inner helper for zipwith
-    function Maybe#(PMPRsp) doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
+    function Maybe#(AddrRsp#(PAddr)) doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
       Maybe#(ExcCode) mExc = (!cfg1.l && plvl == M) ? Invalid :
         (case (req.reqType) matches
           READ &&& cfg1.r: return Invalid;
@@ -57,7 +59,7 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
           default: excCode;
         endcase);
       // prepare match entry
-      PMPRsp matchRsp = PMPRsp {addr: req.addr, mExc: mExc};
+      let matchRsp = AddrRsp {addr: req.addr, mExc: mExc};
       // matching
       PAddr mask = ((~0) << 3) << countZerosLSB(~a0); // 3 because bottom 2 bits + 1 terminating 0
       PAddr baseAddr = req.addr;
@@ -77,20 +79,19 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
     Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, csrs.pmpaddr);
     let pmpMatches = zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0));
     return fromMaybe(
-      PMPRsp {addr: req.addr, mExc: plvl == M ? Invalid : excCode},
-      fromMaybe(Invalid, find(isValid, pmpMatches)) // flatten the Maybe#(Maybe#(PMPRsp))
+      AddrRsp {addr: req.addr, mExc: plvl == M ? Invalid : excCode},
+      fromMaybe(Invalid, find(isValid, pmpMatches)) // flatten the Maybe#(Maybe#(AddrRsp))
     );
   endfunction
-  let lookupWrapper <- mkUniqueWrapper(lookup);
-  function Action doPut (PMPReq req) = action
-    if (isValid(req.mExc)) rsp.enq(PMPRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
-  endaction;
   // build the lookup interface
-  PMPLookup ifc;
-  ifc.put = doPut;
-  ifc.get = actionvalue rsp.deq(); return rsp.first(); endactionvalue;
-  // returning interface
-  return ifc;
+  let lookupWrapper <- mkUniqueWrapper(lookup);
+  interface request = interface Put; method put (req) = action
+    if (isValid(req.mExc)) rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+    endaction; endinterface;
+  interface response = interface Get; method get = actionvalue
+    rsp.deq();
+    return rsp.first();
+  endactionvalue; endinterface;
 
 endmodule

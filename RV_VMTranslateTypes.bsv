@@ -28,6 +28,4 @@
 
 import RV_BasicTypes :: *;
 
-typedef AddrReq#(VAddr) VMReq;
-typedef AddrRsp#(PAddr) VMRsp;
-typedef AddrLookup#(VMReq, VMRsp) VMLookup;
+typedef AddrLookup#(VAddr, PAddr) VMLookup;

@@ -27,6 +27,7 @@
  */
 
 import BID :: *;
+import ClientServer :: *;
 
 // static parameters
 Bool static_HAS_M_MODE = True;
@@ -97,6 +98,7 @@ typedef struct
   RVMemReqType reqType;
   Maybe#(ExcCode) mExc;
 } AddrReq#(type addr_t) deriving (Bits, FShow);
+instance NeedRsp#(AddrReq#(addr_t)); function needRsp(req) = True; endinstance
 function AddrReq#(addr_t) aReqRead(addr_t a, Integer n, Maybe#(ExcCode) mE) =
   AddrReq {addr: a, numBytes: fromInteger(n), reqType: READ, mExc: mE};
 function AddrReq#(addr_t) aReqWrite(addr_t a, Integer n, Maybe#(ExcCode) mE) =
@@ -108,10 +110,7 @@ typedef struct {
   Maybe#(ExcCode) mExc;
 } AddrRsp#(type addr_t) deriving (Bits, FShow);
 
-typedef struct {
-  function Action f(req_t req) put;
-  function ActionValue#(rsp_t) f() get;
-} AddrLookup#(type req_t, type rsp_t);
+typedef Server#(AddrReq#(addr_req), AddrRsp#(addr_rsp))  AddrLookup#(type addr_req, type addr_rsp);
 
 function Bit#(InstWidth) extractInst (Bit#(IMemWidth) blob) = truncate(blob);
 

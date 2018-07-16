@@ -78,6 +78,4 @@ instance DefaultValue#(PMPAddr);
   };
 endinstance
 
-typedef AddrReq#(PAddr) PMPReq;
-typedef AddrRsp#(PAddr) PMPRsp;
-typedef AddrLookup#(PMPReq, PMPRsp) PMPLookup;
+typedef AddrLookup#(PAddr, PAddr) PMPLookup;

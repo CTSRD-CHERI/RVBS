@@ -27,6 +27,8 @@
  */
 
 import ConfigReg :: *;
+import ClientServer :: *;
+import GetPut :: *;
 
 import BID :: *;
 import Recipe :: *;
@@ -83,12 +85,12 @@ module [Module] mkState#(
   PMPLookup pmp0 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   PMPLookup pmp1 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   `ifdef SUPERVISOR_MODE
-  //PMPLookup ipmp[2] <- virtualize(pmp0, 2);
-  //PMPLookup dpmp[2] <- virtualize(pmp1, 2);
-  s.ipmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  s.dpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  s.ivmpmp = pmp0;
-  s.dvmpmp = pmp1;
+  PMPLookup ipmp[2] <- virtualize(pmp0, 2);
+  PMPLookup dpmp[2] <- virtualize(pmp1, 2);
+  s.ipmp = ipmp[1];
+  s.dpmp = dpmp[1];
+  s.ivmpmp = ipmp[0];
+  s.dvmpmp = dpmp[0];
   `else
   s.ipmp = pmp0;
   s.dpmp = pmp1;
@@ -109,11 +111,11 @@ module [Module] mkState#(
     action
       VAddr vaddr = s.pc.next;
     `ifdef SUPERVISOR_MODE
-      VMReq req = aReqIFetch(vaddr, 4, Invalid);
-      s.ivm.put(req);
+      let req = aReqIFetch(vaddr, 4, Invalid);
+      s.ivm.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      VMRsp rsp <- s.ivm.get();
+      let rsp <- s.ivm.response.get();
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
       PAddr paddr = rsp.addr;
     `else
@@ -121,20 +123,20 @@ module [Module] mkState#(
     `endif
     `ifdef PMP
     `ifdef SUPERVISOR_MODE
-      PMPReq req = aReqIFetch(paddr, 4, rsp.mExc);
+      let req = aReqIFetch(paddr, 4, rsp.mExc);
     `else
-      PMPReq req = aReqIFetch(paddr, 4, Invalid);
+      let req = aReqIFetch(paddr, 4, Invalid);
     `endif
-      s.ipmp.put(req);
+      s.ipmp.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      PMPRsp rsp <- s.ipmp.get();
+      let rsp <- s.ipmp.response.get();
       MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
     `else
       MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
     `endif
-      s.imem.sendReq(req);
+      s.imem.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction)));
     // TODO deal with exceptions
