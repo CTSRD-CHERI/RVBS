@@ -152,6 +152,14 @@ def flatten(l):
 root_dir = os.getcwd()
 def in_root_dir(fname):
   return op.join(root_dir, fname)
+# build dir
+build_dir = op.join(root_dir, "build")
+def in_build_dir(fname):
+  return op.join(build_dir, fname)
+# output dir
+output_dir = op.join(root_dir, "output")
+def in_output_dir(fname):
+  return op.join(output_dir, fname)
 # markdown docs
 pandoc = sub.run(["which","pandoc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 md_docs = [x for x in os.listdir(root_dir) if x[-3:] == ".md"]
@@ -199,14 +207,16 @@ elfmanip = op.expanduser("~/devstuff/elfmanip/elfmanip.py")
 biddir=in_root_dir("BID")
 recipedir=op.join(biddir, "Recipe")
 bitpatdir=op.join(biddir, "BitPat")
-bsvpath=":".join(["+",recipedir,bitpatdir,biddir])
+bluestuffdir="/home/aj443/devstuff/BlueStuff"
+axidir=op.join(bluestuffdir, "AXI")
+bsvpath=":".join(["+",recipedir,bitpatdir,biddir,axidir])
 bsv_re = re.compile(".*\.bsv")
 bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]
 bsc_flags+=["-show-schedule"]
 #bsc_flags+=["-show-rule-rel", "*", "*"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
-topmod = "rvbs"
+topmod = "top"
 topfile = "Top.bsv"
 cfiles = [op.join(biddir,"BID_SimUtils.c"),op.join(biddir,"BID_Utils_SimMem.c")]
 #gcc
@@ -221,6 +231,8 @@ def bdir (rvbs):
   return "{:s}-bdir".format(rvbs.name())
 def simdir (rvbs):
   return "{:s}-simdir".format(rvbs.name())
+def infodir (rvbs):
+  return "{:s}-infodir".format(rvbs.name())
 proglink = "test-prog.hex"
 tracedir = op.join(root_dir,"test-traces")
 debug = True
@@ -243,15 +255,16 @@ def task_build_simulator () :
   def build_sim(rvbs):
     silentremove(in_root_dir(rvbs.name()))
     silentremove(in_root_dir(rvbs.name()+".so"))
-    os.makedirs(bdir(rvbs),exist_ok=True)
-    os.makedirs(simdir(rvbs),exist_ok=True)
-    more_bsc_flags = ["-bdir",bdir(rvbs),"-simdir",simdir(rvbs)]
+    os.makedirs(in_build_dir(bdir(rvbs)),exist_ok=True)
+    os.makedirs(in_build_dir(simdir(rvbs)),exist_ok=True)
+    os.makedirs(in_output_dir(infodir(rvbs)),exist_ok=True)
+    more_bsc_flags = ["-bdir",in_build_dir(bdir(rvbs)),"-simdir",in_build_dir(simdir(rvbs)),"-info-dir",in_output_dir(infodir(rvbs))]
     cmd =  [bsc] + bsc_flags + more_bsc_flags + rvbs.bsc_flags() + ["-sim","-g",topmod,"-u",topfile]
     sub.run(cmd)
     env2 = os.environ.copy()
     env2["CC"] = cc
     env2["CXX"] = cxx
-    cmd = [bsc] + bsc_flags + more_bsc_flags + rvbs.bsc_flags() + ["-sim","-o",in_root_dir(rvbs.name()),"-e",topmod] + cfiles
+    cmd = [bsc] + bsc_flags + more_bsc_flags + rvbs.bsc_flags() + ["-sim","-o",in_output_dir(rvbs.name()),"-e",topmod] + cfiles
     sub.run(cmd,env=env2)
 
   for rvbs in rvbss:
@@ -259,8 +272,8 @@ def task_build_simulator () :
       'name'    : rvbs.name(),
       'actions' : [(build_sim,[rvbs])],
       'file_dep': []+bsv_sources,
-      'clean'   : [CmdAction("rm -rf {:s} {:s} {:s} {:s}.so".format(bdir(rvbs), simdir(rvbs), rvbs.name(), rvbs.name()))],
-      'targets' : [in_root_dir(rvbs.name()), in_root_dir(rvbs.name()+".so")],
+      'clean'   : [CmdAction("rm -rf {:s} {:s} {:s} {:s} {:s}".format(in_build_dir(bdir(rvbs)), in_build_dir(simdir(rvbs)), in_output_dir(infodir(rvbs)), in_output_dir(rvbs.name()), in_output_dir(rvbs.name()+".so")))],
+      'targets' : [in_output_dir(rvbs.name()), in_output_dir(rvbs.name()+".so")],
       'verbosity':2
     }
 
@@ -347,12 +360,12 @@ def task_run_test () :
     with temp.TemporaryDirectory() as tmpd:
       os.chdir(tmpd)
       #os.symlink(op.join(root_dir,rvbs.name()),rvbs.name())
-      os.symlink(op.join(root_dir,rvbs.name())+".so",rvbs.name()+".so")
+      os.symlink(in_output_dir(rvbs.name()+".so"),rvbs.name()+".so")
       os.symlink(op.join(tests_dir, test+".hex"),proglink)
       bluespecdir = os.environ.get('BLUESPECDIR')
       bluesim = op.join(bluespecdir,"tcllib/bluespec/bluesim.tcl")
       #cmd = [bluesim, "{:s}.so".format(rvbs.name()), "rvbs", "--script_name", rvbs.name()]
-      cmd = [bluesim, "{:s}.so".format(rvbs.name()), "rvbs"]
+      cmd = [bluesim, "{:s}.so".format(rvbs.name()), "top"]
       if debug:
           #cmd += ["+itrace","+CSRs","+BID_Core","+BID_Utils"]
           #cmd += ["+itrace","+CSRs","+BID_Utils"]
@@ -373,7 +386,7 @@ def task_run_test () :
       yield {
         'name'    : "-".join([rvbs.name(),tname]),
         'actions' : [(run_test,[rvbs, tname])],
-        'file_dep': [op.join(tests_dir, tname+".hex"), in_root_dir(rvbs.name()+".so")],
+        'file_dep': [op.join(tests_dir, tname+".hex"), in_output_dir(rvbs.name()+".so")],
         'clean'   : [clean_targets],
         'targets' : [op.join(tracedir, "-".join([rvbs.name(), tname]))],
         'verbosity':2

@@ -26,28 +26,40 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import FIFO :: *;
+import FIFOF :: *;
+import SpecialFIFOs :: *;
+import ClientServer :: *;
+import GetPut :: *;
+import Connectable :: *;
 import List :: *;
+import LFSR :: *;
 
 import BID :: *;
-import RV_State :: *;
-import RV_Common :: *;
-import RV_I :: *;
-`ifdef RVM
-import RV_M :: *;
-`endif
-`ifdef RVC
-import RV_C :: *;
-`endif
+import AXI :: *;
+import RV_TopAXI :: *;
 
-(* always_ready *)
-interface RVBSProbes;
-  method Bit#(XLEN) peekPC();
-  method Bit#(XLEN) peekCtrlCSR();
-endinterface
+`ifdef XLEN64
+typedef 56 ADDR_sz;
+typedef 64 DATA_sz;
+`else
+typedef 34 ADDR_sz;
+typedef 32 DATA_sz;
+`endif
 
 // memory subsystem module
-module rvbsMem (Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)));
+(* always_ready *)
+interface RVBS_Mem_Slave;
+  interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave0;
+  interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave1;
+endinterface
+instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
+  module mkConnection#(RVBS_Ifc m, RVBS_Mem_Slave s) (Empty);
+    mkConnection(m.axiLiteMaster0, s.axiLiteSlave0);
+    mkConnection(m.axiLiteMaster1, s.axiLiteSlave1);
+  endmodule
+endinstance
+module mem (RVBS_Mem_Slave);
+
   `ifdef MEM_IMG
   String memimg = `MEM_IMG;
   `else
@@ -56,47 +68,95 @@ module rvbsMem (Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)));
   `ifdef MEM_SIZE
   Integer memsize = `MEM_SIZE;
   `else
-  //Integer memsize = 16384;
   Integer memsize = 'h10000;
   `endif
-  Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) mem <- mkSharedMem2(memsize, memimg);
-  interface p0 = mem.p0;
-  interface p1 = mem.p1;
+  Mem2#(Bit#(ADDR_sz), Bit#(DATA_sz), Bit#(DATA_sz)) mem <- mkSharedMem2(memsize, memimg);
+
+  // artificial delay
+  /*
+  PulseWire resetDelay <- mkPulseWire;
+  Reg#(Bool) doCountDelay   <- mkReg(False);
+  Reg#(Bool) isDelayReached <- mkReg(False);
+  rule seed_delay; delay_cmp.seed('h11); endrule
+  rule count_delay(doCountDelay); delay <= delay + 1; endrule
+  rule reset_delay(resetDelay); delay <= 0; delay_cmp.next; isDelayReached <= False; endrule
+  rule delay_reached(doCountDelay && (delay >= delay_cmp.value[15:11])); isDelayReached <= True; doCountDelay <= False; endrule
+  */
+
+
+  function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
+    fromAXILiteToWriteReq(AWLiteFlit#(ADDR_sz) aw, WLiteFlit#(DATA_sz) w) =
+      WriteReq {addr: aw.awaddr, byteEnable: w.wstrb, data: w.wdata};
+  function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
+    fromAXILiteToReadReq(ARLiteFlit#(ADDR_sz) ar) =
+      ReadReq {addr: ar.araddr, numBytes: fromInteger(valueOf(DATA_sz)/8)};
+  AXILiteSlave#(ADDR_sz, DATA_sz) ifc[2];
+
+  for (Integer i = 0; i < 2; i = i + 1) begin
+
+    // artificial delay
+    Reg#(Bool) seeded <- mkReg(False);
+    Reg#(Bit#(5)) delay_count <- mkReg(0);
+    let delay_cmp <- mkLFSR_16;
+    rule init_delay (!seeded); delay_cmp.seed('h11); seeded <= True; endrule
+    let delayff <- mkFIFOF;
+    // forward requests/response from/to appropriate FIFOF
+    let p = (i == 0) ? mem.p0 : mem.p1;
+    let awff <- mkFIFOF;
+    let wff  <- mkFIFOF;
+    let arff <- mkFIFOF;
+    let rff  <- mkFIFOF;
+    rule writeReq;
+      p.request.put(fromAXILiteToWriteReq(awff.first, wff.first));
+      awff.deq;
+      wff.deq;
+    endrule
+    rule readReq;
+      p.request.put(fromAXILiteToReadReq(arff.first));
+      arff.deq;
+    endrule
+    rule readRsp(seeded);
+      let rsp <- p.response.get;
+      delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
+      delay_cmp.next;
+    endrule
+    rule delayedReadRsp;
+      match {.rsp, .d} = delayff.first;
+      if (delay_count >= d) begin
+        delay_count <= 0;
+        delayff.deq;
+        rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: 00});
+      end else delay_count <= delay_count + 1;
+    endrule
+
+    // wire up interface
+    let awifc <- toAXIAWLiteSlave(awff);
+    let wifc  <- toAXIWLiteSlave(wff);
+    let bifc  <- mkNullSource;
+    let arifc <- toAXIARLiteSlave(arff);
+    let rifc  <- toAXIRLiteSlave(rff);
+    ifc[i] = interface AXILiteSlave;
+      interface aw = awifc;
+      interface w  = wifc;
+      interface b  = bifc;
+      interface ar = arifc;
+      interface r  = rifc;
+    endinterface;
+
+  end
+
+  interface axiLiteSlave0 = ifc[0];
+  interface axiLiteSlave1 = ifc[1];
+
 endmodule
 
-module rvbs (RVBSProbes);
-
-  // instanciating memory subsystem
-  let mem <- rvbsMem;
-  `ifdef SUPERVISOR_MODE
-  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.p0, 2);
-  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.p1, 2);
-  RVState s <- mkState(imem[1], dmem[1], imem[0], dmem[0]);
-  //RVState s <- mkState(mem.p0, mem.p1, mem.p0, mem.p1);
-  `else
-  RVState s <- mkState(mem.p0, mem.p1);
-  `endif
-
-  // instanciating simulator
-  let modList = list(mkRVTrap, mkRV32I);
-  `ifdef RVM
-    modList = append(modList, list(mkRV32M));
-  `endif
-  `ifdef RVC
-    modList = append(modList, list(mkRV32C));
-  `endif
-  `ifdef XLEN64
-  modList = append(modList, list(mkRV64I));
-    `ifdef RVM
-      modList = append(modList, list(mkRV64M));
-    `endif
-    `ifdef RVC
-      modList = append(modList, list(mkRV64C));
-    `endif
-  `endif
-  mkISASim(s, modList);
-
-  method Bit#(XLEN) peekPC() = s.pc;
-  method Bit#(XLEN) peekCtrlCSR() = s.csrs.ctrl;
-
+module top (Empty);
+  // RESET PC
+  Bit#(DATA_sz) reset_pc = 0;
+  // RVBS instance
+  let master0 <- rvbs(reset_pc);
+  // MEM instance
+  let slave0  <- mem;
+  // plug things in
+  mkConnection(master0, slave0);
 endmodule

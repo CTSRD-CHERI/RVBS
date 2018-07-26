@@ -47,6 +47,7 @@ import RV_VMTranslate :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 module [Module] mkState#(
+  VAddr reset_pc,
   Mem#(PAddr, Bit#(IMemWidth)) imem
   , Mem#(PAddr, Bit#(DMemWidth)) dmem
   `ifdef SUPERVISOR_MODE
@@ -69,7 +70,7 @@ module [Module] mkState#(
     default: XLUNK;
   endcase;
   // basic state
-  s.pc <- mkPC(0);
+  s.pc <- mkPC(reset_pc);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
   s.csrs <- mkCSRs();
@@ -85,12 +86,18 @@ module [Module] mkState#(
   PMPLookup pmp0 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   PMPLookup pmp1 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   `ifdef SUPERVISOR_MODE
+  /*
   PMPLookup ipmp[2] <- virtualize(pmp0, 2);
   PMPLookup dpmp[2] <- virtualize(pmp1, 2);
   s.ipmp = ipmp[1];
   s.dpmp = dpmp[1];
   s.ivmpmp = ipmp[0];
   s.dvmpmp = dpmp[0];
+  */
+  s.ipmp = pmp0;
+  s.dpmp = pmp1;
+  s.ivmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  s.dvmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
   `else
   s.ipmp = pmp0;
   s.dpmp = pmp1;

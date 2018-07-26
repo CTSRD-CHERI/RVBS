@@ -29,12 +29,12 @@
 BIDDIR = BID
 RECIPEDIR = $(BIDDIR)/Recipe
 BITPATDIR = $(BIDDIR)/BitPat
-BSVPATH = +:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR)
-BSC = bsc
+BLUESTUFFDIR = /home/aj443/devstuff/BlueStuff
+AXIDIR = $(BLUESTUFFDIR)/AXI
+BSVPATH = +:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(AXIDIR)
+
 BSCFLAGS = -p $(BSVPATH) -check-assert
-BSCFLAGS += -show-schedule -sched-dot
-#BSCFLAGS += -show-rule-rel \* \*
-BSCFLAGS += +RTS -K18388608 -RTS
+
 ifdef MEM_SIZE
 BSCFLAGS += -D MEM_SIZE=$(MEM_SIZE)
 endif
@@ -47,50 +47,89 @@ endif
 ifdef PRINT_ABI_REG_NAME
 BSCFLAGS += -D PRINT_ABI_REG_NAME
 endif
+
+RVBSNAME := rvbs
 BSCFLAGS += -D XLEN32
 ifeq ($(XLEN),64)
 BSCFLAGS += -D XLEN64
+RVBSNAME := $(RVBSNAME)-rv64
+else
+RVBSNAME := $(RVBSNAME)-rv32
 endif
-ifeq ($(PMP),1)
-BSCFLAGS += -D PMP
-endif
-ifeq ($(USER_MODE),1)
-BSCFLAGS += -D USER_MODE
-endif
-ifeq ($(SUPERVISOR_MODE),1)
-BSCFLAGS += -D SUPERVISOR_MODE
-BSCFLAGS += -D USER_MODE
-endif
+RVBSNAME := $(RVBSNAME)i
 ifeq ($(RVM),1)
 BSCFLAGS += -D RVM
+RVBSNAME := $(RVBSNAME)m
 endif
 ifeq ($(RVC),1)
 BSCFLAGS += -D RVC
+RVBSNAME := $(RVBSNAME)c
 endif
 ifeq ($(RVN),1)
 BSCFLAGS += -D RVN
-BSCFLAGS += -D USER_MODE
+USER_MODE = 1
+RVBSNAME := $(RVBSNAME)n
 endif
+ifeq ($(SUPERVISOR_MODE),1)
+BSCFLAGS += -D SUPERVISOR_MODE
+USER_MODE = 1
+RVBSNAME := $(RVBSNAME)-s
+endif
+ifeq ($(USER_MODE),1)
+BSCFLAGS += -D USER_MODE
+RVBSNAME := $(RVBSNAME)u
+endif
+ifeq ($(PMP),1)
+BSCFLAGS += -D PMP
+RVBSNAME := $(RVBSNAME)-pmp
+endif
+
+# generated files directories
+BUILDDIR = build
+BDIR = $(BUILDDIR)/$(RVBSNAME)-bdir
+SIMDIR = $(BUILDDIR)/$(RVBSNAME)-simdir
+
+OUTPUTDIR = output
+VDIR = $(OUTPUTDIR)/$(RVBSNAME)-vdir
+INFODIR = $(OUTPUTDIR)/$(RVBSNAME)-info
+
+BSCFLAGS += -bdir $(BDIR)
+BSCFLAGS += -info-dir $(INFODIR)
+BSCFLAGS += -show-schedule -sched-dot
+#BSCFLAGS += -show-rule-rel \* \*
+#BSCFLAGS += -steps-warn-interval n
+BSCFLAGS += +RTS -K18388608 -RTS
+
+BSC = bsc
 # Bluespec is not compatible with gcc > 4.9
 # This is actually problematic when using $test$plusargs
 CC = gcc-4.8
 CXX = g++-4.8
 
 # Top level module
-TOPFILE = Top.bsv
-TOPMOD = rvbs
+SIMTOPFILE = Top.bsv
+SIMTOPMOD = top
+VERILOGTOPFILE = RV_TopAXI.bsv
+VERILOGTOPMOD = rvbs
 
-.PHONY: sim
-sim: $(TOPMOD)
+.PHONY: sim verilog
 
-$(TOPMOD): *.bsv
-	$(BSC) $(BSCFLAGS) -sim -g $(TOPMOD) -u $(TOPFILE)
-	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -sim -o $(TOPMOD) -e $(TOPMOD) $(BIDDIR)/*.c
+all: sim verilog
+sim: $(SIMTOPMOD)
+
+$(SIMTOPMOD): *.bsv
+	echo $(RVBSNAME)
+	mkdir -p $(INFODIR) $(BDIR) $(SIMDIR) $(OUTPUTDIR)
+	$(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -g $(SIMTOPMOD) -u $(SIMTOPFILE)
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(SIMTOPMOD)
 
 verilog: *.bsv
-	$(BSC) $(BSCFLAGS) -D NO_LOGS -verilog -g $(TOPMOD) -u $(TOPFILE)
+	echo $(RVBSNAME)
+	mkdir -p $(INFODIR) $(BDIR) $(VDIR)
+	$(BSC) $(BSCFLAGS) -vdir $(VDIR) -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g $(VERILOGTOPMOD) -u $(VERILOGTOPFILE)
 
-.PHONY: clean
+.PHONY: clean mrproper
 clean:
-	rm -f *.cxx *.o *.h *.ba *.bo *.so *.ipinfo *.v *.dot *.sched $(TOPMOD)
-	$(MAKE) -C $(BIDDIR) clean
+	rm -rf $(BDIR) $(SIMDIR)
+mrproper: clean
+	rm -rf $(INFODIR) $(VDIR) $(OUTPUTDIR) $(BUILDDIR)
