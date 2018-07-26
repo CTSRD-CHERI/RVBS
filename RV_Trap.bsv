@@ -27,6 +27,7 @@
  */
 
 import BID :: *;
+import BlueUtils :: *;
 import BitPat :: *;
 import RV_Traces :: *;
 import RV_Types :: *;

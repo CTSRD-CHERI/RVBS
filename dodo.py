@@ -75,8 +75,8 @@ class RVBS:
 
   def bsc_flags(self):
     flags = ["-D", "PRINT_ABI_REG_NAME"]
-    #default: flags += ["+RTS", "-K{:d}".format(8388608), "-RTS"]
-    flags += ["+RTS", "-K{:d}".format(20000000), "-RTS"]
+    flags += ["-steps-warn-interval", "500000"]
+    flags += ["+RTS", "-K{:d}".format(18388608), "-RTS"]
     flags += ["-D", "XLEN32"]
     if self.size >= 64:
       flags += ["-D","XLEN64"]
@@ -207,9 +207,10 @@ elfmanip = op.expanduser("~/devstuff/elfmanip/elfmanip.py")
 biddir=in_root_dir("BID")
 recipedir=op.join(biddir, "Recipe")
 bitpatdir=op.join(biddir, "BitPat")
-bluestuffdir="/home/aj443/devstuff/BlueStuff"
+bluestuffdir=op.join(biddir, "BlueStuff")
+blueutilsdir=op.join(bluestuffdir, "BlueUtils")
 axidir=op.join(bluestuffdir, "AXI")
-bsvpath=":".join(["+",recipedir,bitpatdir,biddir,axidir])
+bsvpath=":".join(["+",recipedir,bitpatdir,biddir,blueutilsdir,axidir])
 bsv_re = re.compile(".*\.bsv")
 bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]
@@ -218,7 +219,7 @@ bsc_flags+=["-show-schedule"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 topmod = "top"
 topfile = "Top.bsv"
-cfiles = [op.join(biddir,"BID_SimUtils.c"),op.join(biddir,"BID_Utils_SimMem.c")]
+cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"Utils_SimMem.c")]
 #gcc
 cc="gcc-4.8"
 cxx="g++-4.8"

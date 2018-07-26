@@ -32,8 +32,9 @@ import List :: *;
 import ClientServer :: *;
 import GetPut :: *;
 
-import AXI :: *;
 import BID :: *;
+import BlueUtils :: *;
+import AXI :: *;
 import RV_State :: *;
 import RV_Common :: *;
 import RV_I :: *;

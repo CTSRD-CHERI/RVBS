@@ -32,7 +32,7 @@ import ClientServer :: *;
 import GetPut :: *;
 //import UniqueWrappers :: * ;
 
-import BID :: *;
+import BlueUtils :: *;
 import Recipe :: *;
 import RV_BasicTypes :: *;
 import RV_CSRTypes :: *;

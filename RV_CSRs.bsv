@@ -29,8 +29,8 @@
 import DefaultValue :: *;
 import ConfigReg :: *;
 import Vector :: *;
-import BID :: *;
 
+import BlueUtils :: *;
 import RV_Types :: *;
 `ifdef PMP
 import RV_PMPTypes :: *;

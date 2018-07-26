@@ -28,8 +28,10 @@
 
 import Printf :: *;
 import List :: *;
-import BitPat :: *;
+
 import BID :: *;
+import BlueUtils :: *;
+import BitPat :: *;
 
 import RV_Common :: *;
 import RV_I :: *;

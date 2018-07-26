@@ -34,7 +34,7 @@ import Connectable :: *;
 import List :: *;
 import LFSR :: *;
 
-import BID :: *;
+import BlueUtils :: *;
 import AXI :: *;
 import RV_TopAXI :: *;
 

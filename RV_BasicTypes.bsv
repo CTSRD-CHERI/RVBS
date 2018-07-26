@@ -26,7 +26,7 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import BID :: *;
+import BlueUtils :: *;
 import ClientServer :: *;
 
 // static parameters

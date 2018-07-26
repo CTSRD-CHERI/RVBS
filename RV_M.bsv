@@ -26,8 +26,8 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import BitPat :: *;
 import BID :: *;
+import BitPat :: *;
 
 import RV_Common :: *;
 

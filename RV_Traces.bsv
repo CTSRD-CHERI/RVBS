@@ -26,7 +26,7 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import BID :: *;
+import BlueUtils :: *;
 import RV_BasicTypes :: *;
 
 ///////////////////

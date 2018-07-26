@@ -30,7 +30,7 @@ import ConfigReg :: *;
 import ClientServer :: *;
 import GetPut :: *;
 
-import BID :: *;
+import BlueUtils :: *;
 import Recipe :: *;
 import RV_Traces :: *;
 import RV_Types :: *;

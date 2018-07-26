@@ -47,4 +47,4 @@ import RV_VMTranslateTypes :: *;
 import RV_StateTypes :: *;
 export RV_StateTypes :: *;
 
-endpackage: RV_Types
+endpackage

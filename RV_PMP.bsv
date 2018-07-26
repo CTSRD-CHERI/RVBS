@@ -34,7 +34,8 @@ import UniqueWrappers :: * ;
 import ClientServer :: * ;
 import GetPut :: * ;
 
-import BID :: *;
+import BlueUtils :: *;
+
 import RV_Types :: *;
 
 module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);

@@ -29,9 +29,10 @@
 BIDDIR = BID
 RECIPEDIR = $(BIDDIR)/Recipe
 BITPATDIR = $(BIDDIR)/BitPat
-BLUESTUFFDIR = /home/aj443/devstuff/BlueStuff
+BLUESTUFFDIR = $(BIDDIR)/BlueStuff
 AXIDIR = $(BLUESTUFFDIR)/AXI
-BSVPATH = +:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(AXIDIR)
+BLUEUTILSDIR = $(BLUESTUFFDIR)/BlueUtils
+BSVPATH = +:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(AXIDIR):$(BLUEUTILSDIR)
 
 BSCFLAGS = -p $(BSVPATH) -check-assert
 
@@ -98,6 +99,7 @@ BSCFLAGS += -info-dir $(INFODIR)
 BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
 #BSCFLAGS += -steps-warn-interval n
+BSCFLAGS += -steps-warn-interval 500000
 BSCFLAGS += +RTS -K18388608 -RTS
 
 BSC = bsc
@@ -118,13 +120,11 @@ all: sim verilog
 sim: $(SIMTOPMOD)
 
 $(SIMTOPMOD): *.bsv
-	echo $(RVBSNAME)
 	mkdir -p $(INFODIR) $(BDIR) $(SIMDIR) $(OUTPUTDIR)
 	$(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -g $(SIMTOPMOD) -u $(SIMTOPFILE)
-	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(SIMTOPMOD)
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(SIMTOPMOD) $(BLUEUTILSDIR)/*.c
 
 verilog: *.bsv
-	echo $(RVBSNAME)
 	mkdir -p $(INFODIR) $(BDIR) $(VDIR)
 	$(BSC) $(BSCFLAGS) -vdir $(VDIR) -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g $(VERILOGTOPMOD) -u $(VERILOGTOPFILE)
 
