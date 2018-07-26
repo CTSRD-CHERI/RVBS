@@ -1,6 +1,6 @@
 # RVBS - RISC-V Bluespec SystemVerilog Specification
 
-RVBS (pronounced "rubs") is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, that could be used as a golden model.
+**RVBS** (pronounced *"rubs"*) is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, with an AXI interface, that could be used as a golden model.
 
 RVBS currently supports:
 
@@ -19,14 +19,15 @@ In order to build a RVBS Bluesim simulator, you will need a valid installation o
 
 - [Recipe](https://github.com/CTSRD-CHERI/Recipe)
 - [BitPat](https://github.com/CTSRD-CHERI/BitPat)
+- [BlueStuff](https://github.com/CTSRD-CHERI/BlueStuff)
 - [BID](https://github.com/CTSRD-CHERI/BID)
 
-[BID](https://github.com/CTSRD-CHERI/BID) is a submodule of the RVBS repo, and [Recipe](https://github.com/CTSRD-CHERI/Recipe) and [BitPat](https://github.com/CTSRD-CHERI/BitPat) are themselves subrepos in [BID](https://github.com/CTSRD-CHERI/BID). In order to checkout all of them, you need to run:
+[BID](https://github.com/CTSRD-CHERI/BID) is a submodule of the RVBS repo, and [Recipe](https://github.com/CTSRD-CHERI/Recipe), [BitPat](https://github.com/CTSRD-CHERI/BitPat) and [BlueStuff](https://github.com/CTSRD-CHERI/BlueStuff) are themselves subrepos in [BID](https://github.com/CTSRD-CHERI/BID). In order to checkout all of them, you need to run:
 ```sh
 $ git submodule update --init --recursive
 ```
 
-Once the libraries are available, you can build a simulator by typing `make`. You can specify a number of build options as environment variables:
+Once the libraries are available, you can build RVBS and specify a number of build options as environment variables:
 
 - `MEM_SIZE` can be used to specify the size of the memory in bytes
 - `MEM_IMG` can be used to specify the memory image used to initialize the memory
@@ -39,9 +40,14 @@ Once the libraries are available, you can build a simulator by typing `make`. Yo
 - `RVM` can be used to enable the *M* integer multiply/divide instructions extention
 - `RVC` can be used to enable the *C* compressed instructions extention
 
-For example, to build a 64-bit simulator with support for compressed instructions and 32KB of memory, you can run:
+For example, to build a 64-bit bluesim simulator with support for multiply/divide instructions and 32KB of memory, you can run:
 ```sh
-$ make RVC=1 XLEN=64 MEM_SIZE=32768
+$ make RVM=1 XLEN=64 MEM_SIZE=32768 sim
+```
+
+To build a 32-bit verilog module with support for compressed instructions, you can run:
+```sh
+$ make RVC=1 XLEN=32 verilog
 ```
 
 **TODO**, not currently implemented:
