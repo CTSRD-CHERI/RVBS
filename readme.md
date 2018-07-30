@@ -40,6 +40,7 @@ Once the libraries are available, you can build RVBS and specify a number of bui
 Additionally, when building a simulator,
 - `MEM_SIZE` can be used to specify the size of the memory in bytes
 - `MEM_IMG` can be used to specify the memory image used to initialize the memory
+- `MEM_DELAY` can be set to enable artificial memory delay
 
 ### Bluesim
 

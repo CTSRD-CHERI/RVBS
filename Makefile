@@ -43,6 +43,10 @@ endif
 ifdef MEM_IMG
 BSCFLAGS += -D MEM_IMG="\"$(MEM_IMG)\""
 endif
+ifdef MEM_DELAY
+BSCFLAGS += -D MEM_DELAY
+endif
+
 ifdef NO_LOGS
 BSCFLAGS += -D NO_LOGS
 endif

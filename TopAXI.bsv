@@ -58,14 +58,14 @@ endinterface
 module rvbsMem (RVBSMem_Ifc);
 
   // one FIFOF per AXI channel
-  let awff0 <- mkFIFOF;
-  let wff0  <- mkFIFOF;
-  let arff0 <- mkFIFOF;
-  let rff0  <- mkFIFOF;
-  let awff1 <- mkFIFOF;
-  let wff1  <- mkFIFOF;
-  let arff1 <- mkFIFOF;
-  let rff1  <- mkFIFOF;
+  let awff0 <- mkBypassFIFOF;
+  let wff0  <- mkBypassFIFOF;
+  let arff0 <- mkBypassFIFOF;
+  let rff0  <- mkBypassFIFOF;
+  let awff1 <- mkBypassFIFOF;
+  let wff1  <- mkBypassFIFOF;
+  let arff1 <- mkBypassFIFOF;
+  let rff1  <- mkBypassFIFOF;
 
   // turn FIFOFs to AXI interfaces
   let awifc0 <- toAXIAWLiteMaster(awff0);

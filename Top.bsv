@@ -72,18 +72,6 @@ module mem (RVBS_Mem_Slave);
   `endif
   Mem2#(Bit#(ADDR_sz), Bit#(DATA_sz), Bit#(DATA_sz)) mem <- mkSharedMem2(memsize, memimg);
 
-  // artificial delay
-  /*
-  PulseWire resetDelay <- mkPulseWire;
-  Reg#(Bool) doCountDelay   <- mkReg(False);
-  Reg#(Bool) isDelayReached <- mkReg(False);
-  rule seed_delay; delay_cmp.seed('h11); endrule
-  rule count_delay(doCountDelay); delay <= delay + 1; endrule
-  rule reset_delay(resetDelay); delay <= 0; delay_cmp.next; isDelayReached <= False; endrule
-  rule delay_reached(doCountDelay && (delay >= delay_cmp.value[15:11])); isDelayReached <= True; doCountDelay <= False; endrule
-  */
-
-
   function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
     fromAXILiteToWriteReq(AWLiteFlit#(ADDR_sz) aw, WLiteFlit#(DATA_sz) w) =
       WriteReq {addr: aw.awaddr, byteEnable: w.wstrb, data: w.wdata};
@@ -94,18 +82,24 @@ module mem (RVBS_Mem_Slave);
 
   for (Integer i = 0; i < 2; i = i + 1) begin
 
+    Bool canRsp;
+    `ifdef MEM_DELAY
     // artificial delay
     Reg#(Bool) seeded <- mkReg(False);
     Reg#(Bit#(5)) delay_count <- mkReg(0);
     let delay_cmp <- mkLFSR_16;
     rule init_delay (!seeded); delay_cmp.seed('h11); seeded <= True; endrule
     let delayff <- mkFIFOF;
+    canRsp = seeded;
+    `else
+    canRsp = True;
+    `endif
     // forward requests/response from/to appropriate FIFOF
     let p = (i == 0) ? mem.p0 : mem.p1;
-    let awff <- mkFIFOF;
-    let wff  <- mkFIFOF;
-    let arff <- mkFIFOF;
-    let rff  <- mkFIFOF;
+    let awff <- mkBypassFIFOF;
+    let wff  <- mkBypassFIFOF;
+    let arff <- mkBypassFIFOF;
+    let rff  <- mkBypassFIFOF;
     rule writeReq;
       p.request.put(fromAXILiteToWriteReq(awff.first, wff.first));
       awff.deq;
@@ -115,8 +109,12 @@ module mem (RVBS_Mem_Slave);
       p.request.put(fromAXILiteToReadReq(arff.first));
       arff.deq;
     endrule
-    rule readRsp(seeded);
+    rule readRsp(canRsp);
       let rsp <- p.response.get;
+    `ifndef MEM_DELAY
+      rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: 00});
+    endrule
+    `else
       delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
       delay_cmp.next;
     endrule
@@ -128,6 +126,7 @@ module mem (RVBS_Mem_Slave);
         rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: 00});
       end else delay_count <= delay_count + 1;
     endrule
+    `endif
 
     // wire up interface
     let awifc <- toAXIAWLiteSlave(awff);
