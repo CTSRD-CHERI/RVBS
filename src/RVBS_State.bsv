@@ -32,14 +32,14 @@ import GetPut :: *;
 
 import BlueUtils :: *;
 import Recipe :: *;
-import RV_Traces :: *;
-import RV_Types :: *;
-import RV_CSRs :: *;
+import RVBS_Traces :: *;
+import RVBS_Types :: *;
+import RVBS_CSRs :: *;
 `ifdef PMP
-import RV_PMP :: *;
+import RVBS_PMP :: *;
 `endif
 `ifdef SUPERVISOR_MODE
-import RV_VMTranslate :: *;
+import RVBS_VMTranslate :: *;
 `endif
 
 ////////////////////////////////

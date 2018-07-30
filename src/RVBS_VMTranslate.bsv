@@ -34,10 +34,10 @@ import GetPut :: *;
 
 import BlueUtils :: *;
 import Recipe :: *;
-import RV_BasicTypes :: *;
-import RV_CSRTypes :: *;
-import RV_PMPTypes :: *;
-import RV_VMTranslateTypes :: *;
+import RVBS_BasicTypes :: *;
+import RVBS_CSRTypes :: *;
+import RVBS_PMPTypes :: *;
+import RVBS_VMTranslateTypes :: *;
 
 interface PageWalker;
   method Action lookup (AddrReq#(VAddr) r);

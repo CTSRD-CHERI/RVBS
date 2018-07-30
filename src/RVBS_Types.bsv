@@ -26,6 +26,25 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import RV_BasicTypes :: *;
+package RVBS_Types;
 
-typedef AddrLookup#(VAddr, PAddr) VMLookup;
+import RVBS_BasicTypes :: *;
+export RVBS_BasicTypes :: *;
+
+import RVBS_CSRTypes :: *;
+export RVBS_CSRTypes :: *;
+
+`ifdef PMP
+import RVBS_PMPTypes :: *;
+export RVBS_PMPTypes :: *;
+`endif
+
+`ifdef SUPERVISOR_MODE
+export RVBS_VMTranslateTypes :: *;
+import RVBS_VMTranslateTypes :: *;
+`endif
+
+import RVBS_StateTypes :: *;
+export RVBS_StateTypes :: *;
+
+endpackage

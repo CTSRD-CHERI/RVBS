@@ -35,15 +35,7 @@ import GetPut :: *;
 import BID :: *;
 import BlueUtils :: *;
 import AXI :: *;
-import RV_State :: *;
-import RV_Common :: *;
-import RV_I :: *;
-`ifdef RVM
-import RV_M :: *;
-`endif
-`ifdef RVC
-import RV_C :: *;
-`endif
+import RVBS :: *;
 
 typedef SizeOf#(PAddr) ADDR_sz;
 typedef TMax#(IMemWidth, DMemWidth) DATA_sz;

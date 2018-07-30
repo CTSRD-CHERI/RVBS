@@ -30,7 +30,7 @@ import DefaultValue :: *;
 import ConfigReg :: *;
 import Vector :: *;
 
-import RV_BasicTypes :: *;
+import RVBS_BasicTypes :: *;
 
 typedef enum {
   OFF = 2'b00, TOR = 2'b01, NA4 = 2'b10, NAPOT = 2'b11

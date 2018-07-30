@@ -27,7 +27,7 @@
  */
 
 import BlueUtils :: *;
-import RV_BasicTypes :: *;
+import RVBS_BasicTypes :: *;
 
 ///////////////////
 // Logging utils //

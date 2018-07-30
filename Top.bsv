@@ -36,7 +36,7 @@ import LFSR :: *;
 
 import BlueUtils :: *;
 import AXI :: *;
-import RV_TopAXI :: *;
+import TopAXI :: *;
 
 `ifdef XLEN64
 typedef 56 ADDR_sz;

@@ -30,8 +30,8 @@ import DefaultValue :: *;
 import Printf :: *;
 import Vector :: *;
 
-import RV_BasicTypes :: *;
-import RV_PMPTypes :: *;
+import RVBS_BasicTypes :: *;
+import RVBS_PMPTypes :: *;
 
 //////////////////////
 // Legalize classes //

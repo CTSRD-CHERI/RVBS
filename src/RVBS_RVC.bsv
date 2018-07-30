@@ -33,8 +33,9 @@ import BID :: *;
 import BlueUtils :: *;
 import BitPat :: *;
 
-import RV_Common :: *;
-import RV_I :: *;
+import RVBS_Types :: *;
+import RVBS_Trap :: *;
+import RVBS_RVI :: *;
 
 // RVC 3-bit reg identifier to RVI 5-bit reg identifier
 function Bit#(5) regID (Bit#(3) x) = {2'b01, x};

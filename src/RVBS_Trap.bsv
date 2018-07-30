@@ -29,8 +29,8 @@
 import BID :: *;
 import BlueUtils :: *;
 import BitPat :: *;
-import RV_Traces :: *;
-import RV_Types :: *;
+import RVBS_Traces :: *;
+import RVBS_Types :: *;
 
 ////////////////
 // Trap logic //

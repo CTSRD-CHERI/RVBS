@@ -36,7 +36,7 @@ import GetPut :: * ;
 
 import BlueUtils :: *;
 
-import RV_Types :: *;
+import RVBS_Types :: *;
 
 module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
 

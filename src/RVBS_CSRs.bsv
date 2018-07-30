@@ -31,9 +31,9 @@ import ConfigReg :: *;
 import Vector :: *;
 
 import BlueUtils :: *;
-import RV_Types :: *;
+import RVBS_Types :: *;
 `ifdef PMP
-import RV_PMPTypes :: *;
+import RVBS_PMPTypes :: *;
 `endif
 
 //////////////////////////

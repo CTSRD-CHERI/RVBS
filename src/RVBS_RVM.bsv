@@ -29,7 +29,8 @@
 import BID :: *;
 import BitPat :: *;
 
-import RV_Common :: *;
+import RVBS_Types :: *;
+import RVBS_Traces :: *;
 
 // div helper
 function t safeDiv(t a, t b) provisos (Arith#(t), Eq#(t)) = a / ((b == 0) ? 1 : b);

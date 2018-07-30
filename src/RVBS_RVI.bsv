@@ -34,7 +34,10 @@ import GetPut :: *;
 import BID :: *;
 import BlueUtils :: *;
 import BitPat :: *;
-import RV_Common :: *;
+
+import RVBS_Types :: *;
+import RVBS_Trap :: *;
+import RVBS_Traces :: *;
 
 `ifdef XLEN32
 /////////////////////////

@@ -26,15 +26,6 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-package RV_Common;
+import RVBS_BasicTypes :: *;
 
-import RV_Types :: *;
-export RV_Types :: *;
-
-import RV_Traces :: *;
-export RV_Traces :: *;
-
-import RV_Trap :: *;
-export RV_Trap :: *;
-
-endpackage: RV_Common
+typedef AddrLookup#(VAddr, PAddr) VMLookup;

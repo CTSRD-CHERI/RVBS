@@ -26,25 +26,20 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-package RV_Types;
+package RVBS;
 
-import RV_BasicTypes :: *;
-export RV_BasicTypes :: *;
+import RVBS_Types :: *;
+import RVBS_State :: *;
+import RVBS_Trap :: *;
+import RVBS_RVI :: *;
+import RVBS_RVM :: *;
+import RVBS_RVC :: *;
 
-import RV_CSRTypes :: *;
-export RV_CSRTypes :: *;
-
-`ifdef PMP
-import RV_PMPTypes :: *;
-export RV_PMPTypes :: *;
-`endif
-
-`ifdef SUPERVISOR_MODE
-export RV_VMTranslateTypes :: *;
-import RV_VMTranslateTypes :: *;
-`endif
-
-import RV_StateTypes :: *;
-export RV_StateTypes :: *;
+export RVBS_Types :: *;
+export RVBS_State :: *;
+export RVBS_Trap :: *;
+export RVBS_RVI :: *;
+export RVBS_RVM :: *;
+export RVBS_RVC :: *;
 
 endpackage
