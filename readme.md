@@ -44,12 +44,21 @@ Additionally, when building a simulator,
 ### Bluesim
 
 To build a 64-bit bluesim simulator with support for multiply/divide instructions and 32KB of memory, you can run:
+
 ```sh
 $ make RVM=1 XLEN=64 MEM_SIZE=32768 sim
 ```
-The generated simulator can be found in the `output/` folder and simply run as follows:
+
+The generated simulator can be found in the `output/` folder. To run a simulation of the program in `test-prog.hex`, simply type:
+
 ```sh
 $ output/rvbs-rv64im
+```
+
+The `+itrace` flag can be specified on the command line when running the simulator to get an instruction trace in `stdout` as follows:
+
+```sh
+$ output/rvbs-rv64im +itrace
 ```
 
 ### Verilog
