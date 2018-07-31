@@ -860,6 +860,12 @@ typedef struct {
   // XXX for debug purposes:
   Reg#(Bit#(XLEN)) ctrl;
 
+  // IRQs
+  //////////////////////////////////////////////////////////////////////////////
+  function Action doSetMSIP (Bool irw) setMSIP;
+  function Action doSetMTIP (Bool irw) setMTIP;
+  function Action doSetMEIP (Bool irw) setMEIP;
+
   // CSR request
   //////////////////////////////////////////////////////////////////////////////
   function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;

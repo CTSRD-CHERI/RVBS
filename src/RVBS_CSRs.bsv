@@ -71,7 +71,8 @@ module mkCSRs(CSRs);
   csrs.mepc     <- mkReg(defaultValue); // mepc 12'h341
   csrs.mcause   <- mkRegU; // mcause 12'h342
   csrs.mtval    <- mkRegU; // mtval 12'h343
-  csrs.mip      <- mkReg(defaultValue); // mip 12'h344
+  Reg#(IP) mip[2] <- mkCReg(2, defaultValue);
+  csrs.mip      = mip[1]; // mip 12'h344
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -173,6 +174,24 @@ module mkCSRs(CSRs);
 
   // XXX for debug purposes:
   csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
+
+  // IRQs
+  Wire#(Bool) msip_w <- mkDWire(mip[0].msip);
+  Wire#(Bool) mtip_w <- mkDWire(mip[0].mtip);
+  Wire#(Bool) meip_w <- mkDWire(mip[0].meip);
+  function doSetMSIP(irq) = action msip_w <= irq; endaction;
+  csrs.setMSIP = doSetMSIP;
+  function doSetMTIP(irq) = action mtip_w <= irq; endaction;
+  csrs.setMTIP = doSetMTIP;
+  function doSetMEIP(irq) = action meip_w <= irq; endaction;
+  csrs.setMEIP = doSetMEIP;
+  rule setIRQs;
+    let new_mip = mip[0];
+    new_mip.msip = msip_w;
+    new_mip.mtip = mtip_w;
+    new_mip.meip = meip_w;
+    mip[0] <= new_mip;
+  endrule
 
   // CSR requests
   function ActionValue#(Bit#(XLEN)) readUpdateCSR(Reg#(csr_t) csr, CSRReq r)

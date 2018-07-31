@@ -47,15 +47,23 @@ typedef 32 DATA_sz;
 `endif
 
 // memory subsystem module
-(* always_ready *)
+(* always_ready, always_enabled *)
 interface RVBS_Mem_Slave;
   interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave0;
   interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave1;
+  method Bool peekMEIP;
+  method Bool peekMTIP;
+  method Bool peekMSIP;
 endinterface
 instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
-  module mkConnection#(RVBS_Ifc m, RVBS_Mem_Slave s) (Empty);
-    mkConnection(m.axiLiteMaster0, s.axiLiteSlave0);
-    mkConnection(m.axiLiteMaster1, s.axiLiteSlave1);
+  module mkConnection#(RVBS_Ifc c, RVBS_Mem_Slave m) (Empty);
+    mkConnection(c.axiLiteMaster0, m.axiLiteSlave0);
+    mkConnection(c.axiLiteMaster1, m.axiLiteSlave1);
+    rule connect_interrupts;
+      c.setMEIP(m.peekMEIP);
+      c.setMTIP(m.peekMTIP);
+      c.setMSIP(m.peekMSIP);
+    endrule
   endmodule
 endinstance
 module mem (RVBS_Mem_Slave);
@@ -144,6 +152,9 @@ module mem (RVBS_Mem_Slave);
 
   end
 
+  method peekMEIP = False;
+  method peekMTIP = False;
+  method peekMSIP = False;
   interface axiLiteSlave0 = ifc[0];
   interface axiLiteSlave1 = ifc[1];
 
@@ -153,9 +164,9 @@ module top (Empty);
   // RESET PC
   Bit#(DATA_sz) reset_pc = 0;
   // RVBS instance
-  let master0 <- rvbs(reset_pc);
+  let core   <- rvbs(reset_pc);
   // MEM instance
-  let slave0  <- mem;
+  let memory <- mem;
   // plug things in
-  mkConnection(master0, slave0);
+  mkConnection(core, memory);
 endmodule

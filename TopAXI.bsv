@@ -40,11 +40,16 @@ import RVBS :: *;
 typedef SizeOf#(PAddr) ADDR_sz;
 typedef TMax#(IMemWidth, DMemWidth) DATA_sz;
 
-(* always_ready *)
+(* always_ready, always_enabled *)
 interface RVBS_Ifc;
+  // probing interfaces
   method Bit#(XLEN) peekPC();
   method Bit#(XLEN) peekCtrlCSR();
   interface BIDProbes probes;
+  // riscv interfaces
+  method Action setMSIP(Bool irq);
+  method Action setMTIP(Bool irq);
+  method Action setMEIP(Bool irq);
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
 endinterface
@@ -164,6 +169,9 @@ module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc);
   method Bit#(XLEN) peekPC() = s.pc;
   method Bit#(XLEN) peekCtrlCSR() = s.csrs.ctrl;
   interface probes = bid_probes;
+  method setMSIP = s.csrs.setMSIP;
+  method setMTIP = s.csrs.setMTIP;
+  method setMEIP = s.csrs.setMEIP;
   interface axiLiteMaster0 = mem.axiLiteMaster0;
   interface axiLiteMaster1 = mem.axiLiteMaster1;
 
