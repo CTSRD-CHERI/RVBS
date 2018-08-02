@@ -35,6 +35,7 @@ import Recipe :: *;
 import RVBS_Traces :: *;
 import RVBS_Types :: *;
 import RVBS_CSRs :: *;
+import RVBS_Trap :: *;
 `ifdef PMP
 import RVBS_PMP :: *;
 `endif

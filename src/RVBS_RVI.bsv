@@ -538,7 +538,7 @@ endaction;
 // funct3 = PRIV = 000
 // opcode = SYSTEM = 1110011
 function Action instrSFENCE_VMA(RVState s, Bit#(5) rs2, Bit#(5) rs1) = action
-  if (s.currentPrivLvl == S && s.csrs.mstatus.tvm == 1) trap(s, IllegalInst);
+  if (s.currentPrivLvl == S && s.csrs.mstatus.tvm) trap(s, IllegalInst);
   else s.pc <= s.pc + s.instByteSz;//TODO
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- sfence.vma %0d, %0d", s.pc, rs1, rs2));
 endaction;
@@ -561,7 +561,7 @@ endaction;
   Bool shouldTrap; // is the csr access authorized?\
   shouldTrap = s.currentPrivLvl < toPrivLvl(r.idx[9:8]); // privilege level access\
   shouldTrap = shouldTrap || (r.rEffects != NOWRITE && r.idx[11:10] == 2'b11); // writes to read-only registers\
-  shouldTrap = shouldTrap || (r.idx == 12'h180 && s.currentPrivLvl == S && s.csrs.mstatus.tvm == 1); // satp register accessed with TVM = 1\
+  shouldTrap = shouldTrap || (r.idx == 12'h180 && s.currentPrivLvl == S && s.csrs.mstatus.tvm); // satp register accessed with TVM = 1\
   if (shouldTrap) trap(s, IllegalInst);\
   else begin\
     // XXX for some reason, bluespec doesn't like this way to write it:\

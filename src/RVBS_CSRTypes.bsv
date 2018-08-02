@@ -175,7 +175,7 @@ instance Lift#(a, a); function lift = legalizeWrite; endinstance
 // Status //
 ////////////
 typedef struct {
-  Bit#(1) sd;
+  Bool sd;
   `ifdef XLEN64 // MAX_XLEN > 32
   Bit#(TSub#(XLEN,37)) res4; // WPRI
   XLMode sxl; // WARL
@@ -184,25 +184,25 @@ typedef struct {
   `else // MAX_XLEN == 32
   Bit#(8) res3; // WPRI
   `endif
-  Bit#(1) tsr;
-  Bit#(1) tw;
-  Bit#(1) tvm;
-  Bit#(1) mxr;
-  Bit#(1) sum;
-  Bit#(1) mprv;
+  Bool tsr;
+  Bool tw;
+  Bool tvm;
+  Bool mxr;
+  Bool sum;
+  Bool mprv;
   Bit#(2) xs;
   Bit#(2) fs;
   Bit#(2) mpp;
   Bit#(2) res2; // WPRI
   Bit#(1) spp;
-  Bit#(1) mpie;
-  Bit#(1) res1; // WPRI
-  Bit#(1) spie;
-  Bit#(1) upie;
-  Bit#(1) mie;
-  Bit#(1) res0; // WPRI
-  Bit#(1) sie;
-  Bit#(1) uie;
+  Bool mpie;
+  Bool res1; // WPRI
+  Bool spie;
+  Bool upie;
+  Bool mie;
+  Bool res0; // WPRI
+  Bool sie;
+  Bool uie;
 } Status deriving (Bits);
 instance FShow#(Status);
   function fshow(x) = $format("Status {")
@@ -231,17 +231,17 @@ instance FShow#(Status);
 endinstance
 instance DefaultValue#(Status);
   function Status defaultValue() = Status {
-    sd: 0,
+    sd: False,
     `ifdef XLEN64 // MAX_XLEN > 32
     res4: 0, sxl: nativeXLEN, uxl: nativeXLEN, res3: 0,
     `else // MAX_XLEN == 32
     res3: 0,
     `endif
-    tsr: 0, tw: 0, tvm: 0, mxr: 0, sum: 0, mprv: 0,
+    tsr: False, tw: False, tvm: False, mxr: False, sum: False, mprv: False,
     xs: 0, fs: 0,
     mpp: pack(M), res2: 0, spp: ?,
-    mpie: ?, res1: 0, spie: ?, upie: ?,
-    mie: 0, res0: 0, sie: 0, uie: 0
+    mpie: ?, res1: False, spie: ?, upie: ?,
+    mie: False, res0: False, sie: False, uie: False
   };
 endinstance
 `defAllM(Status)
@@ -268,13 +268,13 @@ endinstance
 instance LegalizeRead#(SStatus);
   function legalizeRead(x);
     let ret = x.val;
-    ret.mie  = 0;
-    ret.mpie = 0;
+    ret.mie  = False;
+    ret.mpie = False;
     ret.mpp  = 0;
-    ret.mprv = 0;
-    ret.tvm  = 0;
-    ret.tw   = 0;
-    ret.tsr  = 0;
+    ret.mprv = False;
+    ret.tvm  = False;
+    ret.tw   = False;
+    ret.tsr  = False;
     `ifdef XLEN64 // MAX_XLEN > 32
     ret.sxl  = 0;
     `endif
@@ -680,7 +680,7 @@ endinstance
 function Bool isValidCause(Bit#(XLEN) c) = case (unpack(c)) matches
   tagged Interrupt .i: case (i)
     USoftInt, SSoftInt, MSoftInt,
-    UtimerInt, STimerInt, MTimerInt,
+    UTimerInt, STimerInt, MTimerInt,
     UExtInt, SExtInt, MExtInt: True;
     default: False;
   endcase

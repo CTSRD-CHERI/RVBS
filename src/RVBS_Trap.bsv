@@ -75,42 +75,41 @@ function ActionValue#(PrivLvl) popStatusStack(Reg#(Status) status, PrivLvl from)
   return to;
 endactionvalue;
 
-function Action general_trap(PrivLvl toLvl, Cause cause, RVState s, Action specific_behaviour) = action
-  specific_behaviour;
+function Action general_trap(PrivLvl toLvl, Cause cause, VAddr epc, RVState s) = action
   // Global Interrupt-Enable Stack and latch current privilege level
   pushStatusStack(s.csrs.mstatus, s.currentPrivLvl, toLvl);
   // others
   case (toLvl)
     M: begin
       s.csrs.mcause <= cause;
-      s.csrs.mepc.addr <= truncateLSB(s.pc);
+      s.csrs.mepc.addr <= truncateLSB(epc);
     end
     `ifdef SUPERVISOR_MODE
     S: begin
       s.csrs.scause <= cause;
-      s.csrs.sepc.addr <= truncateLSB(s.pc);
+      s.csrs.sepc.addr <= truncateLSB(epc);
     end
     `endif
     `ifdef RVN
     U: begin
       // TODO s.csrs.ucause <= cause;
-      // TODO s.csrs.uepc.addr <= truncateLSB(s.pc);
+      // TODO s.csrs.uepc.addr <= truncateLSB(epc);
     end
     `endif
     default: terminateSim(s, $format("TRAP INTO UNKNOWN PRIVILEGE MODE ", fshow(s.currentPrivLvl)));
   endcase
   s.currentPrivLvl <= M;
-  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", s.pc, s.csrs.mtvec));
+  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
 
 typeclass Trap#(type a); a trap; endtypeclass
 
 instance Trap#(function Action f(RVState s, ExcCode code));
-  function Action trap(RVState s, ExcCode code) =
-    general_trap(M, Exception(code), s, action
-      if (s.csrs.mtvec.mode >= 2) terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
-      else s.pc <= {s.csrs.mtvec.base, 2'b00};
-    endaction);
+  function Action trap(RVState s, ExcCode code) = action
+    general_trap(M, Exception(code), s.pc, s);
+    if (s.csrs.mtvec.mode >= 2) terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
+    else s.pc <= {s.csrs.mtvec.base, 2'b00};
+  endaction;
 endinstance
 
 instance Trap#(function Action f(RVState s, ExcCode code, Action side_effect));
@@ -120,19 +119,41 @@ instance Trap#(function Action f(RVState s, ExcCode code, Action side_effect));
   endaction;
 endinstance
 
-/*
-instance Trap#(function Action f(RVState s, IntCode code));
-  function Action trap(RVState s, IntCode code) =
-    general_trap(M, Interrupt(code), s, action
-      Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
-      case (s.csrs.mtvec.mode)
-        Direct: s.pc <= tgt;
-        Vectored: s.pc <= tgt + zeroExtend({pack(code),2'b00});
-        default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
-      endcase
-    endaction);
-endinstance
-*/
+function Maybe#(IntCode) checkIRQ (RVState s);
+  Bool lvl_ie = case (s.currentPrivLvl)
+    M: s.csrs.mstatus.mie;
+    S: s.csrs.mstatus.sie;
+    U: s.csrs.mstatus.uie;
+    default: True;
+  endcase;
+  Maybe#(IntCode) intCode = Invalid;
+  if (lvl_ie) begin
+    // order: MEI, MSI, MTI, SEI, SSI, STI, UEI, USI, UTI
+    if (s.csrs.mip.meip && s.csrs.mie.meie) intCode = Valid(MExtInt);
+    else if (s.csrs.mip.msip && s.csrs.mie.msie) intCode = Valid(MSoftInt);
+    else if (s.csrs.mip.mtip && s.csrs.mie.mtie) intCode = Valid(MTimerInt);
+    else if (s.csrs.mip.seip && s.csrs.mie.seie) intCode = Valid(SExtInt);
+    else if (s.csrs.mip.ssip && s.csrs.mie.ssie) intCode = Valid(SSoftInt);
+    else if (s.csrs.mip.stip && s.csrs.mie.stie) intCode = Valid(STimerInt);
+    else if (s.csrs.mip.ueip && s.csrs.mie.ueie) intCode = Valid(UExtInt);
+    else if (s.csrs.mip.usip && s.csrs.mie.usie) intCode = Valid(USoftInt);
+    else if (s.csrs.mip.utip && s.csrs.mie.utie) intCode = Valid(UTimerInt);
+  end
+  return intCode;
+endfunction
+
+function Action epilogueIRQ (RVState s) = action
+  let code = checkIRQ(s);
+  if (isValid(code)) begin
+    general_trap(M, Interrupt(code.Valid), s.pc.next_0, s);
+    Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+    case (s.csrs.mtvec.mode)
+      Direct: asReg(s.pc.next_0) <= tgt;
+      Vectored: asReg(s.pc.next_0) <= tgt + zeroExtend({pack(code.Valid),2'b00});
+      default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
+    endcase
+  end
+endaction;
 
 function Action assignM (Reg#(a) r, ActionValue#(a) av) =
   action a tmp <- av; r <= tmp; endaction;
@@ -172,7 +193,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
   // rd = 00000
   // opcode = SYSTEM = 1110011
   function Action instrSRET () = action
-    if (s.currentPrivLvl < S || (s.currentPrivLvl == S && s.csrs.mstatus.tsr == 1)) begin
+    if (s.currentPrivLvl < S || (s.currentPrivLvl == S && s.csrs.mstatus.tsr)) begin
       trap(s, IllegalInst);
       logInst(s.pc, $format("sret"));
     end else begin
@@ -209,11 +230,13 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     Bool limit_reached = True;
     case (s.currentPrivLvl) matches
       U &&& (!static_HAS_N_EXT): action trap(s, IllegalInst); endaction
-      S &&& (s.csrs.mstatus.tw == 1 && limit_reached): action trap(s, IllegalInst); endaction
+      S &&& (s.csrs.mstatus.tw && limit_reached): action trap(s, IllegalInst); endaction
       default: s.pc <= s.pc + s.instByteSz;
     endcase
     logInst(s.pc, $format("wfi"), $format("IMPLEMENTED AS NOP"));
   endaction;
   defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
+
+  //defineEpilogue(epilogueIRQ(s));
 
 endmodule

@@ -161,7 +161,7 @@ XLMode nativeXLEN = XL32;
 // machine interrupt/exception codes
 typedef enum {
   USoftInt = 0, SSoftInt = 1, MSoftInt = 3,
-  UtimerInt = 4, STimerInt = 5, MTimerInt = 7,
+  UTimerInt = 4, STimerInt = 5, MTimerInt = 7,
   UExtInt = 8, SExtInt = 9, MExtInt = 11
 } IntCode deriving (Bits, Eq, FShow);
 typedef enum {

@@ -32,14 +32,19 @@ import RVBS_Types :: *;
 import RVBS_State :: *;
 import RVBS_Trap :: *;
 import RVBS_RVI :: *;
-import RVBS_RVM :: *;
-import RVBS_RVC :: *;
 
 export RVBS_Types :: *;
 export RVBS_State :: *;
 export RVBS_Trap :: *;
 export RVBS_RVI :: *;
+
+`ifdef RVM
+import RVBS_RVM :: *;
 export RVBS_RVM :: *;
+`endif
+`ifdef RVC
+import RVBS_RVC :: *;
 export RVBS_RVC :: *;
+`endif
 
 endpackage
