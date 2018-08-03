@@ -142,7 +142,7 @@ module mkCSRs(CSRs);
 
   // supervisor protection and translation
   //////////////////////////////////////////////////////////////////////////////
-  csrs.satp     <- mkReg(defaultValue); // satp 12h'180
+  csrs.satp <- mkConfigReg(defaultValue); // satp 12h'180
   `endif
 
   // user trap setup registers
