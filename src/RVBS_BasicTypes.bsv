@@ -26,6 +26,7 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import BlueBasics :: *;
 import BlueUtils :: *;
 import ClientServer :: *;
 
