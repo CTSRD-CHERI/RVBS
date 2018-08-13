@@ -33,6 +33,149 @@ import Vector :: *;
 import RVBS_BasicTypes :: *;
 import RVBS_PMPTypes :: *;
 
+///////////////////////////
+// Interface to the CSRs //
+////////////////////////////////////////////////////////////////////////////////
+
+interface CSR_Ifc#(type csr_t);
+  // diverse interfaces
+  interface Array#(Reg#(csr_t)) preInstView;
+  interface Reg#(csr_t) instView;
+  interface Array#(Reg#(csr_t)) postInstView;
+  // standard read / write
+  method csr_t _read();
+  method Action _write(csr_t x);
+endinterface
+
+typedef enum {RW, RS, RC} CSRReqType deriving (Eq, FShow);
+typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects deriving (Eq, FShow);
+
+typedef struct {
+  Bit#(12) idx;
+  Bit#(XLEN) val;
+  CSRReqType rType;
+  CSRReqEffects rEffects;
+} CSRReq deriving (FShow);
+
+instance DefaultValue#(CSRReq);
+  function CSRReq defaultValue =
+    CSRReq { idx: ?, val: ?, rType: RW, rEffects: ALL };
+endinstance
+function CSRReq rwCSRReq(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RW, rEffects: ALL };
+function CSRReq rwCSRReqNoRead(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RW, rEffects: NOREAD };
+function CSRReq rsCSRReq(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RS, rEffects: ALL };
+function CSRReq rsCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RS, rEffects: NOWRITE };
+function CSRReq rcCSRReq(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RC, rEffects: ALL };
+function CSRReq rcCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
+  CSRReq { idx: i, val: v, rType: RC, rEffects: NOWRITE };
+
+typedef struct {
+
+  // machine information registers
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(VendorID)   mvendorid;
+  CSR_Ifc#(Bit#(XLEN)) marchid;
+  CSR_Ifc#(Bit#(XLEN)) mimpid;
+  CSR_Ifc#(Bit#(XLEN)) mhartid;
+
+  // machine trap setup registers
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(Status)     mstatus;
+  CSR_Ifc#(ISA)        misa;
+  CSR_Ifc#(MEDeleg)    medeleg;
+  CSR_Ifc#(IDeleg)     mideleg;
+  CSR_Ifc#(IE)         mie;
+  CSR_Ifc#(TVec)       mtvec;
+  // TODO mcounteren
+
+  // machine trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(Bit#(XLEN)) mscratch;
+  CSR_Ifc#(EPC)        mepc;
+  CSR_Ifc#(Cause)      mcause;
+  CSR_Ifc#(Bit#(XLEN)) mtval;
+  CSR_Ifc#(IP)         mip;
+
+  // machine protection and translation
+  //////////////////////////////////////////////////////////////////////////////
+  `ifdef PMP
+  // pmpcfg0, pmpcfg1, pmpcfg2, pmpcfg3
+  `ifdef XLEN64
+  Vector#(2, CSR_Ifc#(PMPCfgIfc#(8))) pmpcfg;
+  `else
+  Vector#(4, CSR_Ifc#(PMPCfgIfc#(4))) pmpcfg;
+  `endif
+  // pmpaddr0, pmpaddr1, ..., pmpaddr15
+  Vector#(16, CSR_Ifc#(PMPAddr)) pmpaddr;
+  `endif
+
+  `ifdef SUPERVISOR_MODE
+  // supervisor trap setup
+  //////////////////////////////////////////////////////////////////////////////
+  // sstatus -- S-view of mstatus;
+  CSR_Ifc#(SEDeleg)    sedeleg;
+  CSR_Ifc#(IDeleg)     sideleg;
+  // sie -- S-view of mie
+  CSR_Ifc#(TVec)       stvec;
+  // TODO scounteren
+
+  // supervisor trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(Bit#(XLEN)) sscratch;
+  CSR_Ifc#(EPC)        sepc;
+  CSR_Ifc#(Cause)      scause;
+  CSR_Ifc#(Bit#(XLEN)) stval;
+  // sip -- S-view of mip
+
+  // supervisor protection and translation
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(SATP) satp;
+  `endif
+
+  // user trap setup registers
+  //////////////////////////////////////////////////////////////////////////////
+  // ustatus
+  // uie
+  // utvec
+
+  // user trap handling
+  //////////////////////////////////////////////////////////////////////////////
+  // uscratch
+  // uepc
+  // ucause
+  // utval
+  // uip
+
+  // user counters/timers
+  //////////////////////////////////////////////////////////////////////////////
+  CSR_Ifc#(Bit#(64)) cycle;
+  // time
+  //Reg#(Bit#(64)) instret;
+  // hpmcounter3
+  // hpmcounter4
+  // ...
+  // hpmcounter31
+
+  // XXX for debug purposes:
+  CSR_Ifc#(Bit#(XLEN)) ctrl;
+
+  // IRQs
+  //////////////////////////////////////////////////////////////////////////////
+  function Action doSetMSIP (Bool irw) setMSIP;
+  function Action doSetMTIP (Bool irw) setMTIP;
+  function Action doSetMEIP (Bool irw) setMEIP;
+
+  // CSR request
+  //////////////////////////////////////////////////////////////////////////////
+  function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;
+
+} CSRs;
+
 //////////////////////
 // Legalize classes //
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,136 +881,3 @@ instance LegalizeWrite#(SATP);
   endfunction
 endinstance
 `endif
-
-///////////////////////////
-// Interface to the CSRs //
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {RW, RS, RC} CSRReqType deriving (Eq, FShow);
-typedef enum {ALL, NOREAD, NOWRITE} CSRReqEffects deriving (Eq, FShow);
-
-typedef struct {
-  Bit#(12) idx;
-  Bit#(XLEN) val;
-  CSRReqType rType;
-  CSRReqEffects rEffects;
-} CSRReq deriving (FShow);
-
-instance DefaultValue#(CSRReq);
-  function CSRReq defaultValue =
-    CSRReq { idx: ?, val: ?, rType: RW, rEffects: ALL };
-endinstance
-function CSRReq rwCSRReq(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RW, rEffects: ALL };
-function CSRReq rwCSRReqNoRead(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RW, rEffects: NOREAD };
-function CSRReq rsCSRReq(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RS, rEffects: ALL };
-function CSRReq rsCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RS, rEffects: NOWRITE };
-function CSRReq rcCSRReq(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RC, rEffects: ALL };
-function CSRReq rcCSRReqNoWrite(Bit#(12) i, Bit#(XLEN) v) =
-  CSRReq { idx: i, val: v, rType: RC, rEffects: NOWRITE };
-
-typedef struct {
-
-  // machine information registers
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(VendorID)   mvendorid;
-  Reg#(Bit#(XLEN)) marchid;
-  Reg#(Bit#(XLEN)) mimpid;
-  Reg#(Bit#(XLEN)) mhartid;
-
-  // machine trap setup registers
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(Status)     mstatus;
-  Reg#(ISA)        misa;
-  Reg#(MEDeleg)    medeleg;
-  Reg#(IDeleg)     mideleg;
-  Reg#(IE)         mie;
-  Reg#(TVec)       mtvec;
-  // TODO mcounteren
-
-  // machine trap handling
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(Bit#(XLEN)) mscratch;
-  Reg#(EPC)        mepc;
-  Reg#(Cause)      mcause;
-  Reg#(Bit#(XLEN)) mtval;
-  Reg#(IP)         mip;
-
-  // machine protection and translation
-  //////////////////////////////////////////////////////////////////////////////
-  `ifdef PMP
-  // pmpcfg0, pmpcfg1, pmpcfg2, pmpcfg3
-  `ifdef XLEN64
-  Vector#(2, Reg#(PMPCfgIfc#(8))) pmpcfg;
-  `else
-  Vector#(4, Reg#(PMPCfgIfc#(4))) pmpcfg;
-  `endif
-  // pmpaddr0, pmpaddr1, ..., pmpaddr15
-  Vector#(16, Reg#(PMPAddr)) pmpaddr;
-  `endif
-
-  `ifdef SUPERVISOR_MODE
-  // supervisor trap setup
-  //////////////////////////////////////////////////////////////////////////////
-  // sstatus -- S-view of mstatus;
-  Reg#(SEDeleg)    sedeleg;
-  Reg#(IDeleg)     sideleg;
-  // sie -- S-view of mie
-  Reg#(TVec)       stvec;
-  // TODO scounteren
-
-  // supervisor trap handling
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(Bit#(XLEN)) sscratch;
-  Reg#(EPC)        sepc;
-  Reg#(Cause)      scause;
-  Reg#(Bit#(XLEN)) stval;
-  // sip -- S-view of mip
-
-  // supervisor protection and translation
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(SATP) satp;
-  `endif
-
-  // user trap setup registers
-  //////////////////////////////////////////////////////////////////////////////
-  // ustatus
-  // uie
-  // utvec
-
-  // user trap handling
-  //////////////////////////////////////////////////////////////////////////////
-  // uscratch
-  // uepc
-  // ucause
-  // utval
-  // uip
-
-  // user counters/timers
-  //////////////////////////////////////////////////////////////////////////////
-  Reg#(Bit#(64)) cycle;
-  // time
-  //Reg#(Bit#(64)) instret;
-  // hpmcounter3
-  // hpmcounter4
-  // ...
-  // hpmcounter31
-
-  // XXX for debug purposes:
-  Reg#(Bit#(XLEN)) ctrl;
-
-  // IRQs
-  //////////////////////////////////////////////////////////////////////////////
-  function Action doSetMSIP (Bool irw) setMSIP;
-  function Action doSetMTIP (Bool irw) setMTIP;
-  function Action doSetMEIP (Bool irw) setMEIP;
-
-  // CSR request
-  //////////////////////////////////////////////////////////////////////////////
-  function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;
-
-} CSRs;

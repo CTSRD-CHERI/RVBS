@@ -37,7 +37,7 @@ import RVBS_Types :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Global Interrupt-Enable and Privilege stack push
-function Action pushStatusStack(Reg#(Status) status, PrivLvl from, PrivLvl to) = action
+function Action pushStatusStack(CSR_Ifc#(Status) status, PrivLvl from, PrivLvl to) = action
   Status newval = status;
   case (to)
     M: begin
@@ -54,7 +54,7 @@ function Action pushStatusStack(Reg#(Status) status, PrivLvl from, PrivLvl to) =
   status <= newval;
 endaction;
 // Global Interrupt-Enable and Privilege stack pop
-function ActionValue#(PrivLvl) popStatusStack(Reg#(Status) status, PrivLvl from) = actionvalue
+function ActionValue#(PrivLvl) popStatusStack(CSR_Ifc#(Status) status, PrivLvl from) = actionvalue
   Status newval = status;
   PrivLvl to = from;
   case (from)
@@ -142,19 +142,6 @@ function Maybe#(IntCode) checkIRQ (RVState s);
   return intCode;
 endfunction
 
-function Action epilogueIRQ (RVState s) = action
-  let code = checkIRQ(s);
-  if (isValid(code)) begin
-    general_trap(M, Interrupt(code.Valid), s.pc.next_0, s);
-    Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
-    case (s.csrs.mtvec.mode)
-      Direct: asReg(s.pc.next_0) <= tgt;
-      Vectored: asReg(s.pc.next_0) <= tgt + zeroExtend({pack(code.Valid),2'b00});
-      default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
-    endcase
-  end
-endaction;
-
 function Action assignM (Reg#(a) r, ActionValue#(a) av) =
   action a tmp <- av; r <= tmp; endaction;
 
@@ -237,6 +224,17 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
   endaction;
   defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 
-  //defineEpilogue(epilogueIRQ(s));
+  Maybe#(IntCode) code = checkIRQ(s);
+  defineInterlude(Guarded { guard: isValid(code), val: action
+    /*
+    general_trap(M, Interrupt(code.Valid), s.pc.next_0, s);
+    Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+    case (s.csrs.mtvec.mode)
+      Direct: asReg(s.pc.next_0) <= tgt;
+      Vectored: asReg(s.pc.next_0) <= tgt + zeroExtend({pack(code.Valid),2'b00});
+      default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
+    endcase
+    */
+  endaction});
 
 endmodule

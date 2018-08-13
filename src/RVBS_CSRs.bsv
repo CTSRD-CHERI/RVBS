@@ -36,6 +36,53 @@ import RVBS_Types :: *;
 import RVBS_PMPTypes :: *;
 `endif
 
+//////////////////////////////
+// CSR_Ifc's implementation //
+//////////////////////////////
+
+module mkCSRCore#(Integer m, Integer n, module#(Reg#(csr_t)) mkTheCSR)(CSR_Ifc#(csr_t))
+  provisos (Bits#(csr_t, csr_sz));
+  // internal module decalration
+  Reg#(csr_t)        r <- mkTheCSR;
+  Wire#(csr_t)  pre[m] <- mkDCWire(m, r._read);
+  Wire#(csr_t) inst[2] <- mkDCWire(2, (m > 0) ? pre[m-1]._read : r._read);
+  Wire#(csr_t) post[n] <- mkDCWire(n, inst[1]._read);
+  RWire#(csr_t)   last <- mkRWire;
+
+  // update the register
+  rule update_reg; case (last.wget) matches
+    tagged Valid .newVal: r <= newVal;
+    tagged Invalid: r <= (n > 0) ? post[n-1]._read : inst[1]._read;
+  endcase endrule
+
+  // populating interfaces
+  interface  preInstView = pre;
+  interface     instView = interface Reg;
+    method _read  = inst[0]._read;
+    method _write = inst[1]._write;
+  endinterface;
+  interface postInstView = post;
+  method  _read = r._read;
+  method _write = last.wset;
+endmodule
+
+module mkCSR#(csr_t dflt)(CSR_Ifc#(csr_t)) provisos (Bits#(csr_t, csr_sz));
+  let ifc <- mkCSRCore(0,0,mkConfigReg(dflt));
+  return ifc;
+endmodule
+module mkCSRU(CSR_Ifc#(csr_t)) provisos (Bits#(csr_t, csr_sz));
+  let ifc <- mkCSRCore(0,0,mkConfigRegU);
+  return ifc;
+endmodule
+module mkCSRUndef#(String name)(CSR_Ifc#(csr_t)) provisos (Bits#(csr_t, csr_sz));
+  Reg#(csr_t) r <- mkRegUndef(name);
+  interface  preInstView = ?;
+  interface     instView = ?;
+  interface postInstView = ?;
+  method  _read = r._read;
+  method _write = r._write;
+endmodule
+
 //////////////////////////
 // CSRs' implementation //
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,33 +93,32 @@ module mkCSRs(CSRs);
 
   // machine information registers
   //////////////////////////////////////////////////////////////////////////////
-  csrs.mvendorid <- mkReg(defaultValue); // mvendorid 12'hF11
-  csrs.marchid   <- mkReg(0); // marchid 12'hF12
-  csrs.mimpid    <- mkReg(0); // mimpid 12'hF13
-  csrs.mhartid   <- mkReg(0); // mhartid 12'hF14
+  csrs.mvendorid <- mkCSR(defaultValue); // mvendorid 12'hF11
+  csrs.marchid   <- mkCSR(0); // marchid 12'hF12
+  csrs.mimpid    <- mkCSR(0); // mimpid 12'hF13
+  csrs.mhartid   <- mkCSR(0); // mhartid 12'hF14
 
   // machine trap setup registers
   //////////////////////////////////////////////////////////////////////////////
-  csrs.mstatus <- mkReg(defaultValue); // mstatus 12'h300
-  csrs.misa    <- mkReg(defaultValue); // misa 12'h301
-  csrs.medeleg <- mkRegUndef("medeleg");
-  csrs.mideleg <- mkRegUndef("mideleg");
+  csrs.mstatus <- mkCSR(defaultValue); // mstatus 12'h300
+  csrs.misa    <- mkCSR(defaultValue); // misa 12'h301
+  csrs.medeleg <- mkCSRUndef("medeleg");
+  csrs.mideleg <- mkCSRUndef("mideleg");
   if (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)) begin
-    csrs.medeleg <- mkReg(defaultValue); // medeleg 12'h302
-    csrs.mideleg <- mkReg(defaultValue); // mideleg 12'h303
+    csrs.medeleg <- mkCSR(defaultValue); // medeleg 12'h302
+    csrs.mideleg <- mkCSR(defaultValue); // mideleg 12'h303
   end
-  csrs.mie     <- mkReg(defaultValue); // mie 12'h304
-  csrs.mtvec   <- mkReg(defaultValue); // mtvec 12'h305
+  csrs.mie     <- mkCSR(defaultValue); // mie 12'h304
+  csrs.mtvec   <- mkCSR(defaultValue); // mtvec 12'h305
   // mcounteren 12'h306
 
   // machine trap handling
   //////////////////////////////////////////////////////////////////////////////
-  csrs.mscratch <- mkRegU; // mscratch 12'h340
-  csrs.mepc     <- mkReg(defaultValue); // mepc 12'h341
-  csrs.mcause   <- mkRegU; // mcause 12'h342
-  csrs.mtval    <- mkRegU; // mtval 12'h343
-  Reg#(IP) mip[2] <- mkCReg(2, defaultValue);
-  csrs.mip      = mip[1]; // mip 12'h344
+  csrs.mscratch <- mkCSRU; // mscratch 12'h340
+  csrs.mepc     <- mkCSR(defaultValue); // mepc 12'h341
+  csrs.mcause   <- mkCSRU; // mcause 12'h342
+  csrs.mtval    <- mkCSRU; // mtval 12'h343
+  csrs.mip      <- mkCSRCore(1, 0, mkConfigReg(defaultValue)); // mip 12'h344
 
   // machine protection and translation
   //////////////////////////////////////////////////////////////////////////////
@@ -125,24 +171,24 @@ module mkCSRs(CSRs);
   csrs.sedeleg <- mkRegUndef("sedeleg");
   csrs.sideleg <- mkRegUndef("sideleg");
   if (static_HAS_U_MODE && static_HAS_N_EXT) begin
-    csrs.sedeleg <- mkReg(defaultValue); // sedeleg 12'h102
-    csrs.sideleg <- mkReg(defaultValue); // sideleg 12'h103
+    csrs.sedeleg <- mkCSR(defaultValue); // sedeleg 12'h102
+    csrs.sideleg <- mkCSR(defaultValue); // sideleg 12'h103
   end
   // sie 12'h104 -- S-view of mie
-  csrs.stvec   <- mkReg(defaultValue); // stvec 12'h105
+  csrs.stvec   <- mkCSR(defaultValue); // stvec 12'h105
   // TODO scounteren 12'h106
 
   // supervisor trap handling
   //////////////////////////////////////////////////////////////////////////////
-  csrs.sscratch <- mkRegU; // sscratch 12'h140
-  csrs.sepc     <- mkReg(defaultValue); // sepc 12'h141
-  csrs.scause   <- mkRegU; // scause 12'h142
-  csrs.stval    <- mkRegU; // stval 12'h143
+  csrs.sscratch <- mkCSRU; // sscratch 12'h140
+  csrs.sepc     <- mkCSR(defaultValue); // sepc 12'h141
+  csrs.scause   <- mkCSRU; // scause 12'h142
+  csrs.stval    <- mkCSRU; // stval 12'h143
   // sip 12'h144 -- S-view of mip
 
   // supervisor protection and translation
   //////////////////////////////////////////////////////////////////////////////
-  csrs.satp <- mkConfigReg(defaultValue); // satp 12h'180
+  csrs.satp <- mkCSR(defaultValue); // satp 12h'180
   `endif
 
   // user trap setup registers
@@ -161,7 +207,7 @@ module mkCSRs(CSRs);
 
   // user counters/timers
   //////////////////////////////////////////////////////////////////////////////
-  csrs.cycle <- mkReg(0); // cycle 12'hC00 (and 12'hC80 in RV32)
+  csrs.cycle <- mkCSR(0); // cycle 12'hC00 (and 12'hC80 in RV32)
   rule cycle_count;
     csrs.cycle <= csrs.cycle + 1;
   endrule
@@ -173,12 +219,12 @@ module mkCSRs(CSRs);
   // hpmcounter31 12'hC1F (and 12'hC9F in RV32)
 
   // XXX for debug purposes:
-  csrs.ctrl <- mkReg(0); // ctrl 12'hCC0
+  csrs.ctrl <- mkCSR(0); // ctrl 12'hCC0
 
   // IRQs
-  Wire#(Bool) msip_w <- mkDWire(mip[0].msip);
-  Wire#(Bool) mtip_w <- mkDWire(mip[0].mtip);
-  Wire#(Bool) meip_w <- mkDWire(mip[0].meip);
+  Wire#(Bool) msip_w <- mkDWire(csrs.mip.msip);
+  Wire#(Bool) mtip_w <- mkDWire(csrs.mip.mtip);
+  Wire#(Bool) meip_w <- mkDWire(csrs.mip.meip);
   function doSetMSIP(irq) = action msip_w <= irq; endaction;
   csrs.setMSIP = doSetMSIP;
   function doSetMTIP(irq) = action mtip_w <= irq; endaction;
@@ -186,11 +232,11 @@ module mkCSRs(CSRs);
   function doSetMEIP(irq) = action meip_w <= irq; endaction;
   csrs.setMEIP = doSetMEIP;
   rule setIRQs;
-    let new_mip = mip[0];
+    let new_mip = csrs.mip;
     new_mip.msip = msip_w;
     new_mip.mtip = mtip_w;
     new_mip.meip = meip_w;
-    mip[0] <= new_mip;
+    asReg(csrs.mip.preInstView[0]) <= new_mip;
   endrule
 
   // CSR requests
@@ -237,49 +283,49 @@ module mkCSRs(CSRs);
     `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
       `ifdef SUPERVISOR_MODE
-      12'h100: `MVCSRUpdate(SStatus, csrs.mstatus)
+      12'h100: `MVCSRUpdate(SStatus, csrs.mstatus.instView)
       12'h102 &&& (static_HAS_U_MODE && static_HAS_N_EXT):
-        `CSRUpdate(csrs.sedeleg)
+        `CSRUpdate(csrs.sedeleg.instView)
       12'h103 &&& (static_HAS_U_MODE && static_HAS_N_EXT):
-        `CSRUpdate(csrs.sideleg)
-      12'h104: `MVCSRUpdate(SIE, csrs.mie)
-      12'h105: `CSRUpdate(csrs.stvec)
-      12'h140: `CSRUpdate(csrs.sscratch)
-      12'h141: `CSRUpdate(csrs.sepc)
-      12'h142: `CSRUpdate(csrs.scause)
-      12'h143: `CSRUpdate(csrs.stval)
-      12'h144: `MVCSRUpdate(SIP, csrs.mip)
-      12'h180: `CSRUpdate(csrs.satp)
+        `CSRUpdate(csrs.sideleg.instView)
+      12'h104: `MVCSRUpdate(SIE, csrs.mie.instView)
+      12'h105: `CSRUpdate(csrs.stvec.instView)
+      12'h140: `CSRUpdate(csrs.sscratch.instView)
+      12'h141: `CSRUpdate(csrs.sepc.instView)
+      12'h142: `CSRUpdate(csrs.scause.instView)
+      12'h143: `CSRUpdate(csrs.stval.instView)
+      12'h144: `MVCSRUpdate(SIP, csrs.mip.instView)
+      12'h180: `CSRUpdate(csrs.satp.instView)
       `endif
-      12'h300: `MVCSRUpdate(MStatus, csrs.mstatus)
-      12'h301: `CSRUpdate(csrs.misa)
+      12'h300: `MVCSRUpdate(MStatus, csrs.mstatus.instView)
+      12'h301: `CSRUpdate(csrs.misa.instView)
       12'h302 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        `CSRUpdate(csrs.medeleg)
+        `CSRUpdate(csrs.medeleg.instView)
       12'h303 &&& (static_HAS_S_MODE || (static_HAS_U_MODE && static_HAS_N_EXT)):
-        `CSRUpdate(csrs.mideleg)
-      12'h304: `MVCSRUpdate(MIE, csrs.mie)
-      12'h305: `CSRUpdate(csrs.mtvec)
-      12'h340: `CSRUpdate(csrs.mscratch)
-      12'h341: `CSRUpdate(csrs.mepc)
-      12'h342: `CSRUpdate(csrs.mcause)
-      12'h343: `CSRUpdate(csrs.mtval)
-      12'h344: `MVCSRUpdate(MIP, csrs.mip)
+        `CSRUpdate(csrs.mideleg.instView)
+      12'h304: `MVCSRUpdate(MIE, csrs.mie.instView)
+      12'h305: `CSRUpdate(csrs.mtvec.instView)
+      12'h340: `CSRUpdate(csrs.mscratch.instView)
+      12'h341: `CSRUpdate(csrs.mepc.instView)
+      12'h342: `CSRUpdate(csrs.mcause.instView)
+      12'h343: `CSRUpdate(csrs.mtval.instView)
+      12'h344: `MVCSRUpdate(MIP, csrs.mip.instView)
       `ifdef PMP
       `ifdef XLEN64
-      12'h3A0: `CSRUpdate(csrs.pmpcfg[0])
-      12'h3A2: `CSRUpdate(csrs.pmpcfg[1])
+      12'h3A0: `CSRUpdate(csrs.pmpcfg[0].instView)
+      12'h3A2: `CSRUpdate(csrs.pmpcfg[1].instView)
       `else
       .x &&& (12'h3A0 >= x && x <= 12'h3A3):
-        `CSRUpdate(csrs.pmpcfg[x - 12'h3A0])
+        `CSRUpdate(csrs.pmpcfg[x - 12'h3A0].instView)
       `endif
       .x &&& (12'h3B0 >= x && x <= 12'h3BF):
-        `CSRUpdate(csrs.pmpaddr[x - 12'h3B0])
+        `CSRUpdate(csrs.pmpaddr[x - 12'h3B0].instView)
       `endif
-      12'hF11: `CSRUpdate(csrs.mvendorid)
-      12'hF12: `CSRUpdate(csrs.marchid)
-      12'hF13: `CSRUpdate(csrs.mimpid)
-      12'hF14: `CSRUpdate(csrs.mhartid)
-      12'hC00: ret = csrs.cycle[valueOf(XLEN)-1:0];
+      12'hF11: `CSRUpdate(csrs.mvendorid.instView)
+      12'hF12: `CSRUpdate(csrs.marchid.instView)
+      12'hF13: `CSRUpdate(csrs.mimpid.instView)
+      12'hF14: `CSRUpdate(csrs.mhartid.instView)
+      12'hC00: ret = csrs.cycle.instView[valueOf(XLEN)-1:0];
       //12'hC02: ret = csrs.instret[valueOf(XLEN)-1:0];
       // RV32I only
       //'hC80: ret = cycle[63:32];
