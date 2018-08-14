@@ -226,15 +226,13 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
 
   Maybe#(IntCode) code = checkIRQ(s);
   defineInterlude(Guarded { guard: isValid(code), val: action
-    /*
-    general_trap(M, Interrupt(code.Valid), s.pc.next_0, s);
+    general_trap(M, Interrupt(code.Valid), s.pc, s);
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
     case (s.csrs.mtvec.mode)
-      Direct: asReg(s.pc.next_0) <= tgt;
-      Vectored: asReg(s.pc.next_0) <= tgt + zeroExtend({pack(code.Valid),2'b00});
+      Direct: s.pc <= tgt;
+      Vectored: s.pc <= tgt + zeroExtend({pack(code.Valid),2'b00});
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
-    */
   endaction});
 
 endmodule
