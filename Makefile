@@ -106,7 +106,7 @@ BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
 #BSCFLAGS += -steps-warn-interval n
 BSCFLAGS += -steps-warn-interval 500000
-BSCFLAGS += +RTS -K18388608 -RTS
+BSCFLAGS += +RTS -K20M -RTS
 
 BSC = bsc
 # Bluespec is not compatible with gcc > 4.9

@@ -131,8 +131,8 @@ module mkCSRs(CSRs);
   // pmpaddr1 12'h3B1
   // ...
   // pmpaddr15 12'h3BF
-  csrs.pmpcfg  <- replicateM(mkPMPCfgIfcReg);
-  csrs.pmpaddr <- replicateM(mkConfigReg(defaultValue));
+  csrs.pmpcfg  <- replicateM(mkCSRCore(1,0,mkPMPCfgIfcReg));
+  csrs.pmpaddr <- replicateM(mkCSRCore(1,0,mkConfigReg(defaultValue)));
   `endif
 
   // machine counter / timers
@@ -168,8 +168,8 @@ module mkCSRs(CSRs);
   // supervisor trap setup
   //////////////////////////////////////////////////////////////////////////////
   // sstatus 12'h100 -- S-view of mstatus
-  csrs.sedeleg <- mkRegUndef("sedeleg");
-  csrs.sideleg <- mkRegUndef("sideleg");
+  csrs.sedeleg <- mkCSRUndef("medeleg");
+  csrs.sideleg <- mkCSRUndef("sideleg");
   if (static_HAS_U_MODE && static_HAS_N_EXT) begin
     csrs.sedeleg <- mkCSR(defaultValue); // sedeleg 12'h102
     csrs.sideleg <- mkCSR(defaultValue); // sideleg 12'h103

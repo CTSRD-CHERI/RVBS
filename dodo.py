@@ -76,7 +76,7 @@ class RVBS:
   def bsc_flags(self):
     flags = ["-D", "PRINT_ABI_REG_NAME"]
     flags += ["-steps-warn-interval", "500000"]
-    flags += ["+RTS", "-K{:d}".format(18388608), "-RTS"]
+    flags += ["+RTS", "-K20M", "-RTS"]
     flags += ["-D", "XLEN32"]
     if self.size >= 64:
       flags += ["-D","XLEN64"]

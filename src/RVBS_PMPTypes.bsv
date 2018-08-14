@@ -51,7 +51,6 @@ instance DefaultValue#(PMPCfg);
 endinstance
 typedef Vector#(n, PMPCfg) PMPCfgIfc#(numeric type n);
 module mkPMPCfgIfcReg (Reg#(PMPCfgIfc#(n)));
-  //Vector#(n, Reg#(PMPCfg)) cfgs <- replicateM(mkReg(defaultValue));
   Vector#(n, Reg#(PMPCfg)) cfgs <- replicateM(mkConfigReg(defaultValue));
   method Action _write(PMPCfgIfc#(n) vals) = action
     function Action doWrite(Reg#(PMPCfg) r, PMPCfg v) = action

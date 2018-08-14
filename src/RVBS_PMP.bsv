@@ -38,7 +38,7 @@ import BlueUtils :: *;
 
 import RVBS_Types :: *;
 
-module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
+module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, PrivLvl plvl) (PMPLookup);
 
   FIFO#(AddrRsp#(PAddr)) rsp <- mkBypassFIFO;
   // lookup method
@@ -76,9 +76,9 @@ module mkPMPLookup#(CSRs csrs, PrivLvl plvl) (PMPLookup);
       endcase
     endfunction
     // return first match or default response
-    function Bit#(SmallPAWidth) getAddr(Reg#(PMPAddr) x) = x.address;
-    Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, csrs.pmpaddr);
-    let pmpMatches = zipWith3(doLookup, concat(readVReg(csrs.pmpcfg)), addrs, shiftInAt0(addrs,0));
+    function Bit#(SmallPAWidth) getAddr(PMPAddr x) = x.address;
+    Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, pmpaddrs);
+    let pmpMatches = zipWith3(doLookup, pmpcfgs, addrs, shiftInAt0(addrs,0));
     return fromMaybe(
       AddrRsp {addr: req.addr, mExc: plvl == M ? Invalid : excCode},
       fromMaybe(Invalid, find(isValid, pmpMatches)) // flatten the Maybe#(Maybe#(AddrRsp))

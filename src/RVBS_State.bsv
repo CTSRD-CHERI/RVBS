@@ -29,6 +29,7 @@
 import ConfigReg :: *;
 import ClientServer :: *;
 import GetPut :: *;
+import Vector :: *;
 
 import BlueUtils :: *;
 import Recipe :: *;
@@ -84,8 +85,11 @@ module [Module] mkState#(
   `endif
   // PMP lookup interfaces
   `ifdef PMP
-  PMPLookup pmp0 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  PMPLookup pmp1 <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  function preInstView(x) = x.preInstView[0];
+  let pmpcfgs  = concat(map(preInstView, s.csrs.pmpcfg));
+  let pmpaddrs = map(preInstView, s.csrs.pmpaddr);
+  PMPLookup pmp0 <- mkPMPLookup(pmpcfgs, pmpaddrs, s.currentPrivLvl);
+  PMPLookup pmp1 <- mkPMPLookup(pmpcfgs, pmpaddrs, s.currentPrivLvl);
   `ifdef SUPERVISOR_MODE
   /*
   PMPLookup ipmp[2] <- virtualize(pmp0, 2);
@@ -97,8 +101,8 @@ module [Module] mkState#(
   */
   s.ipmp = pmp0;
   s.dpmp = pmp1;
-  s.ivmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
-  s.dvmpmp <- mkPMPLookup(s.csrs, s.currentPrivLvl);
+  s.ivmpmp <- mkPMPLookup(pmpcfgs, pmpaddrs, s.currentPrivLvl);
+  s.dvmpmp <- mkPMPLookup(pmpcfgs, pmpaddrs, s.currentPrivLvl);
   `else
   s.ipmp = pmp0;
   s.dpmp = pmp1;
