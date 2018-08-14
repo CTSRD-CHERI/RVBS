@@ -54,7 +54,6 @@ function t safeRem(t a, t b) provisos (Arith#(t), Eq#(t)) = a % ((b == 0) ? 1 : 
 function Action instrMUL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TMul#(XLEN, 2)) tmp = zeroExtend(s.regFile[rs1]) * zeroExtend(s.regFile[rs2]);
   s.regFile[rd] <= truncate(tmp);
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("mul", rd, rs1, rs2));
 endaction;
 
@@ -64,7 +63,6 @@ endaction;
 function Action instrMULH (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(TMul#(XLEN, 2)) tmp = unpack(signExtend(s.regFile[rs1])) * unpack(signExtend(s.regFile[rs2]));
   s.regFile[rd] <= truncateLSB(pack(tmp));
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("mulh", rd, rs1, rs2));
 endaction;
 
@@ -74,7 +72,6 @@ endaction;
 function Action instrMULHSU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(TMul#(XLEN, 2)) tmp = unpack(signExtend(s.regFile[rs1])) * unpack(zeroExtend(s.regFile[rs2]));
   s.regFile[rd] <= truncateLSB(pack(tmp));
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("mulhsu", rd, rs1, rs2));
 endaction;
 
@@ -84,7 +81,6 @@ endaction;
 function Action instrMULHU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TMul#(XLEN, 2)) tmp = zeroExtend(s.regFile[rs1]) * zeroExtend(s.regFile[rs2]);
   s.regFile[rd] <= truncateLSB(tmp);
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("mulhu", rd, rs1, rs2));
 endaction;
 
@@ -97,7 +93,6 @@ function Action instrDIV (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = act
     Int#(XLEN) tmp = safeDiv(unpack(s.regFile[rs1]), unpack(s.regFile[rs2]));
     s.regFile[rd] <= pack(tmp);
   end
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("div", rd, rs1, rs2));
 endaction;
 
@@ -106,7 +101,6 @@ endaction;
 // opcode = OP = 0110011
 function Action instrDIVU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= (s.regFile[rs2] == 0) ? ~0 : safeDiv(s.regFile[rs1], s.regFile[rs2]);
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("divu", rd, rs1, rs2));
 endaction;
 
@@ -116,7 +110,6 @@ endaction;
 function Action instrREM (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(XLEN) tmp = unpack(s.regFile[rs1]) % unpack(s.regFile[rs2]); // XXX use safeRem ?
   s.regFile[rd] <= (s.regFile[rs2] == 0) ? s.regFile[rs1] : pack(tmp);
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("rem", rd, rs1, rs2));
 endaction;
 
@@ -125,7 +118,6 @@ endaction;
 // opcode = OP = 0110011
 function Action instrREMU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.regFile[rd] <= (s.regFile[rs2] == 0) ? s.regFile[rs1] : s.regFile[rs1] % s.regFile[rs2]; // XXX
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("remu", rd, rs1, rs2));
 endaction;
 
@@ -166,7 +158,6 @@ endmodule
 function Action instrMULW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(32) tmp = truncate(s.regFile[rs1]) * truncate(s.regFile[rs2]);
   s.regFile[rd] <= signExtend(tmp);
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("mulw", rd, rs1, rs2));
 endaction;
 
@@ -179,7 +170,6 @@ function Action instrDIVW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = ac
     Int#(32) tmp = safeDiv(unpack(truncate(s.regFile[rs1])), unpack(truncate(s.regFile[rs2])));
     s.regFile[rd] <= signExtend(pack(tmp));
   end
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("divw", rd, rs1, rs2));
 endaction;
 
@@ -192,7 +182,6 @@ function Action instrDIVUW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = a
     Bit#(32) tmp = safeDiv(truncate(s.regFile[rs1]), truncate(s.regFile[rs2]));
     s.regFile[rd] <= signExtend(tmp);
   end
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("divuw", rd, rs1, rs2));
 endaction;
 
@@ -205,7 +194,6 @@ function Action instrREMW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = ac
     Int#(32) tmp = safeRem(unpack(truncate(s.regFile[rs1])), unpack(truncate(s.regFile[rs2])));
     s.regFile[rd] <= signExtend(pack(tmp));
   end
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("remw", rd, rs1, rs2));
 endaction;
 
@@ -218,7 +206,6 @@ function Action instrREMUW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = a
     Bit#(32) tmp = safeRem(truncate(s.regFile[rs1]), truncate(s.regFile[rs2]));
     s.regFile[rd] <= signExtend(tmp);
   end
-  s.pc <= s.pc + s.instByteSz;
   logInst(s.pc, fmtInstR("remuw", rd, rs1, rs2));
 endaction;
 

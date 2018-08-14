@@ -194,6 +194,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
   `endif
 
   `ifdef USER_MODE
+  //XXX TODO N extension...
   // funct12 = URET = 000000000010
   // rs1 = 00000
   // funct3 = PRIV = 000
@@ -218,12 +219,15 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     case (s.currentPrivLvl) matches
       U &&& (!static_HAS_N_EXT): action trap(s, IllegalInst); endaction
       S &&& (s.csrs.mstatus.tw && limit_reached): action trap(s, IllegalInst); endaction
-      default: s.pc <= s.pc + s.instByteSz;
+      default: noAction;
     endcase
     logInst(s.pc, $format("wfi"), $format("IMPLEMENTED AS NOP"));
   endaction;
   defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 
+  // general functionalities
+  //////////////////////////////////////////////////////////////////////////////
+  // handle interrupts as a BID interlude
   Maybe#(IntCode) code = checkIRQ(s);
   defineInterlude(Guarded { guard: isValid(code), val: action
     general_trap(M, Interrupt(code.Valid), s.pc, s);
@@ -234,5 +238,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
   endaction});
+  // handle PC update as a BID prologue
+  definePrologue(action asReg(s.pc.next) <= s.pc + s.instByteSz; endaction);
 
 endmodule
