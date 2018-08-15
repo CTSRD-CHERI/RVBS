@@ -37,6 +37,7 @@ import LFSR :: *;
 import BlueUtils :: *;
 import AXI :: *;
 import TopAXI :: *;
+import CLINT :: *;
 
 `ifdef XLEN64
 typedef 56 ADDR_sz;
@@ -68,6 +69,7 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
 endinstance
 module mem (RVBS_Mem_Slave);
 
+  // memory module
   `ifdef MEM_IMG
   String memimg = `MEM_IMG;
   `else
@@ -104,23 +106,20 @@ module mem (RVBS_Mem_Slave);
     `endif
     // forward requests/response from/to appropriate FIFOF
     let p = (i == 0) ? mem.p0 : mem.p1;
-    let awff <- mkBypassFIFOF;
-    let wff  <- mkBypassFIFOF;
-    let arff <- mkBypassFIFOF;
-    let rff  <- mkBypassFIFOF;
+    let shim <- mkAXILiteSlaveShim;
     rule writeReq;
-      p.request.put(fromAXILiteToWriteReq(awff.first, wff.first));
-      awff.deq;
-      wff.deq;
+      p.request.put(fromAXILiteToWriteReq(shim.awff.first, shim.wff.first));
+      shim.awff.deq;
+      shim.wff.deq;
     endrule
     rule readReq;
-      p.request.put(fromAXILiteToReadReq(arff.first));
-      arff.deq;
+      p.request.put(fromAXILiteToReadReq(shim.arff.first));
+      shim.arff.deq;
     endrule
     rule readRsp(canRsp);
       let rsp <- p.response.get;
     `ifndef MEM_DELAY
-      rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: 00});
+      shim.rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
     endrule
     `else
       delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
@@ -131,24 +130,13 @@ module mem (RVBS_Mem_Slave);
       if (delay_count >= d) begin
         delay_count <= 0;
         delayff.deq;
-        rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: 00});
+        shim.rff.enq(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
       end else delay_count <= delay_count + 1;
     endrule
     `endif
 
     // wire up interface
-    let awifc <- toAXIAWLiteSlave(awff);
-    let wifc  <- toAXIWLiteSlave(wff);
-    let bifc  <- mkNullSource;
-    let arifc <- toAXIARLiteSlave(arff);
-    let rifc  <- toAXIRLiteSlave(rff);
-    ifc[i] = interface AXILiteSlave;
-      interface aw = awifc;
-      interface w  = wifc;
-      interface b  = bifc;
-      interface ar = arifc;
-      interface r  = rifc;
-    endinterface;
+    ifc[i] = shim.slave;
 
   end
 
