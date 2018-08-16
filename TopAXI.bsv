@@ -56,90 +56,55 @@ interface RVBS_Ifc;
 endinterface
 
 // Internal memory to AXI shim
-interface RVBSMem_Ifc;
+interface MemShim;
   interface Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) internal;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
 endinterface
-module rvbsMem (RVBSMem_Ifc);
+module mkMemShim (MemShim);
 
-  // one FIFOF per AXI channel
-  let awff0 <- mkBypassFIFOF;
-  let wff0  <- mkBypassFIFOF;
-  let arff0 <- mkBypassFIFOF;
-  let rff0  <- mkBypassFIFOF;
-  let awff1 <- mkBypassFIFOF;
-  let wff1  <- mkBypassFIFOF;
-  let arff1 <- mkBypassFIFOF;
-  let rff1  <- mkBypassFIFOF;
-
-  // turn FIFOFs to AXI interfaces
-  let awifc0 <- toAXIAWLiteMaster(awff0);
-  let wifc0  <- toAXIWLiteMaster(wff0);
-  let bifc0  <- mkSink;
-  let arifc0 <- toAXIARLiteMaster(arff0);
-  let rifc0  <- toAXIRLiteMaster(rff0);
-  let awifc1 <- toAXIAWLiteMaster(awff1);
-  let wifc1  <- toAXIWLiteMaster(wff1);
-  let bifc1  <- mkSink;
-  let arifc1 <- toAXIARLiteMaster(arff1);
-  let rifc1  <- toAXIRLiteMaster(rff1);
-
-  // connect to internal interface
+  // 2 AXI shims
+  List#(AXILiteMasterShim#(ADDR_sz, DATA_sz)) shim <- replicateM(2, mkAXILiteMasterShim);
+  // 2 memory interfaces
+  List#(Mem#(Bit#(ADDR_sz), Bit#(DATA_sz))) m = replicate(2, ?);
+  for (Integer i = 0; i < 2; i = i + 1) begin
+    // discard write responses
+    rule drainBChannel; shim[i].bff.deq; endrule
+    // convert requests/responses
+    m[i] = interface Mem;
+      interface request = interface Put;
+        method put (req) = action
+          case (req) matches
+            tagged ReadReq .r: shim[i].arff.enq(toAXIARLiteFlit(req));
+            tagged WriteReq .w: begin
+              shim[i].awff.enq(toAXIAWLiteFlit(req));
+              shim[i].wff.enq(toAXIWLiteFlit(req));
+            end
+          endcase
+        endaction;
+      endinterface;
+      interface response = interface Get;
+        method get = actionvalue
+          shim[i].rff.deq; return fromAXIRLiteFlit(shim[i].rff.first);
+        endactionvalue;
+      endinterface;
+    endinterface;
+  end
+  // wire up interfaces
   interface internal = interface Mem2;
-    interface Mem p0;
-      interface request = interface Put; method put (req) = action
-        case (req) matches
-          tagged ReadReq .r: arff0.enq(req);
-          tagged WriteReq .w: begin
-            awff0.enq(req);
-            wff0.enq(req);
-          end
-        endcase
-      endaction; endinterface;
-      interface response = interface Get; method get = actionvalue
-        rff0.deq; return rff0.first;
-      endactionvalue; endinterface;
-    endinterface
-    interface Mem p1;
-      interface request = interface Put; method put (req) = action
-        case (req) matches
-          tagged ReadReq .r: arff1.enq(req);
-          tagged WriteReq .w: begin
-            awff1.enq(req);
-            wff1.enq(req);
-          end
-        endcase
-      endaction; endinterface;
-      interface response = interface Get; method get = actionvalue
-        rff1.deq; return rff1.first;
-      endactionvalue; endinterface;
-    endinterface
+    interface p0 = m[0];
+    interface p1 = m[1];
   endinterface;
-
-  interface axiLiteMaster0 = interface AXILiteMaster;
-    interface aw = awifc0;
-    interface w  = wifc0;
-    interface b  = bifc0;
-    interface ar = arifc0;
-    interface r  = rifc0;
-  endinterface;
-
-  interface axiLiteMaster1 = interface AXILiteMaster;
-    interface aw = awifc1;
-    interface w  = wifc1;
-    interface b  = bifc1;
-    interface ar = arifc1;
-    interface r  = rifc1;
-  endinterface;
+  interface axiLiteMaster0 = shim[0].master;
+  interface axiLiteMaster1 = shim[1].master;
 
 endmodule
 
 (* synthesize *)
 module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc);
 
-  // instanciating memory subsystem
-  let mem <- rvbsMem;
+  // create the memory shim
+  let mem <- mkMemShim;
   `ifdef SUPERVISOR_MODE
   Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal.p0, 2);
   Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal.p1, 2);
