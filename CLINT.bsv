@@ -31,6 +31,7 @@ import Vector :: *;
 import FIFOF :: *;
 
 import AXI :: *;
+import SourceSink :: *;
 
 function Bit#(n) merge(Bit#(n) old_val, Bit#(n) new_val, Bit#(TDiv#(n, 8)) be)
   provisos (Bits#(Vector::Vector#(TDiv#(n, 8), Bit#(8)), n));
@@ -66,10 +67,8 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
   // AXI write request handling
   rule writeReq;
     // get request
-    shim.awff.deq;
-    shim.wff.deq;
-    let awflit = shim.awff.first;
-    let  wflit = shim.wff.first;
+    let awflit <- shim.awSource.get;
+    let  wflit <- shim.wSource.get;
     // handle request
     BLiteFlit bflit = defaultValue;
     case (awflit.awaddr[15:0])
@@ -83,13 +82,12 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
       default: bflit.bresp = SLVERR;
     endcase
     // put response
-    shim.bff.enq(bflit);
+    shim.bSink.put(bflit);
   endrule
   // AXI read request handling
   rule readReq;
     // get request
-    shim.arff.deq;
-    let arflit = shim.arff.first;
+    let arflit <- shim.arSource.get;
     // handle request
     RLiteFlit#(data_sz) rflit = defaultValue;
     case (arflit.araddr[15:0])
@@ -99,7 +97,7 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
       default: rflit.rresp = SLVERR;
     endcase
     // put response
-    shim.rff.enq(rflit);
+    shim.rSink.put(rflit);
   endrule
   // wire up interfaces
   interface axiLiteSlave = shim.slave;

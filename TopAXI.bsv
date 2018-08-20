@@ -69,23 +69,24 @@ module mkMemShim (MemShim);
   List#(Mem#(Bit#(ADDR_sz), Bit#(DATA_sz))) m = replicate(2, ?);
   for (Integer i = 0; i < 2; i = i + 1) begin
     // discard write responses
-    rule drainBChannel; shim[i].bff.deq; endrule
+    rule drainBChannel; let _ <- shim[i].bSource.get; endrule
     // convert requests/responses
     m[i] = interface Mem;
       interface request = interface Put;
         method put (req) = action
           case (req) matches
-            tagged ReadReq .r: shim[i].arff.enq(toAXIARLiteFlit(req));
+            tagged ReadReq .r: shim[i].arSink.put(toAXIARLiteFlit(req));
             tagged WriteReq .w: begin
-              shim[i].awff.enq(toAXIAWLiteFlit(req));
-              shim[i].wff.enq(toAXIWLiteFlit(req));
+              shim[i].awSink.put(toAXIAWLiteFlit(req));
+              shim[i].wSink.put(toAXIWLiteFlit(req));
             end
           endcase
         endaction;
       endinterface;
       interface response = interface Get;
         method get = actionvalue
-          shim[i].rff.deq; return fromAXIRLiteFlit(shim[i].rff.first);
+          let rsp <- shim[i].rSource.get;
+          return fromAXIRLiteFlit(rsp);
         endactionvalue;
       endinterface;
     endinterface;
