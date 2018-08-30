@@ -41,7 +41,10 @@ import RVBS :: *;
 typedef SizeOf#(PAddr) ADDR_sz;
 typedef TMax#(IMemWidth, DMemWidth) DATA_sz;
 
-(* always_ready, always_enabled *)
+////////////////
+// Interfaces //
+////////////////////////////////////////////////////////////////////////////////
+
 interface RVBS_Ifc;
   // probing interfaces
   method Bit#(XLEN) peekPC();
@@ -55,7 +58,25 @@ interface RVBS_Ifc;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
 endinterface
 
-// Internal memory to AXI shim
+(* always_ready, always_enabled *)
+interface RVBS_Ifc_Synth;
+  // probing interfaces
+  method Bit#(XLEN) peekPC();
+  method Bit#(XLEN) peekCtrlCSR();
+  interface BIDProbes probes;
+  // riscv interfaces
+  method Action setMSIP(Bool irq);
+  method Action setMTIP(Bool irq);
+  method Action setMEIP(Bool irq);
+  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster0;
+  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster1;
+endinterface
+
+
+/////////////////////////////////
+// Internal memory to AXI shim //
+////////////////////////////////////////////////////////////////////////////////
+
 interface MemShim;
   interface Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) internal;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
@@ -64,28 +85,28 @@ endinterface
 module mkMemShim (MemShim);
 
   // 2 AXI shims
-  List#(AXILiteMasterShim#(ADDR_sz, DATA_sz)) shim <- replicateM(2, mkAXILiteMasterShim);
+  List#(AXILiteShim#(ADDR_sz, DATA_sz)) shim <- replicateM(2, mkAXILiteShim);
   // 2 memory interfaces
   List#(Mem#(Bit#(ADDR_sz), Bit#(DATA_sz))) m = replicate(2, ?);
   for (Integer i = 0; i < 2; i = i + 1) begin
     // discard write responses
-    rule drainBChannel; let _ <- shim[i].bSource.get; endrule
+    rule drainBChannel; let _ <- shim[i].slave.b.get; endrule
     // convert requests/responses
     m[i] = interface Mem;
       interface request = interface Put;
         method put (req) = action
           case (req) matches
-            tagged ReadReq .r: shim[i].arSink.put(toAXIARLiteFlit(req));
+            tagged ReadReq .r: shim[i].slave.ar.put(toAXIARLiteFlit(req));
             tagged WriteReq .w: begin
-              shim[i].awSink.put(toAXIAWLiteFlit(req));
-              shim[i].wSink.put(toAXIWLiteFlit(req));
+              shim[i].slave.aw.put(toAXIAWLiteFlit(req));
+              shim[i].slave.w.put(toAXIWLiteFlit(req));
             end
           endcase
         endaction;
       endinterface;
       interface response = interface Get;
         method get = actionvalue
-          let rsp <- shim[i].rSource.get;
+          let rsp <- shim[i].slave.r.get;
           return fromAXIRLiteFlit(rsp);
         endactionvalue;
       endinterface;
@@ -101,8 +122,12 @@ module mkMemShim (MemShim);
 
 endmodule
 
+/////////////////
+// RVBS module //
+////////////////////////////////////////////////////////////////////////////////
+
 (* synthesize *)
-module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc);
+module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
 
   // create the memory shim
   let mem <- mkMemShim;
@@ -142,4 +167,19 @@ module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc);
   interface axiLiteMaster0 = mem.axiLiteMaster0;
   interface axiLiteMaster1 = mem.axiLiteMaster1;
 
+endmodule
+
+(* synthesize *)
+module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc_Synth);
+  let ifc <- mkRVBS(reset_pc);
+  let m0 <- toAXILiteMasterSynth(ifc.axiLiteMaster0);
+  let m1 <- toAXILiteMasterSynth(ifc.axiLiteMaster1);
+  method peekPC = ifc.peekPC;
+  method peekCtrlCSR = ifc.peekCtrlCSR;
+  interface probes = ifc.probes;
+  method setMSIP = ifc.setMSIP;
+  method setMTIP = ifc.setMTIP;
+  method setMEIP = ifc.setMEIP;
+  interface axiLiteMaster0 = m0;
+  interface axiLiteMaster1 = m1;
 endmodule

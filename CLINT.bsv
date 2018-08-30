@@ -56,7 +56,7 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
     DefaultValue#(RLiteFlit#(data_sz))
   );
   // local state
-  AXILiteSlaveShim#(addr_sz, data_sz) shim <- mkAXILiteSlaveShim;
+  AXILiteShim#(addr_sz, data_sz) shim <- mkAXILiteShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   Reg#(Bool) r_msip <- mkReg(False); // XXX mkRegU
@@ -67,8 +67,8 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
   // AXI write request handling
   rule writeReq;
     // get request
-    let awflit <- shim.awSource.get;
-    let  wflit <- shim.wSource.get;
+    let awflit <- shim.master.aw.get;
+    let  wflit <- shim.master.w.get;
     // handle request
     BLiteFlit bflit = defaultValue;
     case (awflit.awaddr[15:0])
@@ -82,12 +82,12 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
       default: bflit.bresp = SLVERR;
     endcase
     // put response
-    shim.bSink.put(bflit);
+    shim.master.b.put(bflit);
   endrule
   // AXI read request handling
   rule readReq;
     // get request
-    let arflit <- shim.arSource.get;
+    let arflit <- shim.master.ar.get;
     // handle request
     RLiteFlit#(data_sz) rflit = defaultValue;
     case (arflit.araddr[15:0])
@@ -97,7 +97,7 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
       default: rflit.rresp = SLVERR;
     endcase
     // put response
-    shim.rSink.put(rflit);
+    shim.master.r.put(rflit);
   endrule
   // wire up interfaces
   interface axiLiteSlave = shim.slave;

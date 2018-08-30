@@ -115,9 +115,9 @@ CC = gcc-4.8
 CXX = g++-4.8
 
 # Top level module
-SIMTOPFILE = Top.bsv
+SIMTOPFILE = TopSim.bsv
 SIMTOPMOD = top
-VERILOGTOPFILE = TopAXI.bsv
+VERILOGTOPFILE = TopRVBS.bsv
 VERILOGTOPMOD = rvbs
 
 .PHONY: sim verilog

@@ -37,7 +37,7 @@ import LFSR :: *;
 import BlueUtils :: *;
 import SourceSink :: *;
 import AXI :: *;
-import TopAXI :: *;
+import TopRVBS :: *;
 import CLINT :: *;
 
 `ifdef XLEN64
@@ -107,20 +107,20 @@ module mem (RVBS_Mem_Slave);
     `endif
     // forward requests/response from/to appropriate FIFOF
     let p = (i == 0) ? mem.p0 : mem.p1;
-    let shim <- mkAXILiteSlaveShim;
+    let shim <- mkAXILiteShim;
     rule writeReq;
-      let awflit <- shim.awSource.get;
-      let  wflit <- shim.wSource.get;
+      let awflit <- shim.master.aw.get;
+      let  wflit <- shim.master.w.get;
       p.request.put(fromAXILiteToWriteReq(awflit, wflit));
     endrule
     rule readReq;
-      let arflit <- shim.arSource.get;
+      let arflit <- shim.master.ar.get;
       p.request.put(fromAXILiteToReadReq(arflit));
     endrule
     rule readRsp(canRsp);
       let rsp <- p.response.get;
     `ifndef MEM_DELAY
-      shim.rSink.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+      shim.master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
     endrule
     `else
       delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
@@ -131,7 +131,7 @@ module mem (RVBS_Mem_Slave);
       if (delay_count >= d) begin
         delay_count <= 0;
         delayff.deq;
-        shim.rSink.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+        shim.master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
       end else delay_count <= delay_count + 1;
     endrule
     `endif
@@ -153,9 +153,9 @@ module top (Empty);
   // RESET PC
   Bit#(DATA_sz) reset_pc = 0;
   // RVBS instance
-  let core   <- rvbs(reset_pc);
+  let rvbs   <- mkRVBS(reset_pc);
   // MEM instance
   let memory <- mem;
   // plug things in
-  mkConnection(core, memory);
+  mkConnection(rvbs, memory);
 endmodule
