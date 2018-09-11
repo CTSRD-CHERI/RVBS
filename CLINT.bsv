@@ -28,7 +28,7 @@
 
 import DefaultValue :: *;
 import Vector :: *;
-import FIFOF :: *;
+import FIFO :: *;
 
 import AXI :: *;
 import SourceSink :: *;
@@ -42,54 +42,64 @@ function Bit#(n) merge(Bit#(n) old_val, Bit#(n) new_val, Bit#(TDiv#(n, 8)) be)
   return pack(zipWith3(mergeByte, old_vec, new_vec, be_vec));
 endfunction
 
-interface CLINT#(numeric type addr_sz, numeric type data_sz);
-  interface AXILiteSlave#(addr_sz, data_sz) axiLiteSlave;
+interface CLINT#(
+  numeric type id_sz,
+  numeric type addr_sz,
+  numeric type data_sz,
+  numeric type user_sz);
+  interface AXISlave#(id_sz, addr_sz, data_sz, user_sz) axiSlave;
   method Bool peekMSIP;
   method Bool peekMTIP;
 endinterface
-module mkCLINT (CLINT#(addr_sz, data_sz))
+module mkCLINT (CLINT#(id_sz, addr_sz, data_sz, user_sz))
   provisos (
     Add#(a__, data_sz, 64),
     Add#(b__, TDiv#(data_sz, 8), 8),
     Add#(c__, 1, data_sz),
-    DefaultValue#(BLiteFlit),
-    DefaultValue#(RLiteFlit#(data_sz))
+    DefaultValue#(BFlit#(id_sz, user_sz)),
+    DefaultValue#(RFlit#(id_sz, data_sz, user_sz))
   );
   // local state
-  AXILiteShim#(addr_sz, data_sz) shim <- mkAXILiteShim;
+  AXIShim#(id_sz, addr_sz, data_sz, user_sz) shim <- mkAXIShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   Reg#(Bool) r_msip <- mkReg(False); // XXX mkRegU
-  Reg#(Bool) r_mtip <- mkRegU;
+  Reg#(Bool) r_mtip[2] <- mkCRegU(2);
+  let wRsp <- mkFIFO1;
+  let rRsp <- mkFIFO1;
   // timer rules
   rule count_time; r_mtime <= r_mtime + 1; endrule
-  rule compare; if (r_mtime >= r_mtimecmp) r_mtip <= True; endrule
+  rule compare; if (r_mtime >= r_mtimecmp) r_mtip[0] <= True; endrule
   // AXI write request handling
   rule writeReq;
     // get request
     let awflit <- shim.master.aw.get;
     let  wflit <- shim.master.w.get;
     // handle request
-    BLiteFlit bflit = defaultValue;
+    BFlit#(id_sz, user_sz) bflit = defaultValue;
     case (awflit.awaddr[15:0])
       16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
       16'h4000: begin
         r_mtimecmp <=
           merge(r_mtimecmp, zeroExtend(wflit.wdata), zeroExtend(wflit.wstrb));
-        r_mtip <= False;
+        r_mtip[1] <= False;
       end
       16'hBFF8: bflit.bresp = SLVERR;
       default: bflit.bresp = SLVERR;
     endcase
     // put response
-    shim.master.b.put(bflit);
+    wRsp.enq(bflit);
+  endrule
+  rule writeRsp;
+    shim.master.b.put(wRsp.first);
+    wRsp.deq;
   endrule
   // AXI read request handling
   rule readReq;
     // get request
     let arflit <- shim.master.ar.get;
     // handle request
-    RLiteFlit#(data_sz) rflit = defaultValue;
+    RFlit#(id_sz, data_sz, user_sz) rflit = defaultValue;
     case (arflit.araddr[15:0])
       16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
       16'h4000: rflit.rdata = truncate(r_mtimecmp); // XXX TODO get appropriate size
@@ -97,10 +107,15 @@ module mkCLINT (CLINT#(addr_sz, data_sz))
       default: rflit.rresp = SLVERR;
     endcase
     // put response
-    shim.master.r.put(rflit);
+    rRsp.enq(rflit);
+  endrule
+  rule readRsp;
+    // put response
+    shim.master.r.put(rRsp.first);
+    rRsp.deq;
   endrule
   // wire up interfaces
-  interface axiLiteSlave = shim.slave;
+  interface axiSlave = shim.slave;
   method peekMSIP = r_msip;
-  method peekMTIP = r_mtip;
+  method peekMTIP = r_mtip[0];
 endmodule

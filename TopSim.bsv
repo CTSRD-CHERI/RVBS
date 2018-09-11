@@ -27,13 +27,17 @@
  */
 
 import FIFOF :: *;
+import DefaultValue :: *;
 import SpecialFIFOs :: *;
 import ClientServer :: *;
 import GetPut :: *;
 import Connectable :: *;
 import List :: *;
+import Vector :: *;
 import LFSR :: *;
 
+import ListExtra :: *;
+import Routable :: *;
 import BlueUtils :: *;
 import SourceSink :: *;
 import AXI :: *;
@@ -48,7 +52,7 @@ typedef 34 ADDR_sz;
 typedef 32 DATA_sz;
 `endif
 
-// memory subsystem module
+// memory subsystem interface
 (* always_ready, always_enabled *)
 interface RVBS_Mem_Slave;
   interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave0;
@@ -68,7 +72,41 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
     endrule
   endmodule
 endinstance
-module mem (RVBS_Mem_Slave);
+
+// memory subsystem
+typedef 2 NMASTERS;
+typedef 1 NSLAVES;
+`define MASTER_T AXIMaster#(0, ADDR_sz, DATA_sz, 0)
+`define SLAVE_T AXISlave#(TLog#(NMASTERS), ADDR_sz, DATA_sz, 0)
+module memoryMap (RVBS_Mem_Slave);
+  // input shims
+  AXILiteShim#(ADDR_sz, DATA_sz) shim0 <- mkAXILiteShim;
+  AXILiteShim#(ADDR_sz, DATA_sz) shim1 <- mkAXILiteShim;
+  `MASTER_T m0 <- fromAXILiteMaster(shim0.master);
+  `MASTER_T m1 <- fromAXILiteMaster(shim1.master);
+  // clint
+  CLINT#(TLog#(NMASTERS), ADDR_sz, DATA_sz, 0) clint <- mkCLINT;
+  // interconnect
+  Vector#(NMASTERS, `MASTER_T) ms;
+  ms[0] = m0;
+  ms[1] = m1;
+  Vector#(NSLAVES, `SLAVE_T) ss;
+  ss[0] = clint.axiSlave;
+  MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
+  maptab[0] = Range{base: 'h02000000, size: 'h10000};
+  mkAXIBus(maptab, ms, ss);
+  // interfaces
+  interface axiLiteSlave0 = shim0.slave;
+  interface axiLiteSlave1 = shim1.slave;
+  method Bool peekMEIP = False;
+  method Bool peekMTIP = clint.peekMTIP;
+  method Bool peekMSIP = clint.peekMSIP;
+endmodule
+`undef MASRTER_T
+`undef SLAVE_T
+
+// local memory wrapper
+module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
 
   // memory module
   `ifdef MEM_IMG
@@ -81,18 +119,25 @@ module mem (RVBS_Mem_Slave);
   `else
   Integer memsize = 'h10000;
   `endif
+  Integer membase = 'h80000000;
   Mem2#(Bit#(ADDR_sz), Bit#(DATA_sz), Bit#(DATA_sz)) mem <- mkSharedMem2(memsize, memimg);
 
+  // mem req helpers
   function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
-    fromAXILiteToWriteReq(AWLiteFlit#(ADDR_sz) aw, WLiteFlit#(DATA_sz) w) =
-      WriteReq {addr: aw.awaddr, byteEnable: w.wstrb, data: w.wdata};
+    fromAXILiteToWriteReq(AWLiteFlit#(ADDR_sz) aw, WLiteFlit#(DATA_sz) w, Int#(ADDR_sz) offset) =
+      WriteReq {addr: pack(unpack(aw.awaddr) + offset), byteEnable: w.wstrb, data: w.wdata};
   function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
-    fromAXILiteToReadReq(ARLiteFlit#(ADDR_sz) ar) =
-      ReadReq {addr: ar.araddr, numBytes: fromInteger(valueOf(DATA_sz)/8)};
-  AXILiteSlave#(ADDR_sz, DATA_sz) ifc[2];
+    fromAXILiteToReadReq(ARLiteFlit#(ADDR_sz) ar, Int#(ADDR_sz) offset) =
+      ReadReq {addr: pack(unpack(ar.araddr) + offset), numBytes: fromInteger(valueOf(DATA_sz)/8)};
 
+  // interfaces
+  AXILiteMaster#(ADDR_sz, DATA_sz) masters[2];
+
+  // per interface behaviour
   for (Integer i = 0; i < 2; i = i + 1) begin
-
+    // appropriate rvbs axi interface
+    let master = (i == 0) ? rvbs.axiLiteMaster0 : rvbs.axiLiteMaster1;
+    // memory related state
     Bool canRsp;
     `ifdef MEM_DELAY
     // artificial delay
@@ -105,57 +150,85 @@ module mem (RVBS_Mem_Slave);
     `else
     canRsp = True;
     `endif
-    // forward requests/response from/to appropriate FIFOF
+    // appropriate memory port
     let p = (i == 0) ? mem.p0 : mem.p1;
-    let shim <- mkAXILiteShim;
+    // outshim
+    let outshim <- mkAXILiteShim;
+    masters[i] = outshim.master;
+    // forward requests to appropriate slave
     rule writeReq;
-      let awflit <- shim.master.aw.get;
-      let  wflit <- shim.master.w.get;
-      p.request.put(fromAXILiteToWriteReq(awflit, wflit));
+      let awflit <- master.aw.get;
+      let  wflit <- master.w.get;
+      if (awflit.awaddr >= fromInteger(membase) &&
+          awflit.awaddr < fromInteger(membase + memsize)) begin
+        p.request.put(fromAXILiteToWriteReq(awflit, wflit, -fromInteger(membase)));
+        master.b.put(defaultValue);
+      end else begin
+        outshim.slave.aw.put(awflit);
+        outshim.slave.w.put(wflit);
+      end
     endrule
     rule readReq;
-      let arflit <- shim.master.ar.get;
-      p.request.put(fromAXILiteToReadReq(arflit));
+      let arflit <- master.ar.get;
+      if (arflit.araddr >= fromInteger(membase) &&
+          arflit.araddr < fromInteger(membase + memsize))
+        p.request.put(fromAXILiteToReadReq(arflit, -fromInteger(membase)));
+      else outshim.slave.ar.put(arflit);
     endrule
-    rule readRsp(canRsp);
+    // forward response from memory
+    rule memReadRsp(canRsp);
       let rsp <- p.response.get;
     `ifndef MEM_DELAY
-      shim.master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+      master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
     endrule
     `else
       delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
       delay_cmp.next;
     endrule
-    rule delayedReadRsp;
+    rule delayedMemReadRsp;
       match {.rsp, .d} = delayff.first;
       if (delay_count >= d) begin
         delay_count <= 0;
         delayff.deq;
-        shim.master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+        master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
       end else delay_count <= delay_count + 1;
     endrule
     `endif
-
-    // wire up interface
-    ifc[i] = shim.slave;
+    // forward response from outside master port
+    (* descending_urgency = "memReadRsp, readRsp" *)
+    rule readRsp(outshim.slave.r.canGet);
+      let flit <- outshim.slave.r.get;
+      master.r.put(flit);
+    endrule
+    (* descending_urgency = "writeReq, writeRsp" *)
+    rule writeRsp(outshim.slave.b.canGet);
+      let flit <- outshim.slave.b.get;
+      master.b.put(flit);
+    endrule
 
   end
 
-  method peekMEIP = False;
-  method peekMTIP = False;
-  method peekMSIP = False;
-  interface axiLiteSlave0 = ifc[0];
-  interface axiLiteSlave1 = ifc[1];
+  // probing interfaces
+  method peekPC      = rvbs.peekPC;
+  method peekCtrlCSR = rvbs.peekCtrlCSR;
+  interface probes   = rvbs.probes;
+  // riscv interfaces
+  method setMSIP = rvbs.setMSIP;
+  method setMTIP = rvbs.setMTIP;
+  method setMEIP = rvbs.setMEIP;
+  interface axiLiteMaster0 = masters[0];
+  interface axiLiteMaster1 = masters[1];
 
 endmodule
 
 module top (Empty);
   // RESET PC
-  Bit#(DATA_sz) reset_pc = 0;
+  Bit#(DATA_sz) reset_pc = 'h80000000;
   // RVBS instance
-  let rvbs   <- mkRVBS(reset_pc);
-  // MEM instance
-  let memory <- mem;
+  let rvbs <- mkRVBS(reset_pc);
+  let wrapped <- localMemWrapper(rvbs);
+  // mem map
+  let memMap <- memoryMap;
   // plug things in
-  mkConnection(rvbs, memory);
+  mkConnection(wrapped, memMap);
 endmodule

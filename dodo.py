@@ -212,7 +212,7 @@ blueutilsdir=op.join(bluestuffdir, "BlueUtils")
 bluebasicsdir=op.join(bluestuffdir, "BlueBasics")
 axidir=op.join(bluestuffdir, "AXI")
 rvbssrcdir=in_root_dir("src")
-bsvpath=":".join(["+",rvbssrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,blueutilsdir,axidir])
+bsvpath=":".join(["+",rvbssrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir])
 bsv_re = re.compile(".*\.bsv")
 bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]
@@ -220,7 +220,7 @@ bsc_flags+=["-show-schedule"]
 #bsc_flags+=["-show-rule-rel", "*", "*"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 topmod = "top"
-topfile = "Top.bsv"
+topfile = "TopSim.bsv"
 cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"Utils_SimMem.c")]
 #gcc
 cc="gcc-4.8"
@@ -334,7 +334,7 @@ def task_test_elf_to_hex () :
 
   def elf_to_hex (f, m):
     #print("gen hex for {:s} (mem{:d})".format(f,m))
-    cmd = [elfmanip,"-f","-o","{:s}.hex".format(test_name(f, m))]
+    cmd = [elfmanip,"-f","-s","0x80000000","-o","{:s}.hex".format(test_name(f, m))]
     cmd += ["--only-section",".text.init",".text",".data","--"]
     cmd += ["{:s}".format(f),"hex","-w",str(int(m/8))]
     sub.run(cmd)
