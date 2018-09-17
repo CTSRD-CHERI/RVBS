@@ -73,7 +73,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   let rRsp <- mkFIFO1;
   // timer rules
   rule count_time; r_mtime <= r_mtime + 1; endrule
-  rule compare; if (r_mtime >= r_mtimecmp) r_mtip[0] <= True; endrule
+  rule compare; r_mtip[0] <= r_mtime >= r_mtimecmp; endrule
   // AXI write request handling
   rule writeReq;
     // get request
