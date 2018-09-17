@@ -33,6 +33,18 @@ import FIFO :: *;
 import AXI :: *;
 import SourceSink :: *;
 
+// CLINT interface
+////////////////////////////////////////////////////////////////////////////////
+
+interface AXILiteCLINT#(numeric type addr_sz, numeric type data_sz);
+  interface AXILiteSlave#(addr_sz, data_sz) axiLiteSlave;
+  method Bool peekMSIP;
+  method Bool peekMTIP;
+endinterface
+
+// helpers
+////////////////////////////////////////////////////////////////////////////////
+
 function Bit#(n) merge(Bit#(n) old_val, Bit#(n) new_val, Bit#(TDiv#(n, 8)) be)
   provisos (Bits#(Vector::Vector#(TDiv#(n, 8), Bit#(8)), n));
   Vector#(TDiv#(n, 8),Bit#(8)) old_vec = unpack(old_val);
@@ -42,25 +54,17 @@ function Bit#(n) merge(Bit#(n) old_val, Bit#(n) new_val, Bit#(TDiv#(n, 8)) be)
   return pack(zipWith3(mergeByte, old_vec, new_vec, be_vec));
 endfunction
 
-interface CLINT#(
-  numeric type id_sz,
-  numeric type addr_sz,
-  numeric type data_sz,
-  numeric type user_sz);
-  interface AXISlave#(id_sz, addr_sz, data_sz, user_sz) axiSlave;
-  method Bool peekMSIP;
-  method Bool peekMTIP;
-endinterface
-module mkCLINT (CLINT#(id_sz, addr_sz, data_sz, user_sz))
+// CLINT implementation
+////////////////////////////////////////////////////////////////////////////////
+
+module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   provisos (
     Add#(a__, data_sz, 64),
     Add#(b__, TDiv#(data_sz, 8), 8),
-    Add#(c__, 1, data_sz),
-    DefaultValue#(BFlit#(id_sz, user_sz)),
-    DefaultValue#(RFlit#(id_sz, data_sz, user_sz))
+    Add#(c__, 1, data_sz)
   );
   // local state
-  AXIShim#(id_sz, addr_sz, data_sz, user_sz) shim <- mkAXIShim;
+  AXILiteShim#(addr_sz, data_sz) shim <- mkAXILiteShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   Reg#(Bool) r_msip <- mkReg(False); // XXX mkRegU
@@ -76,7 +80,7 @@ module mkCLINT (CLINT#(id_sz, addr_sz, data_sz, user_sz))
     let awflit <- shim.master.aw.get;
     let  wflit <- shim.master.w.get;
     // handle request
-    BFlit#(id_sz, user_sz) bflit = defaultValue;
+    BLiteFlit bflit = defaultValue;
     case (awflit.awaddr[15:0])
       16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
       16'h4000: begin
@@ -99,7 +103,7 @@ module mkCLINT (CLINT#(id_sz, addr_sz, data_sz, user_sz))
     // get request
     let arflit <- shim.master.ar.get;
     // handle request
-    RFlit#(id_sz, data_sz, user_sz) rflit = defaultValue;
+    RLiteFlit#(data_sz) rflit = defaultValue;
     case (arflit.araddr[15:0])
       16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
       16'h4000: rflit.rdata = truncate(r_mtimecmp); // XXX TODO get appropriate size
@@ -115,7 +119,7 @@ module mkCLINT (CLINT#(id_sz, addr_sz, data_sz, user_sz))
     rRsp.deq;
   endrule
   // wire up interfaces
-  interface axiSlave = shim.slave;
+  interface axiLiteSlave = shim.slave;
   method peekMSIP = r_msip;
   method peekMTIP = r_mtip[0];
 endmodule

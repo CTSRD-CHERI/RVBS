@@ -52,7 +52,8 @@ typedef 34 ADDR_sz;
 typedef 32 DATA_sz;
 `endif
 
-// memory subsystem interface
+// memory subsystem
+////////////////////////////////////////////////////////////////////////////////
 (* always_ready, always_enabled *)
 interface RVBS_Mem_Slave;
   interface AXILiteSlave#(ADDR_sz, DATA_sz) axiLiteSlave0;
@@ -73,28 +74,25 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
   endmodule
 endinstance
 
-// memory subsystem
 typedef 2 NMASTERS;
 typedef 1 NSLAVES;
-`define MASTER_T AXIMaster#(0, ADDR_sz, DATA_sz, 0)
-`define SLAVE_T AXISlave#(TLog#(NMASTERS), ADDR_sz, DATA_sz, 0)
+`define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz)
+`define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz)
 module memoryMap (RVBS_Mem_Slave);
   // input shims
   AXILiteShim#(ADDR_sz, DATA_sz) shim0 <- mkAXILiteShim;
   AXILiteShim#(ADDR_sz, DATA_sz) shim1 <- mkAXILiteShim;
-  `MASTER_T m0 <- fromAXILiteMaster(shim0.master);
-  `MASTER_T m1 <- fromAXILiteMaster(shim1.master);
   // clint
-  CLINT#(TLog#(NMASTERS), ADDR_sz, DATA_sz, 0) clint <- mkCLINT;
+  AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
   // interconnect
   Vector#(NMASTERS, `MASTER_T) ms;
-  ms[0] = m0;
-  ms[1] = m1;
+  ms[0] = shim0.master;
+  ms[1] = shim1.master;
   Vector#(NSLAVES, `SLAVE_T) ss;
-  ss[0] = clint.axiSlave;
+  ss[0] = clint.axiLiteSlave;
   MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
   maptab[0] = Range{base: 'h02000000, size: 'h10000};
-  mkAXIBus(maptab, ms, ss);
+  mkAXILiteBus(maptab, ms, ss);
   // interfaces
   interface axiLiteSlave0 = shim0.slave;
   interface axiLiteSlave1 = shim1.slave;
@@ -106,6 +104,7 @@ endmodule
 `undef SLAVE_T
 
 // local memory wrapper
+////////////////////////////////////////////////////////////////////////////////
 module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
 
   // memory module
@@ -221,6 +220,8 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
 
 endmodule
 
+// simulation top module
+////////////////////////////////////////////////////////////////////////////////
 module top (Empty);
   // RESET PC
   Bit#(DATA_sz) reset_pc = 'h80000000;
