@@ -35,7 +35,7 @@ import GetPut :: *;
 import BID :: *;
 import BlueBasics :: *;
 import BlueUtils :: *;
-import AXI :: *;
+import AXI4Lite :: *;
 import RVBS :: *;
 
 typedef SizeOf#(PAddr) ADDR_sz;

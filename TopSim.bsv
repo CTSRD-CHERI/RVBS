@@ -40,7 +40,7 @@ import ListExtra :: *;
 import Routable :: *;
 import BlueUtils :: *;
 import SourceSink :: *;
-import AXI :: *;
+import AXI4Lite :: *;
 import TopRVBS :: *;
 import CLINT :: *;
 

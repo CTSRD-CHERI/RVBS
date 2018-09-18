@@ -30,7 +30,7 @@ import DefaultValue :: *;
 import Vector :: *;
 import FIFO :: *;
 
-import AXI :: *;
+import AXI4Lite :: *;
 import SourceSink :: *;
 
 // CLINT interface
