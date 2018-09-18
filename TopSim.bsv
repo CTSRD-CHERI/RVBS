@@ -43,6 +43,7 @@ import SourceSink :: *;
 import AXI4Lite :: *;
 import TopRVBS :: *;
 import CLINT :: *;
+import CharIO :: *;
 
 `ifdef XLEN64
 typedef 56 ADDR_sz;
@@ -75,7 +76,7 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
 endinstance
 
 typedef 2 NMASTERS;
-typedef 1 NSLAVES;
+typedef 2 NSLAVES;
 `define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz)
 `define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz)
 module memoryMap (RVBS_Mem_Slave);
@@ -84,14 +85,18 @@ module memoryMap (RVBS_Mem_Slave);
   AXILiteShim#(ADDR_sz, DATA_sz) shim1 <- mkAXILiteShim;
   // clint
   AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
+  // CharIO
+  AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteCharIO;
   // interconnect
   Vector#(NMASTERS, `MASTER_T) ms;
   ms[0] = shim0.master;
   ms[1] = shim1.master;
   Vector#(NSLAVES, `SLAVE_T) ss;
   ss[0] = clint.axiLiteSlave;
+  ss[1] = charIO;
   MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
   maptab[0] = Range{base: 'h02000000, size: 'h10000};
+  maptab[1] = Range{base: 'h10000000, size: 'h1};
   mkAXILiteBus(maptab, ms, ss);
   // interfaces
   interface axiLiteSlave0 = shim0.slave;
