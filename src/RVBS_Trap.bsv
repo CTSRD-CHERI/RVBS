@@ -41,14 +41,19 @@ function Action pushStatusStack(CSR_Ifc#(Status) status, PrivLvl from, PrivLvl t
   Status newval = status;
   case (to)
     M: begin
-      newval.mpie = newval.mie;
+      newval.mie  = False;
+      newval.mpie = status.mie;
       newval.mpp  = pack(from);
     end
     S: begin
-      newval.spie = newval.sie;
+      newval.sie  = False;
+      newval.spie = status.sie;
       newval.spp  = truncate(pack(from));
     end
-    U: newval.upie = newval.uie;
+    U: begin
+      newval.uie  = False;
+      newval.upie = status.uie;
+    end
     default: noAction;
   endcase
   status <= newval;
