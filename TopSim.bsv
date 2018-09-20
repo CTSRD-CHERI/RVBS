@@ -124,7 +124,7 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
   Integer memsize = 'h10000;
   `endif
   Integer membase = 'h80000000;
-  Mem2#(Bit#(ADDR_sz), Bit#(DATA_sz), Bit#(DATA_sz)) mem <- mkSharedMem2(memsize, memimg);
+  Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) mem[2] <- mkSharedMem2(memsize, memimg);
 
   // mem req helpers
   function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
@@ -155,7 +155,6 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
     canRsp = True;
     `endif
     // appropriate memory port
-    let p = (i == 0) ? mem.p0 : mem.p1;
     // outshim
     let outshim <- mkAXILiteShim;
     masters[i] = outshim.master;
@@ -165,7 +164,7 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       let  wflit <- master.w.get;
       if (awflit.awaddr >= fromInteger(membase) &&
           awflit.awaddr < fromInteger(membase + memsize)) begin
-        p.request.put(fromAXILiteToWriteReq(awflit, wflit, -fromInteger(membase)));
+        mem[i].request.put(fromAXILiteToWriteReq(awflit, wflit, -fromInteger(membase)));
         master.b.put(defaultValue);
       end else begin
         outshim.slave.aw.put(awflit);
@@ -176,12 +175,12 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       let arflit <- master.ar.get;
       if (arflit.araddr >= fromInteger(membase) &&
           arflit.araddr < fromInteger(membase + memsize))
-        p.request.put(fromAXILiteToReadReq(arflit, -fromInteger(membase)));
+        mem[i].request.put(fromAXILiteToReadReq(arflit, -fromInteger(membase)));
       else outshim.slave.ar.put(arflit);
     endrule
     // forward response from memory
     rule memReadRsp(canRsp);
-      let rsp <- p.response.get;
+      let rsp <- mem[i].response.get;
     `ifndef MEM_DELAY
       master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
     endrule

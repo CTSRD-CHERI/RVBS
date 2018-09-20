@@ -78,7 +78,7 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 
 interface MemShim;
-  interface Mem2#(PAddr, Bit#(IMemWidth), Bit#(DMemWidth)) internal;
+  interface Array#(Mem#(PAddr, Bit#(DATA_sz))) internal;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
   interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
 endinterface
@@ -87,7 +87,7 @@ module mkMemShim (MemShim);
   // 2 AXI shims
   List#(AXILiteShim#(ADDR_sz, DATA_sz)) shim <- replicateM(2, mkAXILiteShim);
   // 2 memory interfaces
-  List#(Mem#(Bit#(ADDR_sz), Bit#(DATA_sz))) m = replicate(2, ?);
+  Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
     // discard write responses
     rule drainBChannel; let _ <- shim[i].slave.b.get; endrule
@@ -113,10 +113,7 @@ module mkMemShim (MemShim);
     endinterface;
   end
   // wire up interfaces
-  interface internal = interface Mem2;
-    interface p0 = m[0];
-    interface p1 = m[1];
-  endinterface;
+  interface internal = m;
   interface axiLiteMaster0 = shim[0].master;
   interface axiLiteMaster1 = shim[1].master;
 
@@ -132,11 +129,11 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   // create the memory shim
   let mem <- mkMemShim;
   `ifdef SUPERVISOR_MODE
-  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal.p0, 2);
-  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal.p1, 2);
+  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal[0], 2);
+  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal[1], 2);
   RVState s <- mkState(reset_pc, imem[1], dmem[1], imem[0], dmem[0]);
   `else
-  RVState s <- mkState(reset_pc, mem.internal.p0, mem.internal.p1);
+  RVState s <- mkState(reset_pc, mem.internal[0], mem.internal[1]);
   `endif
 
   // instanciating simulator
