@@ -124,15 +124,19 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
   Integer memsize = 'h10000;
   `endif
   Integer membase = 'h80000000;
-  Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) mem[2] <- mkSharedMem2(memsize, memimg);
+  AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, memimg);
 
   // mem req helpers
-  function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
-    fromAXILiteToWriteReq(AWLiteFlit#(ADDR_sz) aw, WLiteFlit#(DATA_sz) w, Int#(ADDR_sz) offset) =
-      WriteReq {addr: pack(unpack(aw.awaddr) + offset), byteEnable: w.wstrb, data: w.wdata};
-  function MemReq#(Bit#(ADDR_sz), Bit#(DATA_sz))
-    fromAXILiteToReadReq(ARLiteFlit#(ADDR_sz) ar, Int#(ADDR_sz) offset) =
-      ReadReq {addr: pack(unpack(ar.araddr) + offset), numBytes: fromInteger(valueOf(DATA_sz)/8)};
+  function AWLiteFlit#(ADDR_sz) offsetAWFlit(
+    AWLiteFlit#(ADDR_sz) f,
+    Int#(ADDR_sz) o) = AWLiteFlit {
+      awaddr: pack(unpack(f.awaddr) + o), awprot: f.awprot
+    };
+  function ARLiteFlit#(ADDR_sz) offsetARFlit(
+    ARLiteFlit#(ADDR_sz) f,
+    Int#(ADDR_sz) o) = ARLiteFlit {
+      araddr: pack(unpack(f.araddr) + o), arprot: f.arprot
+    };
 
   // interfaces
   AXILiteMaster#(ADDR_sz, DATA_sz) masters[2];
@@ -164,8 +168,8 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       let  wflit <- master.w.get;
       if (awflit.awaddr >= fromInteger(membase) &&
           awflit.awaddr < fromInteger(membase + memsize)) begin
-        mem[i].request.put(fromAXILiteToWriteReq(awflit, wflit, -fromInteger(membase)));
-        master.b.put(defaultValue);
+        mem[i].aw.put(offsetAWFlit(awflit, -fromInteger(membase)));
+        mem[i].w.put(wflit);
       end else begin
         outshim.slave.aw.put(awflit);
         outshim.slave.w.put(wflit);
@@ -175,14 +179,19 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       let arflit <- master.ar.get;
       if (arflit.araddr >= fromInteger(membase) &&
           arflit.araddr < fromInteger(membase + memsize))
-        mem[i].request.put(fromAXILiteToReadReq(arflit, -fromInteger(membase)));
+        mem[i].ar.put(offsetARFlit(arflit, -fromInteger(membase)));
       else outshim.slave.ar.put(arflit);
     endrule
     // forward response from memory
+    rule memWriteRsp;
+      let bflit <- mem[i].b.get;
+      master.b.put(bflit);
+    endrule
+    // forward response from memory
     rule memReadRsp(canRsp);
-      let rsp <- mem[i].response.get;
+      let rsp <- mem[i].r.get;
     `ifndef MEM_DELAY
-      master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+      master.r.put(rsp);
     endrule
     `else
       delayff.enq(tuple2(rsp, delay_cmp.value[15:11]));
@@ -193,7 +202,7 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       if (delay_count >= d) begin
         delay_count <= 0;
         delayff.deq;
-        master.r.put(RLiteFlit{rdata: rsp.ReadRsp, rresp: OKAY});
+        master.r.put(rsp);
       end else delay_count <= delay_count + 1;
     endrule
     `endif
@@ -203,7 +212,7 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
       let flit <- outshim.slave.r.get;
       master.r.put(flit);
     endrule
-    (* descending_urgency = "writeReq, writeRsp" *)
+    (* descending_urgency = "writeReq, memWriteRsp, writeRsp" *)
     rule writeRsp(outshim.slave.b.canGet);
       let flit <- outshim.slave.b.get;
       master.b.put(flit);
