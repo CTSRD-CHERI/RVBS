@@ -76,27 +76,36 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
 endinstance
 
 typedef 2 NMASTERS;
-typedef 2 NSLAVES;
+typedef 3 NSLAVES;
 `define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz)
 `define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz)
 module memoryMap (RVBS_Mem_Slave);
   // input shims
   AXILiteShim#(ADDR_sz, DATA_sz) shim0 <- mkAXILiteShim;
   AXILiteShim#(ADDR_sz, DATA_sz) shim1 <- mkAXILiteShim;
-  // clint
-  AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
+  // DTB
+  `ifdef DTB_IMG
+  String dtbimg = `DTB_IMG;
+  `else
+  String dtbimg = "dtb.hex";
+  `endif
+  AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- mkAXILiteMem('h2000, dtbimg);
   // CharIO
   AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteCharIO;
+  // clint
+  AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
   // interconnect
   Vector#(NMASTERS, `MASTER_T) ms;
   ms[0] = shim0.master;
   ms[1] = shim1.master;
   Vector#(NSLAVES, `SLAVE_T) ss;
-  ss[0] = clint.axiLiteSlave;
+  ss[0] = dtb;
   ss[1] = charIO;
+  ss[2] = clint.axiLiteSlave;
   MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
-  maptab[0] = Range{base: 'h02000000, size: 'h10000};
-  maptab[1] = Range{base: 'h10000000, size: 'h1};
+  maptab[0] = Range{base: 'h00004000, size: 'h2000};
+  maptab[1] = Range{base: 'h10000000, size: 'h1000};
+  maptab[2] = Range{base: 'h02000000, size: 'h2000};
   mkAXILiteBus(maptab, ms, ss);
   // interfaces
   interface axiLiteSlave0 = shim0.slave;
