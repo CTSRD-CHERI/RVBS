@@ -32,6 +32,7 @@ import List :: *;
 import ClientServer :: *;
 import GetPut :: *;
 
+import Recipe :: *;
 import BID :: *;
 import BlueBasics :: *;
 import BlueUtils :: *;
@@ -71,7 +72,6 @@ interface RVBS_Ifc_Synth;
   interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster0;
   interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster1;
 endinterface
-
 
 /////////////////////////////////
 // Internal memory to AXI shim //
@@ -136,8 +136,16 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   RVState s <- mkState(reset_pc, mem.internal[0], mem.internal[1]);
   `endif
 
+  // initialization
+  module [InstrDefModule] mkInit#(RVState st) ();
+    defineInit(rSeq(rBlock(action
+      st.regFile[10] <= 0;
+    endaction, action
+      st.regFile[11] <= 'h00004000;
+    endaction)));
+  endmodule
   // instanciating simulator
-  let modList = list(mkRVTrap, mkRV32I);
+  let modList = list(mkInit, mkRVTrap, mkRV32I);
   `ifdef RVM
     modList = append(modList, list(mkRV32M));
   `endif

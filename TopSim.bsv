@@ -79,6 +79,31 @@ typedef 2 NMASTERS;
 typedef 3 NSLAVES;
 `define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz)
 `define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz)
+// mem req helpers
+function AWLiteFlit#(ADDR_sz) offsetAWFlit(
+  AWLiteFlit#(ADDR_sz) f,
+  Int#(ADDR_sz) o) = AWLiteFlit {
+    awaddr: pack(unpack(f.awaddr) + o), awprot: f.awprot
+  };
+function ARLiteFlit#(ADDR_sz) offsetARFlit(
+  ARLiteFlit#(ADDR_sz) f,
+  Int#(ADDR_sz) o) = ARLiteFlit {
+    araddr: pack(unpack(f.araddr) + o), arprot: f.arprot
+  };
+module offsetSlave#(`SLAVE_T s, Integer offset) (`SLAVE_T);
+  interface aw = interface Sink;
+    method canPut = s.aw.canPut;
+    method put(x) = s.aw.put(offsetAWFlit(x, fromInteger(offset)));
+  endinterface;
+  interface w  = s.w;
+  interface b  = s.b;
+  interface ar = interface Sink;
+    method canPut = s.ar.canPut;
+    method put(x) = s.ar.put(offsetARFlit(x, fromInteger(offset)));
+  endinterface;
+  interface r  = s.r;
+endmodule
+
 module memoryMap (RVBS_Mem_Slave);
   // input shims
   AXILiteShim#(ADDR_sz, DATA_sz) shim0 <- mkAXILiteShim;
@@ -89,7 +114,8 @@ module memoryMap (RVBS_Mem_Slave);
   `else
   String dtbimg = "dtb.hex";
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- mkAXILiteMem('h2000, dtbimg);
+  AXILiteSlave#(ADDR_sz, DATA_sz) tmp <- mkAXILiteMem('h2000, dtbimg);
+  AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- offsetSlave(tmp, -'h00004000);
   // CharIO
   AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteCharIO;
   // clint
@@ -134,18 +160,6 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
   `endif
   Integer membase = 'h80000000;
   AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, memimg);
-
-  // mem req helpers
-  function AWLiteFlit#(ADDR_sz) offsetAWFlit(
-    AWLiteFlit#(ADDR_sz) f,
-    Int#(ADDR_sz) o) = AWLiteFlit {
-      awaddr: pack(unpack(f.awaddr) + o), awprot: f.awprot
-    };
-  function ARLiteFlit#(ADDR_sz) offsetARFlit(
-    ARLiteFlit#(ADDR_sz) f,
-    Int#(ADDR_sz) o) = ARLiteFlit {
-      araddr: pack(unpack(f.araddr) + o), arprot: f.arprot
-    };
 
   // interfaces
   AXILiteMaster#(ADDR_sz, DATA_sz) masters[2];
