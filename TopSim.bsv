@@ -129,9 +129,9 @@ module memoryMap (RVBS_Mem_Slave);
   ss[1] = charIO;
   ss[2] = clint.axiLiteSlave;
   MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
-  maptab[0] = Range{base: 'h00004000, size: 'h2000};
-  maptab[1] = Range{base: 'h10000000, size: 'h1000};
-  maptab[2] = Range{base: 'h02000000, size: 'h2000};
+  maptab[0] = Range{base: 'h00004000, size: 'h02000};
+  maptab[1] = Range{base: 'h10000000, size: 'h01000};
+  maptab[2] = Range{base: 'h02000000, size: 'h10000};
   mkAXILiteBus(maptab, ms, ss);
   // interfaces
   interface axiLiteSlave0 = shim0.slave;
@@ -156,7 +156,7 @@ module localMemWrapper#(RVBS_Ifc rvbs) (RVBS_Ifc);
   `ifdef MEM_SIZE
   Integer memsize = `MEM_SIZE;
   `else
-  Integer memsize = 'h10000;
+  Integer memsize = 'h10000000;
   `endif
   Integer membase = 'h80000000;
   AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, memimg);
