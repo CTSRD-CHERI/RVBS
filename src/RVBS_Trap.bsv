@@ -150,7 +150,7 @@ endfunction
 function Action assignM (Reg#(a) r, ActionValue#(a) av) =
   action a tmp <- av; r <= tmp; endaction;
 
-module [InstrDefModule] mkRVTrap#(RVState s) ();
+module [ISADefModule] mkRVTrap#(RVState s) ();
 /*
   I-type
 
@@ -176,7 +176,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
       logInst(s.pc, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
-  defineInstr("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
+  defineInstEntry("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
 
   `ifdef SUPERVISOR_MODE
   // funct12 = SRET = 000100000010
@@ -195,7 +195,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
       logInst(s.pc, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
-  defineInstr("sret", pat(n(12'b000100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrSRET);
+  defineInstEntry("sret", pat(n(12'b000100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrSRET);
   `endif
 
   `ifdef USER_MODE
@@ -211,7 +211,7 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     // trace
     logInst(s.pc, $format("uret"));
   endaction;
-  defineInstr("uret", pat(n(12'b000000000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrURET);
+  defineInstEntry("uret", pat(n(12'b000000000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrURET);
   `endif
 
   // funct12 = WFI = 000100000101
@@ -228,13 +228,13 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
     endcase
     logInst(s.pc, $format("wfi"), $format("IMPLEMENTED AS NOP"));
   endaction;
-  defineInstr("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
+  defineInstEntry("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 
   // general functionalities
   //////////////////////////////////////////////////////////////////////////////
   // handle interrupts as a BID interlude
   Maybe#(IntCode) code = checkIRQ(s);
-  defineInterlude(Guarded { guard: isValid(code), val: action
+  defineInterEntry(Guarded { guard: isValid(code), val: action
     general_trap(M, Interrupt(code.Valid), s.pc, s);
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
     case (s.csrs.mtvec.mode)
@@ -243,7 +243,5 @@ module [InstrDefModule] mkRVTrap#(RVState s) ();
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
   endaction});
-  // handle PC update as a BID prologue
-  definePrologue(action asReg(s.pc.next) <= s.pc + s.instByteSz; endaction);
 
 endmodule

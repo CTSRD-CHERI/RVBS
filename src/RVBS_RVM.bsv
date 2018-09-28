@@ -123,16 +123,16 @@ endaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-module [InstrDefModule] mkRV32M#(RVState s) ();
+module [ISADefModule] mkRV32M#(RVState s) ();
 
-  defineInstr("mul",    pat(n(7'b0000001), v, v, n(3'b000), v, n(7'b0110011)), instrMUL(s));
-  defineInstr("mulh",   pat(n(7'b0000001), v, v, n(3'b001), v, n(7'b0110011)), instrMULH(s));
-  defineInstr("mulhsu", pat(n(7'b0000001), v, v, n(3'b010), v, n(7'b0110011)), instrMULHSU(s));
-  defineInstr("mulhu",  pat(n(7'b0000001), v, v, n(3'b011), v, n(7'b0110011)), instrMULHU(s));
-  defineInstr("div",    pat(n(7'b0000001), v, v, n(3'b100), v, n(7'b0110011)), instrDIV(s));
-  defineInstr("divu",   pat(n(7'b0000001), v, v, n(3'b101), v, n(7'b0110011)), instrDIVU(s));
-  defineInstr("rem",    pat(n(7'b0000001), v, v, n(3'b110), v, n(7'b0110011)), instrREM(s));
-  defineInstr("remu",   pat(n(7'b0000001), v, v, n(3'b111), v, n(7'b0110011)), instrREMU(s));
+  defineInstEntry("mul",    pat(n(7'b0000001), v, v, n(3'b000), v, n(7'b0110011)), instrMUL(s));
+  defineInstEntry("mulh",   pat(n(7'b0000001), v, v, n(3'b001), v, n(7'b0110011)), instrMULH(s));
+  defineInstEntry("mulhsu", pat(n(7'b0000001), v, v, n(3'b010), v, n(7'b0110011)), instrMULHSU(s));
+  defineInstEntry("mulhu",  pat(n(7'b0000001), v, v, n(3'b011), v, n(7'b0110011)), instrMULHU(s));
+  defineInstEntry("div",    pat(n(7'b0000001), v, v, n(3'b100), v, n(7'b0110011)), instrDIV(s));
+  defineInstEntry("divu",   pat(n(7'b0000001), v, v, n(3'b101), v, n(7'b0110011)), instrDIVU(s));
+  defineInstEntry("rem",    pat(n(7'b0000001), v, v, n(3'b110), v, n(7'b0110011)), instrREM(s));
+  defineInstEntry("remu",   pat(n(7'b0000001), v, v, n(3'b111), v, n(7'b0110011)), instrREMU(s));
 
 endmodule
 
@@ -211,13 +211,13 @@ endaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-module [InstrDefModule] mkRV64M#(RVState s) ();
+module [ISADefModule] mkRV64M#(RVState s) ();
 
-  defineInstr("mulw",  pat(n(7'b0000001), v, v, n(3'b000), v, n(7'b0111011)), instrMULW(s));
-  defineInstr("divw",  pat(n(7'b0000001), v, v, n(3'b100), v, n(7'b0111011)), instrDIVW(s));
-  defineInstr("divuw", pat(n(7'b0000001), v, v, n(3'b101), v, n(7'b0111011)), instrDIVUW(s));
-  defineInstr("remw",  pat(n(7'b0000001), v, v, n(3'b110), v, n(7'b0111011)), instrREMW(s));
-  defineInstr("remuw", pat(n(7'b0000001), v, v, n(3'b111), v, n(7'b0111011)), instrREMUW(s));
+  defineInstEntry("mulw",  pat(n(7'b0000001), v, v, n(3'b000), v, n(7'b0111011)), instrMULW(s));
+  defineInstEntry("divw",  pat(n(7'b0000001), v, v, n(3'b100), v, n(7'b0111011)), instrDIVW(s));
+  defineInstEntry("divuw", pat(n(7'b0000001), v, v, n(3'b101), v, n(7'b0111011)), instrDIVUW(s));
+  defineInstEntry("remw",  pat(n(7'b0000001), v, v, n(3'b110), v, n(7'b0111011)), instrREMW(s));
+  defineInstEntry("remuw", pat(n(7'b0000001), v, v, n(3'b111), v, n(7'b0111011)), instrREMUW(s));
 
 endmodule
 

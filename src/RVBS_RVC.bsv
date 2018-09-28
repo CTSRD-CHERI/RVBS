@@ -380,43 +380,43 @@ function Action instrC_SUB (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
 
 ////////////////////////////////////////////////////////////////////////////////
 
-module [InstrDefModule] mkRV32C#(RVState s) ();
+module [ISADefModule] mkRV32C#(RVState s) ();
 
-  defineInstr("c.lwsp",             pat(n(3'b010), v, gv(nez), v, v, n(2'b10)), instrC_LWSP(s));
-  defineInstr("c.swsp",             pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
-  defineInstr("c.lw",               pat(n(3'b010), v, v, v, v, v, n(2'b00)), instrC_LW(s));
-  defineInstr("c.sw",               pat(n(3'b110), v, v, v, v, v, n(2'b00)), instrC_SW(s));
-  defineInstr("c.j",                pat(n(3'b101), v, n(2'b01)), instrC_J(s));
+  defineInstEntry("c.lwsp",             pat(n(3'b010), v, gv(nez), v, v, n(2'b10)), instrC_LWSP(s));
+  defineInstEntry("c.swsp",             pat(n(3'b110), v, v, v, n(2'b10)), instrC_SWSP(s));
+  defineInstEntry("c.lw",               pat(n(3'b010), v, v, v, v, v, n(2'b00)), instrC_LW(s));
+  defineInstEntry("c.sw",               pat(n(3'b110), v, v, v, v, v, n(2'b00)), instrC_SW(s));
+  defineInstEntry("c.j",                pat(n(3'b101), v, n(2'b01)), instrC_J(s));
 `ifndef XLEN64
-  defineInstr("c.jal",              pat(n(3'b001), v, n(2'b01)), instrC_JAL(s));
+  defineInstEntry("c.jal",              pat(n(3'b001), v, n(2'b01)), instrC_JAL(s));
 `endif
-  defineInstr("c.jr",               pat(n(4'b1000), gv(nez), gv(ez), n(2'b10)), instrC_JR(s));
-  defineInstr("c.jalr",             pat(n(4'b1001), gv(nez), gv(ez), n(2'b10)), instrC_JALR(s));
-  defineInstr("c.beqz",             pat(n(3'b110), v, v, v, n(2'b01)), instrC_BEQZ(s));
-  defineInstr("c.bnez",             pat(n(3'b111), v, v, v, n(2'b01)), instrC_BNEZ(s));
-  defineInstr("c.li",               pat(n(3'b010), v, gv(nez), v, n(2'b01)), instrC_LI(s));
-  defineInstr("c.lui",      guarded(pat(n(3'b011), v, gv(n0_n2), v, n(2'b01)), nzimm), instrC_LUI(s));
-  defineInstr("c.addi",     guarded(pat(n(3'b000), v, gv(nez), v, n(2'b01)), nzimm), instrC_ADDI(s));
-  defineInstr("c.addi16sp", guarded(pat(n(3'b011), v, gv(eq2), v, n(2'b01)), nzimm), instrC_ADDI16SP(s));
-  defineInstr("c.slli",             pat(n(3'b000), gv(ez), gv(nez), v, n(2'b10)), instrC_SLLI(s));
+  defineInstEntry("c.jr",               pat(n(4'b1000), gv(nez), gv(ez), n(2'b10)), instrC_JR(s));
+  defineInstEntry("c.jalr",             pat(n(4'b1001), gv(nez), gv(ez), n(2'b10)), instrC_JALR(s));
+  defineInstEntry("c.beqz",             pat(n(3'b110), v, v, v, n(2'b01)), instrC_BEQZ(s));
+  defineInstEntry("c.bnez",             pat(n(3'b111), v, v, v, n(2'b01)), instrC_BNEZ(s));
+  defineInstEntry("c.li",               pat(n(3'b010), v, gv(nez), v, n(2'b01)), instrC_LI(s));
+  defineInstEntry("c.lui",      guarded(pat(n(3'b011), v, gv(n0_n2), v, n(2'b01)), nzimm), instrC_LUI(s));
+  defineInstEntry("c.addi",     guarded(pat(n(3'b000), v, gv(nez), v, n(2'b01)), nzimm), instrC_ADDI(s));
+  defineInstEntry("c.addi16sp", guarded(pat(n(3'b011), v, gv(eq2), v, n(2'b01)), nzimm), instrC_ADDI16SP(s));
+  defineInstEntry("c.slli",             pat(n(3'b000), gv(ez), gv(nez), v, n(2'b10)), instrC_SLLI(s));
 `ifndef XLEN128
-  defineInstr("c.addi4spn",         pat(n(3'b000), gv(nez), v, n(2'b00)), instrC_ADDI4SPN(s));
+  defineInstEntry("c.addi4spn",         pat(n(3'b000), gv(nez), v, n(2'b00)), instrC_ADDI4SPN(s));
 `endif
-  defineInstr("c.srli",             pat(n(3'b100), gv(ez), n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
-  defineInstr("c.srai",             pat(n(3'b100), gv(ez), n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
-  defineInstr("c.andi",             pat(n(3'b100), v, n(2'b10), v, v, n(2'b01)), instrC_ANDI(s));
-  defineInstr("c.mv",               pat(n(4'b1000), gv(nez), gv(nez), n(2'b10)), instrC_MV(s));
-  defineInstr("c.add",              pat(n(4'b1001), gv(nez), gv(nez), n(2'b10)), instrC_ADD(s));
-  defineInstr("c.and",              pat(n(6'b100011), v, n(2'b11), v, n(2'b01)), instrC_AND(s));
-  defineInstr("c.or",               pat(n(6'b100011), v, n(2'b10), v, n(2'b01)), instrC_OR(s));
-  defineInstr("c.xor",              pat(n(6'b100011), v, n(2'b01), v, n(2'b01)), instrC_XOR(s));
-  defineInstr("c.sub",              pat(n(6'b100011), v, n(2'b00), v, n(2'b01)), instrC_SUB(s));
+  defineInstEntry("c.srli",             pat(n(3'b100), gv(ez), n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
+  defineInstEntry("c.srai",             pat(n(3'b100), gv(ez), n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
+  defineInstEntry("c.andi",             pat(n(3'b100), v, n(2'b10), v, v, n(2'b01)), instrC_ANDI(s));
+  defineInstEntry("c.mv",               pat(n(4'b1000), gv(nez), gv(nez), n(2'b10)), instrC_MV(s));
+  defineInstEntry("c.add",              pat(n(4'b1001), gv(nez), gv(nez), n(2'b10)), instrC_ADD(s));
+  defineInstEntry("c.and",              pat(n(6'b100011), v, n(2'b11), v, n(2'b01)), instrC_AND(s));
+  defineInstEntry("c.or",               pat(n(6'b100011), v, n(2'b10), v, n(2'b01)), instrC_OR(s));
+  defineInstEntry("c.xor",              pat(n(6'b100011), v, n(2'b01), v, n(2'b01)), instrC_XOR(s));
+  defineInstEntry("c.sub",              pat(n(6'b100011), v, n(2'b00), v, n(2'b01)), instrC_SUB(s));
   // Defined Illegal Instruction
-  defineInstr("illegal",            pat(n(16'h0000)), instrC_Illegal(s));
+  defineInstEntry("illegal",            pat(n(16'h0000)), instrC_Illegal(s));
   // NOP Instruction
-  defineInstr("c.nop",              pat(n(3'b000), gv(ez), gv(ez), gv(ez), n(2'b01)), instrC_ADDI(s));
+  defineInstEntry("c.nop",              pat(n(3'b000), gv(ez), gv(ez), gv(ez), n(2'b01)), instrC_ADDI(s));
   // Breakpoint Instruction
-  defineInstr("c.ebreak",           pat(n(4'b1001), n(10'b0), n(2'b10)), instrEBREAK(s));
+  defineInstEntry("c.ebreak",           pat(n(4'b1001), n(10'b0), n(2'b10)), instrEBREAK(s));
 
 endmodule
 `endif // XLEN32
@@ -544,18 +544,18 @@ function Action instrC_SUBW (RVState s, Bit#(3) rd_, Bit#(3) rs2_) =
 
 ////////////////////////////////////////////////////////////////////////////////
 
-module [InstrDefModule] mkRV64C#(RVState s) ();
+module [ISADefModule] mkRV64C#(RVState s) ();
 
-  defineInstr("c.ldsp",  pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP(s));
-  defineInstr("c.sdsp",  pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP(s));
-  defineInstr("c.ld",    pat(n(3'b011), v, v, v, v, n(2'b00)), instrC_LD(s));
-  defineInstr("c.sd",    pat(n(3'b111), v, v, v, v, n(2'b00)), instrC_SD(s));
-  defineInstr("c.addiw", pat(n(3'b001), v, gv(nez), v, n(2'b01)), instrC_ADDIW(s));
-  defineInstr("c.slli",  pat(n(3'b000), v, gv(nez), v, n(2'b10)), instrC_SLLI(s));
-  defineInstr("c.srli",  pat(n(3'b100), v, n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
-  defineInstr("c.srai",  pat(n(3'b100), v, n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
-  defineInstr("c.addw",  pat(n(6'b100111), v, n(2'b01), v, n(2'b01)), instrC_ADDW(s));
-  defineInstr("c.subw",  pat(n(6'b100111), v, n(2'b00), v, n(2'b01)), instrC_SUBW(s));
+  defineInstEntry("c.ldsp",  pat(n(3'b011), v, gv(neq(0)), v, v, n(2'b10)), instrC_LDSP(s));
+  defineInstEntry("c.sdsp",  pat(n(3'b111), v, v, v, n(2'b10)), instrC_SDSP(s));
+  defineInstEntry("c.ld",    pat(n(3'b011), v, v, v, v, n(2'b00)), instrC_LD(s));
+  defineInstEntry("c.sd",    pat(n(3'b111), v, v, v, v, n(2'b00)), instrC_SD(s));
+  defineInstEntry("c.addiw", pat(n(3'b001), v, gv(nez), v, n(2'b01)), instrC_ADDIW(s));
+  defineInstEntry("c.slli",  pat(n(3'b000), v, gv(nez), v, n(2'b10)), instrC_SLLI(s));
+  defineInstEntry("c.srli",  pat(n(3'b100), v, n(2'b00), v, v, n(2'b01)), instrC_SRLI(s));
+  defineInstEntry("c.srai",  pat(n(3'b100), v, n(2'b01), v, v, n(2'b01)), instrC_SRAI(s));
+  defineInstEntry("c.addw",  pat(n(6'b100111), v, n(2'b01), v, n(2'b01)), instrC_ADDW(s));
+  defineInstEntry("c.subw",  pat(n(6'b100111), v, n(2'b00), v, n(2'b01)), instrC_SUBW(s));
 
 endmodule
 `endif // XLEN64

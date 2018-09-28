@@ -31,7 +31,9 @@ import ClientServer :: *;
 import GetPut :: *;
 import Vector :: *;
 
+import BID :: *;
 import BlueUtils :: *;
+import SourceSink :: *;
 import Recipe :: *;
 import RVBS_Traces :: *;
 import RVBS_Types :: *;
@@ -118,8 +120,14 @@ module [Module] mkState#(
   s.dvm <- mkVMLookup(s.csrs, s.dvmmem);
   `endif
   `endif
-  // Instruction fetch machine
-  s.fetchInst <- compile(rPar(rBlock(
+
+  return s;
+endmodule
+
+// Instruction fetch
+function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
+rPipe(rBlock(
+    rFastSeq(rBlock(
     action
       VAddr vaddr = s.pc.next;
     `ifdef SUPERVISOR_MODE
@@ -127,7 +135,7 @@ module [Module] mkState#(
       s.ivm.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      let rsp <- s.ivm.response.get();
+      let rsp <- s.ivm.response.get;
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
       PAddr paddr = rsp.addr;
     `else
@@ -142,7 +150,7 @@ module [Module] mkState#(
       s.ipmp.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
     endaction, action
-      let rsp <- s.ipmp.response.get();
+      let rsp <- s.ipmp.response.get;
       MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
     `else
@@ -150,8 +158,21 @@ module [Module] mkState#(
     `endif
       s.imem.request.put(req);
       printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-    endaction)));
-    // TODO deal with exceptions
-
-  return s;
+    endaction)),
+    action
+      let rsp <- s.imem.response.get;
+      case (rsp) matches
+        tagged ReadRsp .val: begin
+          let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
+          asReg(s.pc.next) <= s.pc + newInstSz;
+          s.instByteSz <= newInstSz;
+          snk.put(extractInst(val));
+        end
+        default: snk.put(?);
+      endcase
+    endaction
+));
+module [ISADefModule] mkRVIFetch#(RVState s) ();
+  // instruction fetching definition
+  defineFetchInstEntry(instFetch(s));
 endmodule

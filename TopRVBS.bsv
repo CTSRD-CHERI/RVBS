@@ -137,15 +137,15 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   `endif
 
   // initialization
-  module [InstrDefModule] mkInit#(RVState st) ();
-    defineInit(rSeq(rBlock(action
+  module [ISADefModule] mkRVInit#(RVState st) ();
+    defineInitEntry(rSeq(rBlock(action
       st.regFile[10] <= 0;
     endaction, action
       st.regFile[11] <= 'h00004000;
     endaction)));
   endmodule
   // instanciating simulator
-  let modList = list(mkInit, mkRVTrap, mkRV32I);
+  let modList = list(mkRVInit, mkRVIFetch, mkRVTrap, mkRV32I);
   `ifdef RVM
     modList = append(modList, list(mkRV32M));
   `endif

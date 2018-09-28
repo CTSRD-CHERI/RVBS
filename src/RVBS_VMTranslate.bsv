@@ -98,7 +98,7 @@ module [Module] mkSv32PageWalker#(
   // physical memory request machine
   // XXX TODO sort out physical memory addr width (34)
   PAddr pteAddr = unpack(pack(a[1]) + (((i[1] == 1) ? zeroExtend(va[1].vpn1) : zeroExtend(va[1].vpn0)) << log2(`PTESIZE)));
-  RecipeFSM memReq <- compile(rPar(rBlock(
+  RecipeFSM memReq <- mkRecipeFSM(rPar(rBlock(
     `ifdef PMP
     action
       pmp.request.put(AddrReq {
@@ -166,7 +166,7 @@ module [Module] mkSv32PageWalker#(
               i[0] <= i[0] - 1;
               a[0] <= unpack(zeroExtend({pte.ppn1, pte.ppn0}) << log2(`PAGESIZE));
               //startReq.send();
-              memReq.start();
+              memReq.trigger;
             end
           end
         end
@@ -186,7 +186,7 @@ module [Module] mkSv32PageWalker#(
       rType[0] <= r.reqType;
       activeLookup[0] <= True;
       //startReq.send();
-      memReq.start();
+      memReq.trigger;
       printTLogPlusArgs("vmem", "VMEM - Sv32 starting lookup");
     endmethod
 
