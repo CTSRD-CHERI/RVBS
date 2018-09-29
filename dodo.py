@@ -221,7 +221,7 @@ bsc_flags+=["-show-schedule"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 topmod = "top"
 topfile = "TopSim.bsv"
-cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"Utils_SimMem.c")]
+cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"MemSim.c")]
 #gcc
 cc="gcc-4.8"
 cxx="g++-4.8"
@@ -237,6 +237,7 @@ def simdir (rvbs):
 def infodir (rvbs):
   return "{:s}-infodir".format(rvbs.name())
 proglink = "test-prog.hex"
+dtblink = "dtb.hex"
 tracedir = op.join(root_dir,"test-traces")
 debug = True
 totalmemsz = 16384
@@ -364,6 +365,7 @@ def task_run_test () :
       os.chdir(tmpd)
       #os.symlink(op.join(root_dir,rvbs.name()),rvbs.name())
       os.symlink(in_output_dir(rvbs.name()+".so"),rvbs.name()+".so")
+      os.symlink(op.join(root_dir, "dtb.hex"),dtblink)
       os.symlink(op.join(tests_dir, test+".hex"),proglink)
       bluespecdir = os.environ.get('BLUESPECDIR')
       bluesim = op.join(bluespecdir,"tcllib/bluespec/bluesim.tcl")
