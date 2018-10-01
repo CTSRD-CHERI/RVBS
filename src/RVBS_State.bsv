@@ -74,7 +74,7 @@ module [Module] mkState#(
     default: XLUNK;
   endcase;
   // basic state
-  s.pc <- mkPC(reset_pc);
+  s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
   s.regFile <- mkRegFileZ;
   s.csrs <- mkCSRs();
@@ -129,7 +129,7 @@ function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
 rPipe(rBlock(
     rFastSeq(rBlock(
     action
-      VAddr vaddr = s.pc.next;
+      VAddr vaddr = s.pc.late;
     `ifdef SUPERVISOR_MODE
       let req = aReqIFetch(vaddr, 4, Invalid);
       s.ivm.request.put(req);
@@ -164,7 +164,7 @@ rPipe(rBlock(
       case (rsp) matches
         tagged ReadRsp .val: begin
           let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
-          asReg(s.pc.next) <= s.pc + newInstSz;
+          asIfc(s.pc.early) <= s.pc + newInstSz;
           s.instByteSz <= newInstSz;
           snk.put(extractInst(val));
         end

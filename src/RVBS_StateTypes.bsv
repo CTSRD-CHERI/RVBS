@@ -52,7 +52,7 @@ typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
   XLMode currentXLEN;
 
-  PC#(VAddr) pc;
+  ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
   Vector#(32,Reg#(Bit#(XLEN))) regFile;
   CSRs csrs;
@@ -77,8 +77,8 @@ typedef struct {
 // State instance
 instance State#(RVState);
 
-  function Fmt lightReport (RVState s) = fullReport(s);
-  function Fmt fullReport (RVState s);
+  function lightReport = fullReport;
+  function fullReport (s);
     Fmt str = $format("regfile\n");
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
@@ -93,5 +93,6 @@ instance State#(RVState);
     str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
   endfunction
+  function commit (s) = s.pc.commit;
 
 endinstance
