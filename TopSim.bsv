@@ -117,7 +117,7 @@ module memoryMap (RVBS_Mem_Slave);
   AXILiteSlave#(ADDR_sz, DATA_sz) tmp <- mkAXILiteMem('h2000, dtbimg);
   AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- offsetSlave(tmp, -'h00004000);
   // CharIO
-  AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteCharIO;
+  AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteSocketCharIO("CHAR_IO", 6000);
   // clint
   AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
   // interconnect
