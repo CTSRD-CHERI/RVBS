@@ -45,6 +45,10 @@ import RVBS_PMP :: *;
 `ifdef SUPERVISOR_MODE
 import RVBS_VMTranslate :: *;
 `endif
+`ifdef RVFI_DII
+import RVFI_DII_Bridge :: *;
+import FIFO :: *;
+`endif
 
 ////////////////////////////////
 // RISC-V architectural state //
@@ -57,6 +61,9 @@ module [Module] mkState#(
   `ifdef SUPERVISOR_MODE
   , Mem#(PAddr, Bit#(IVMMemWidth)) ivmmem
   , Mem#(PAddr, Bit#(DVMMemWidth)) dvmmem
+  `endif
+  `ifdef RVFI_DII
+  , RVFI_DII_Bridge rvfi_dii_bridge
   `endif
   ) (RVState);
   RVState s;
@@ -120,59 +127,79 @@ module [Module] mkState#(
   s.dvm <- mkVMLookup(s.csrs, s.dvmmem);
   `endif
   `endif
+  `ifdef RVFI_DII
+  s.iFF   <- mkFIFO;
+  s.count <- mkReg(0);
+  s.rvfi_dii_bridge = rvfi_dii_bridge;
+  `endif
 
   return s;
 endmodule
 
 // Instruction fetch
-function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
-rPipe(rBlock(
-    rFastSeq(rBlock(
-    action
-      VAddr vaddr = s.pc.late;
-    `ifdef SUPERVISOR_MODE
-      let req = aReqIFetch(vaddr, 4, Invalid);
-      s.ivm.request.put(req);
-      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-    endaction, action
-      let rsp <- s.ivm.response.get;
-      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
-      PAddr paddr = rsp.addr;
-    `else
-      PAddr paddr = toPAddr(vaddr);
-    `endif
-    `ifdef PMP
-    `ifdef SUPERVISOR_MODE
-      let req = aReqIFetch(paddr, 4, rsp.mExc);
-    `else
-      let req = aReqIFetch(paddr, 4, Invalid);
-    `endif
-      s.ipmp.request.put(req);
-      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-    endaction, action
-      let rsp <- s.ipmp.response.get;
-      MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
-      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
-    `else
-      MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
-    `endif
-      s.imem.request.put(req);
-      printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-    endaction)),
-    action
-      let rsp <- s.imem.response.get;
-      case (rsp) matches
-        tagged ReadRsp .val: begin
-          let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
-          asIfc(s.pc.early) <= s.pc + newInstSz;
-          s.instByteSz <= newInstSz;
-          snk.put(extractInst(val));
-        end
-        default: snk.put(?);
-      endcase
-    endaction
-));
 module [ISADefModule] mkRVIFetch#(RVState s) ();
+  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
+  rPipe(rBlock(
+      rFastSeq(rBlock(
+      action
+        VAddr vaddr = s.pc.late;
+      `ifdef SUPERVISOR_MODE
+        let req = aReqIFetch(vaddr, 4, Invalid);
+        s.ivm.request.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction, action
+        let rsp <- s.ivm.response.get;
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+        PAddr paddr = rsp.addr;
+      `else
+        PAddr paddr = toPAddr(vaddr);
+      `endif
+      `ifdef PMP
+      `ifdef SUPERVISOR_MODE
+        let req = aReqIFetch(paddr, 4, rsp.mExc);
+      `else
+        let req = aReqIFetch(paddr, 4, Invalid);
+      `endif
+        s.ipmp.request.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction, action
+        let rsp <- s.ipmp.response.get;
+        MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+      `else
+        MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
+      `endif
+        s.imem.request.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction)),
+      action
+        let rsp <- s.imem.response.get;
+        case (rsp) matches
+          tagged ReadRsp .val: begin
+            let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
+            asIfc(s.pc.early) <= s.pc + newInstSz;
+            s.instByteSz <= newInstSz;
+            snk.put(extractInst(val));
+          end
+          default: snk.put(?);
+        endcase
+      endaction
+  ));
   // instruction fetching definition
   defineFetchInstEntry(instFetch(s));
 endmodule
+
+`ifdef RVFI_DII
+// RVFI-DII Instruction fetch
+module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
+  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
+  rPipe(rBlock(action
+      let inst <- s.rvfi_dii_bridge.inst.request.get;
+      s.iFF.enq(inst);
+    endaction,
+    snk.put(s.iFF.first)
+  ));
+  // instruction fetching definition
+  defineFetchInstEntry(instFetch(s));
+endmodule
+`endif

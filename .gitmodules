@@ -1,3 +1,6 @@
 [submodule "BID"]
 	path = BID
 	url = https://github.com/CTSRD-CHERI/BID.git
+[submodule "BSV-RVFI-DII"]
+	path = BSV-RVFI-DII
+	url = https://github.com/CTSRD-CHERI/BSV-RVFI-DII.git

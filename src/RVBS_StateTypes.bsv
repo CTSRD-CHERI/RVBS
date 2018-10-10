@@ -42,6 +42,10 @@ import RVBS_PMPTypes :: *;
 `ifdef SUPERVISOR_MODE
 import RVBS_VMTranslateTypes :: *;
 `endif
+`ifdef RVFI_DII
+import RVFI_DII :: *;
+import FIFO :: *;
+`endif
 
 ////////////////////////////////
 // RISC-V architectural state //
@@ -72,6 +76,11 @@ typedef struct {
   VMLookup ivm;
   VMLookup dvm;
   `endif
+  `ifdef RVFI_DII
+  FIFO#(Bit#(InstWidth)) iFF;
+  Reg#(Bit#(64)) count;
+  RVFI_DII_Bridge rvfi_dii_bridge;
+  `endif
 } RVState;
 
 // State instance
@@ -93,6 +102,32 @@ instance State#(RVState);
     str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
   endfunction
-  function commit (s) = s.pc.commit;
+  function commit (s) = action
+    s.pc.commit;
+    `ifdef RVFI_DII
+    s.iFF.deq;
+    s.count <= s.count + 1;
+    s.rvfi_dii_bridge.inst.response.put(RVFI_DII_Execution{
+      rvfi_order: s.count,
+      rvfi_trap:  ?,
+      rvfi_halt:  ?,
+      rvfi_intr:  ?,
+      rvfi_insn:  s.iFF.first,
+      rvfi_rs1_addr:  ?,
+      rvfi_rs2_addr:  ?,
+      rvfi_rs1_data:  ?,
+      rvfi_rs2_data:  ?,
+      rvfi_pc_rdata:  s.pc,
+      rvfi_pc_wdata:  s.pc.late,
+      rvfi_mem_wdata: ?,
+      rvfi_rd_addr:   ?,
+      rvfi_rd_wdata:  ?,
+      rvfi_mem_addr:  ?,
+      rvfi_mem_rmask: ?,
+      rvfi_mem_wmask: ?,
+      rvfi_mem_rdata: ?
+    });
+    `endif
+  endaction;
 
 endinstance

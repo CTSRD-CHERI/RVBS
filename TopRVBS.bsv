@@ -38,6 +38,9 @@ import BlueBasics :: *;
 import BlueUtils :: *;
 import AXI4Lite :: *;
 import RVBS :: *;
+`ifdef RVFI_DII
+import RVFI_DII :: *;
+`endif
 
 typedef SizeOf#(PAddr) ADDR_sz;
 typedef TMax#(IMemWidth, DMemWidth) DATA_sz;
@@ -55,8 +58,8 @@ interface RVBS_Ifc;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
+  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMasterInst;
+  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMasterData;
 endinterface
 
 (* always_ready, always_enabled *)
@@ -69,8 +72,8 @@ interface RVBS_Ifc_Synth;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster0;
-  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMaster1;
+  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMasterInst;
+  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz) axiLiteMasterData;
 endinterface
 
 /////////////////////////////////
@@ -79,8 +82,8 @@ endinterface
 
 interface MemShim;
   interface Array#(Mem#(PAddr, Bit#(DATA_sz))) internal;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster0;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMaster1;
+  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMasterInst;
+  interface AXILiteMaster#(ADDR_sz, DATA_sz) axiLiteMasterData;
 endinterface
 module mkMemShim (MemShim);
 
@@ -114,8 +117,8 @@ module mkMemShim (MemShim);
   end
   // wire up interfaces
   interface internal = m;
-  interface axiLiteMaster0 = shim[0].master;
-  interface axiLiteMaster1 = shim[1].master;
+  interface axiLiteMasterInst = shim[0].master;
+  interface axiLiteMasterData = shim[1].master;
 
 endmodule
 
@@ -123,29 +126,13 @@ endmodule
 // RVBS module //
 ////////////////////////////////////////////////////////////////////////////////
 
-(* synthesize *)
-module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
+module [Module] mkRVBSCore#(RVState s,
+                   function ISADefModule#(Empty) init (RVState st),
+                   function ISADefModule#(Empty) iFetch (RVState st))
+  (BIDProbes);
 
-  // create the memory shim
-  let mem <- mkMemShim;
-  `ifdef SUPERVISOR_MODE
-  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal[0], 2);
-  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal[1], 2);
-  RVState s <- mkState(reset_pc, imem[1], dmem[1], imem[0], dmem[0]);
-  `else
-  RVState s <- mkState(reset_pc, mem.internal[0], mem.internal[1]);
-  `endif
-
-  // initialization
-  module [ISADefModule] mkRVInit#(RVState st) ();
-    defineInitEntry(rSeq(rBlock(action
-      st.regFile[10] <= 0;
-    endaction, action
-      st.regFile[11] <= 'h00004000;
-    endaction)));
-  endmodule
   // instanciating simulator
-  let modList = list(mkRVInit, mkRVIFetch, mkRVTrap, mkRV32I);
+  let modList = list(init, iFetch, mkRVTrap, mkRV32I);
   `ifdef RVM
     modList = append(modList, list(mkRV32M));
   `endif
@@ -163,28 +150,92 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   `endif
   let bid_probes <- mkISASim(s, modList);
 
+  return bid_probes;
+
+endmodule
+
+`ifndef RVFI_DII
+(* synthesize *)
+module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
+
+  // create the memory shim
+  let mem <- mkMemShim;
+  // prepare state
+  `ifdef SUPERVISOR_MODE
+  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal[0], 2);
+  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal[1], 2);
+  RVState s <- mkState(reset_pc, imem[1], dmem[1], imem[0], dmem[0]);
+  `else
+  RVState s <- mkState(reset_pc, mem.internal[0], mem.internal[1]);
+  `endif
+  // initialization
+  module [ISADefModule] mkRVInit#(RVState st) ();
+    defineInitEntry(rSeq(rBlock(action
+      st.regFile[10] <= 0;
+    endaction, action
+      st.regFile[11] <= 'h00004000;
+    endaction)));
+  endmodule
+  // instanciating simulator
+  let bid_probes <- mkRVBSCore(s, mkRVInit, mkRVIFetch);
+
   method Bit#(XLEN) peekPC() = s.pc;
   method Bit#(XLEN) peekCtrlCSR() = s.csrs.ctrl;
   interface probes = bid_probes;
   method setMSIP = s.csrs.setMSIP;
   method setMTIP = s.csrs.setMTIP;
   method setMEIP = s.csrs.setMEIP;
-  interface axiLiteMaster0 = mem.axiLiteMaster0;
-  interface axiLiteMaster1 = mem.axiLiteMaster1;
+  interface axiLiteMasterInst = mem.axiLiteMasterInst;
+  interface axiLiteMasterData = mem.axiLiteMasterData;
 
 endmodule
 
 (* synthesize *)
 module rvbs#(parameter VAddr reset_pc) (RVBS_Ifc_Synth);
   let ifc <- mkRVBS(reset_pc);
-  let m0 <- toAXILiteMasterSynth(ifc.axiLiteMaster0);
-  let m1 <- toAXILiteMasterSynth(ifc.axiLiteMaster1);
+  let m0 <- toAXILiteMasterSynth(ifc.axiLiteMasterInst);
+  let m1 <- toAXILiteMasterSynth(ifc.axiLiteMasterData);
   method peekPC = ifc.peekPC;
   method peekCtrlCSR = ifc.peekCtrlCSR;
   interface probes = ifc.probes;
   method setMSIP = ifc.setMSIP;
   method setMTIP = ifc.setMTIP;
   method setMEIP = ifc.setMEIP;
-  interface axiLiteMaster0 = m0;
-  interface axiLiteMaster1 = m1;
+  interface axiLiteMasterInst = m0;
+  interface axiLiteMasterData = m1;
 endmodule
+
+`else // RVFI_DII
+
+(* synthesize *)
+module mkRVBS (Empty);
+
+  // create the RVFI-DII bridge
+  let bridge <- mkRVFI_DII_Bridge("RVFI_DII", 5000);
+  // create a memory
+  Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, "/dev/null", reset_by bridge.new_rst);
+  // prepare state
+  `ifdef SUPERVISOR_MODE
+  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem[0], 2, reset_by bridge.new_rst);
+  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem[1], 2, reset_by bridge.new_rst);
+  RVState s <- mkState(?, imem[1], dmem[1], imem[0], dmem[0], reset_by bridge.new_rst);
+  `else
+  RVState s <- mkState(?, mem[0], mem[1], bridge, reset_by bridge.new_rst);
+  `endif
+  // initialization
+  module [ISADefModule] mkRVInit#(RVState st) (Empty);
+    Reg#(Bit#(6)) cnt <- mkRegU;
+    defineInitEntry(rSeq(rBlock(
+      action s.pc <= 'h8000000; endaction, action s.pc.commit; endaction,
+      writeReg(cnt, 0),
+      rWhile(cnt < 32, rAct(action
+      s.regFile[cnt] <= 0;
+      cnt <= cnt + 1;
+    endaction))
+  )));
+  endmodule
+  // instanciating simulator
+  let bid_probes <- mkRVBSCore(s, mkRVInit, mkRVIFetch_RVFI_DII, reset_by bridge.new_rst);
+
+endmodule
+`endif
