@@ -92,6 +92,10 @@ ifeq ($(PMP),1)
 BSCFLAGS += -D PMP
 RVBSNAME := $(RVBSNAME)-pmp
 endif
+ifeq ($(RVFI_DII),1)
+BSCFLAGS += -D RVFI_DII
+RVBSNAME := $(RVBSNAME)-rvfi-dii
+endif
 
 # generated files directories
 BUILDDIR = build
@@ -117,28 +121,25 @@ CC = gcc-4.8
 CXX = g++-4.8
 
 # Top level module
+ifeq ($(RVFI_DII), 1)
+SIMTOPFILE = TopRVBS.bsv
+SIMTOPMOD = mkRVBS
+else
 SIMTOPFILE = TopSim.bsv
 SIMTOPMOD = top
+endif
 VERILOGTOPFILE = TopRVBS.bsv
 VERILOGTOPMOD = rvbs
-RVFIDIITOPFILE = TopRVBS.bsv
-RVFIDIITOPMOD = mkRVBS
 
 .PHONY: sim verilog
 
 all: sim
 sim: $(SIMTOPMOD)
-rvfi-dii:$(RVFIDIITOPMOD)
 
 $(SIMTOPMOD): $(RVBSSRCDIR)/*.bsv
 	mkdir -p $(INFODIR) $(BDIR) $(SIMDIR) $(OUTPUTDIR)
 	$(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -g $(SIMTOPMOD) -u $(SIMTOPFILE)
 	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(SIMTOPMOD) $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
-
-$(RVFIDIITOPMOD): $(RVBSSRCDIR)/*.bsv
-	mkdir -p $(INFODIR) $(BDIR) $(SIMDIR) $(OUTPUTDIR)
-	$(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -D RVFI_DII -sim -g $(RVFIDIITOPMOD) -u $(RVFIDIITOPFILE)
-	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -D RVFI_DII -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(RVFIDIITOPMOD) $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
 verilog: $(RVBSSRCDIR)/*.bsv
 	mkdir -p $(INFODIR) $(BDIR) $(VDIR)
