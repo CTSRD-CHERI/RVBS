@@ -210,6 +210,7 @@ bitpatdir=op.join(biddir, "BitPat")
 bluestuffdir=op.join(biddir, "BlueStuff")
 blueutilsdir=op.join(bluestuffdir, "BlueUtils")
 bluebasicsdir=op.join(bluestuffdir, "BlueBasics")
+socketpacketdir=op.join(bluestuffdir, "SocketPacketUtils")
 axidir=op.join(bluestuffdir, "AXI")
 rvbssrcdir=in_root_dir("src")
 bsvpath=":".join(["+",rvbssrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir])
@@ -221,7 +222,7 @@ bsc_flags+=["-show-schedule"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
 topmod = "top"
 topfile = "TopSim.bsv"
-cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"MemSim.c")]
+cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"MemSim.c"),op.join(socketpacketdir,"socket_packet_utils.c")]
 #gcc
 cc="gcc-4.8"
 cxx="g++-4.8"

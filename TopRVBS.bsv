@@ -26,6 +26,7 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import FIFO :: *;
 import FIFOF :: *;
 import SpecialFIFOs :: *;
 import List :: *;
@@ -92,27 +93,39 @@ module mkMemShim (MemShim);
   // 2 memory interfaces
   Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
-    // discard write responses
-    rule drainBChannel; let _ <- shim[i].slave.b.get; endrule
+    // which response ?
+    let expectWriteRsp <- mkFIFO;
+    let rspFF <- mkBypassFIFO;
+    // drain responses
+    (* mutually_exclusive = "drainBChannel, drainRChannel"*)
+    rule drainBChannel (expectWriteRsp.first);
+      let tmp <- shim[i].slave.b.get;
+      rspFF.enq(fromAXIBLiteFlit(tmp));
+      expectWriteRsp.deq;
+    endrule
+    rule drainRChannel (!expectWriteRsp.first);
+      let tmp <- shim[i].slave.r.get;
+      rspFF.enq(fromAXIRLiteFlit(tmp));
+      expectWriteRsp.deq;
+    endrule
     // convert requests/responses
     m[i] = interface Mem;
       interface request = interface Put;
         method put (req) = action
           case (req) matches
-            tagged ReadReq .r: shim[i].slave.ar.put(toAXIARLiteFlit(req));
+            tagged ReadReq .r: begin
+              shim[i].slave.ar.put(toAXIARLiteFlit(req));
+              expectWriteRsp.enq(False);
+            end
             tagged WriteReq .w: begin
               shim[i].slave.aw.put(toAXIAWLiteFlit(req));
               shim[i].slave.w.put(toAXIWLiteFlit(req));
+              expectWriteRsp.enq(True);
             end
           endcase
         endaction;
       endinterface;
-      interface response = interface Get;
-        method get = actionvalue
-          let rsp <- shim[i].slave.r.get;
-          return fromAXIRLiteFlit(rsp);
-        endactionvalue;
-      endinterface;
+      interface response = toGet(rspFF);
     endinterface;
   end
   // wire up interfaces
@@ -213,7 +226,46 @@ module mkRVBS (Empty);
   // create the RVFI-DII bridge
   let bridge <- mkRVFI_DII_Bridge("RVFI_DII", 5000);
   // create a memory
-  Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, "/dev/null", reset_by bridge.new_rst);
+  module memShim (Array#(Mem#(PAddr, Bit#(DATA_sz))));
+    Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, "/dev/null");
+    // 2 memory interfaces
+    Mem#(PAddr, Bit#(DATA_sz)) m[2];
+    for (Integer i = 0; i < 2; i = i + 1) begin
+      let   rspFF <- mkBypassFIFO;
+      let errorFF <- mkFIFO;
+      // get responses
+      rule drainMemRsp(!errorFF.first);
+        let tmp <- mem[i].response.get;
+        rspFF.enq(tmp);
+        errorFF.deq;
+      endrule
+      rule errorRsp(errorFF.first);
+        rspFF.enq(BusError);
+        errorFF.deq;
+      endrule
+      // convert requests/responses
+      m[i] = interface Mem;
+        interface request = interface Put;
+          method put (req) = action
+            case (req) matches
+              tagged ReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h8001000): begin
+                mem[i].request.put(req);
+                errorFF.enq(False);
+              end
+              tagged WriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h8001000): begin
+                mem[i].request.put(req);
+                errorFF.enq(False);
+              end
+              default: errorFF.enq(True);
+            endcase
+          endaction;
+        endinterface;
+        interface response = toGet(rspFF);
+      endinterface;
+    end
+    return m;
+  endmodule
+  Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- memShim(reset_by bridge.new_rst);
   // prepare state
   `ifdef SUPERVISOR_MODE
   Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem[0], 2, reset_by bridge.new_rst);
@@ -226,6 +278,7 @@ module mkRVBS (Empty);
   module [ISADefModule] mkRVInit#(RVState st) (Empty);
     Reg#(Bit#(6)) cnt <- mkRegU;
     defineInitEntry(rSeq(rBlock(
+      printTLogPlusArgs("itrace", "-------- Reseting --------"),
       action s.pc <= 'h8000000; endaction, action s.pc.commit; endaction,
       writeReg(cnt, 0),
       rWhile(cnt < 32, rAct(action

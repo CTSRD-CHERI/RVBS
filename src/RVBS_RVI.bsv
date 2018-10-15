@@ -437,6 +437,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
         Bit#(XLEN) mask = (~0) << args.numBytes*8;
         s.regFile[rd] <= (args.sgnExt && isNeg) ? r | mask : r & ~mask;
       end
+      tagged BusError: action trap(s, LoadAccessFault); endaction
     endcase
     itrace(s.pc, fshow(rsp));
     logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem rsp step");
@@ -487,6 +488,14 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     s.dmem.request.put(req);
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");
+  endaction, action
+    let rsp <- s.dmem.response.get();
+    case (rsp) matches
+      tagged WriteRsp .w: noAction;
+      tagged BusError: action trap(s, StrAMOAccessFault); endaction
+    endcase
+    itrace(s.pc, fshow(rsp));
+    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem rsp step");
   endaction);
 endfunction
 // TODO deal with exceptions
