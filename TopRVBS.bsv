@@ -184,9 +184,9 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   // initialization
   module [ISADefModule] mkRVInit#(RVState st) ();
     defineInitEntry(rSeq(rBlock(action
-      st.regFile[10] <= 0;
+      st.regFile.r[10] <= 0;
     endaction, action
-      st.regFile[11] <= 'h00004000;
+      st.regFile.r[11] <= 'h00004000;
     endaction)));
   endmodule
   // instanciating simulator
@@ -282,7 +282,7 @@ module mkRVBS (Empty);
       action s.pc <= 'h8000000; endaction, action s.pc.commit; endaction,
       writeReg(cnt, 0),
       rWhile(cnt < 32, rAct(action
-      s.regFile[cnt] <= 0;
+      s.regFile.r[cnt] <= 0;
       cnt <= cnt + 1;
     endaction))
   )));

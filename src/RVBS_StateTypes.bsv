@@ -58,7 +58,7 @@ typedef struct {
 
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
-  Vector#(32,Reg#(Bit#(XLEN))) regFile;
+  ArchRegFile#(32, Bit#(XLEN)) regFile;
   CSRs csrs;
   Mem#(PAddr, Bit#(IMemWidth)) imem;
   Mem#(PAddr, Bit#(DMemWidth)) dmem;
@@ -92,18 +92,19 @@ instance State#(RVState);
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
         Bit#(5) ridx = fromInteger(i*5+j);
-        str = str + $format(rName(ridx),": 0x%8x\t", s.regFile[ridx]);
+        str = str + $format(rName(ridx),": 0x%8x\t", s.regFile.r[ridx]);
       end
       str = str + $format("\n");
     end
-    str = str + $format(rName(5'd30),": 0x%8x\t", s.regFile[30]);
-    str = str + $format(rName(5'd31),": 0x%8x", s.regFile[31]);
+    str = str + $format(rName(5'd30),": 0x%8x\t", s.regFile.r[30]);
+    str = str + $format(rName(5'd31),": 0x%8x", s.regFile.r[31]);
     str = str + $format("\npc = 0x%8x", s.pc);
     str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
   endfunction
   function commit (s) = action
     s.pc.commit;
+    s.regFile.commit;
     `ifdef RVFI_DII
     s.iFF.deq;
     s.count <= s.count + 1;
@@ -120,8 +121,8 @@ instance State#(RVState);
       rvfi_pc_rdata:  s.pc,
       rvfi_pc_wdata:  s.pc.late,
       rvfi_mem_wdata: ?,
-      rvfi_rd_addr:   ?,
-      rvfi_rd_wdata:  ?,
+      rvfi_rd_addr:   s.regFile.rd_idx,
+      rvfi_rd_wdata:  s.regFile.rd_new_val,
       rvfi_mem_addr:  ?,
       rvfi_mem_rmask: ?,
       rvfi_mem_wmask: ?,
