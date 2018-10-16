@@ -199,8 +199,10 @@ module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
   rPipe(rBlock(action
       let inst <- s.rvfi_dii_bridge.inst.request.get;
       s.iFF.enq(inst);
-    endaction,
-    snk.put(s.iFF.first)
+    endaction, action
+      asIfc(s.pc.early) <= s.pc + 4;
+      snk.put(s.iFF.first);
+    endaction
   ));
   // instruction fetching definition
   defineFetchInstEntry(instFetch(s));

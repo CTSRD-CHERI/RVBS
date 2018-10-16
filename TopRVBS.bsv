@@ -248,11 +248,11 @@ module mkRVBS (Empty);
         interface request = interface Put;
           method put (req) = action
             case (req) matches
-              tagged ReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h8001000): begin
+              tagged ReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
                 mem[i].request.put(req);
                 errorFF.enq(False);
               end
-              tagged WriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h8001000): begin
+              tagged WriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
                 mem[i].request.put(req);
                 errorFF.enq(False);
               end
