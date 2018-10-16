@@ -130,6 +130,9 @@ module [Module] mkState#(
   `ifdef RVFI_DII
   s.iFF   <- mkFIFO;
   s.count <- mkReg(0);
+  s.mem_addr  <- mkCReg(2, 0);
+  s.mem_wdata <- mkCReg(2, 0);
+  s.mem_wmask <- mkCReg(2, 0);
   s.rvfi_dii_bridge = rvfi_dii_bridge;
   `endif
 

@@ -79,6 +79,9 @@ typedef struct {
   `ifdef RVFI_DII
   FIFO#(Bit#(InstWidth)) iFF;
   Reg#(Bit#(64)) count;
+  Array#(Reg#(VAddr)) mem_addr;
+  Array#(Reg#(Bit#(DMemWidth))) mem_wdata;
+  Array#(Reg#(Bit#(TDiv#(DMemWidth, 8)))) mem_wmask;
   RVFI_DII_Bridge rvfi_dii_bridge;
   `endif
 } RVState;
@@ -120,14 +123,18 @@ instance State#(RVState);
       rvfi_rs2_data:  ?,
       rvfi_pc_rdata:  s.pc,
       rvfi_pc_wdata:  s.pc.late,
-      rvfi_mem_wdata: ?,
+      rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
       rvfi_rd_wdata:  s.regFile.rd_new_val,
-      rvfi_mem_addr:  ?,
+      rvfi_mem_addr:  s.mem_addr[1],
       rvfi_mem_rmask: ?,
-      rvfi_mem_wmask: ?,
+      rvfi_mem_wmask: s.mem_wmask[1],
       rvfi_mem_rdata: ?
     });
+    // reset the cregs
+    s.mem_addr[1]  <= 0;
+    s.mem_wdata[1] <= 0;
+    s.mem_wmask[1] <= 0;
     `endif
   endaction;
 

@@ -398,6 +398,9 @@ typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
 function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
   action
     VAddr vaddr = s.regFile.r[rs1] + signExtend(imm);
+  `ifdef RVFI_DII
+    s.mem_addr[0] <= vaddr;
+  `endif
   `ifdef SUPERVISOR_MODE
     let req = aReqRead(vaddr, args.numBytes, Invalid);
     s.dvm.request.put(req);
@@ -457,6 +460,9 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
   return list(action
     VAddr vaddr = s.regFile.r[rs1] + signExtend(imm);
+  `ifdef RVFI_DII
+    s.mem_addr[0] <= vaddr;
+  `endif
   `ifdef SUPERVISOR_MODE
     let req = aReqWrite(vaddr, args.numBytes, Invalid);
     s.dvm.request.put(req);
@@ -486,6 +492,10 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
     MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: s.regFile.r[rs2]};
   `endif
     s.dmem.request.put(req);
+  `ifdef RVFI_DII
+    s.mem_wdata[0] <= req.WriteReq.data;
+    s.mem_wmask[0] <= req.WriteReq.byteEnable;
+  `endif
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");
   endaction, action
