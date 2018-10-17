@@ -279,7 +279,7 @@ module mkRVBS (Empty);
     Reg#(Bit#(6)) cnt <- mkRegU;
     defineInitEntry(rSeq(rBlock(
       printTLogPlusArgs("itrace", "-------- Reseting --------"),
-      action s.pc <= 'h8000000; endaction, action s.pc.commit; endaction,
+      action s.pc <= 'h80000000; endaction, action s.pc.commit; endaction,
       writeReg(cnt, 0),
       rWhile(cnt < 32, rFastSeq(rBlock(
         action s.regFile.r[cnt] <= 0; endaction,
