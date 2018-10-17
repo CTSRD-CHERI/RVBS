@@ -201,6 +201,7 @@ module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
       s.iFF.enq(inst);
     endaction, action
       asIfc(s.pc.early) <= s.pc + 4;
+      s.instByteSz <= 4;
       snk.put(s.iFF.first);
     endaction
   ));
