@@ -58,6 +58,7 @@ typedef struct {
 
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
+  Array#(Reg#(Bool)) isTrap;
   ArchRegFile#(32, Bit#(XLEN)) regFile;
   CSRs csrs;
   Mem#(PAddr, Bit#(IMemWidth)) imem;
@@ -112,7 +113,7 @@ instance State#(RVState);
     s.count <= s.count + 1;
     s.rvfi_dii_bridge.inst.response.put(RVFI_DII_Execution{
       rvfi_order: s.count,
-      rvfi_trap:  ?,
+      rvfi_trap:  s.isTrap[1],
       rvfi_halt:  ?,
       rvfi_intr:  ?,
       rvfi_insn:  s.iFF.first,
@@ -135,6 +136,8 @@ instance State#(RVState);
     s.mem_wdata[1] <= 0;
     s.mem_wmask[1] <= 0;
     `endif
+    // reset transient state
+    s.isTrap[1] <= False;
     // do the stateful commits
     s.pc.commit;
     s.regFile.commit;

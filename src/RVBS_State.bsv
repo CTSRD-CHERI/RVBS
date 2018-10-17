@@ -83,6 +83,7 @@ module [Module] mkState#(
   // basic state
   s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
+  s.isTrap <- mkCReg(2, False);
   s.regFile <- mkRegFileZ;
   s.csrs <- mkCSRs();
   // Memory interfaces
