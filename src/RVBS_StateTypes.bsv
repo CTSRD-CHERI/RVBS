@@ -106,9 +106,8 @@ instance State#(RVState);
     return str;
   endfunction
   function commit (s) = action
-    s.pc.commit;
-    s.regFile.commit;
     `ifdef RVFI_DII
+    // first do the  RVFI_DII reporting
     s.iFF.deq;
     s.count <= s.count + 1;
     s.rvfi_dii_bridge.inst.response.put(RVFI_DII_Execution{
@@ -136,6 +135,9 @@ instance State#(RVState);
     s.mem_wdata[1] <= 0;
     s.mem_wmask[1] <= 0;
     `endif
+    // do the stateful commits
+    s.pc.commit;
+    s.regFile.commit;
   endaction;
 
 endinstance

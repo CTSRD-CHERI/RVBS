@@ -281,11 +281,14 @@ module mkRVBS (Empty);
       printTLogPlusArgs("itrace", "-------- Reseting --------"),
       action s.pc <= 'h8000000; endaction, action s.pc.commit; endaction,
       writeReg(cnt, 0),
-      rWhile(cnt < 32, rAct(action
-      s.regFile.r[cnt] <= 0;
-      cnt <= cnt + 1;
-    endaction))
-  )));
+      rWhile(cnt < 32, rFastSeq(rBlock(
+        action s.regFile.r[cnt] <= 0; endaction,
+        action
+          s.regFile.commit;
+          cnt <= cnt + 1;
+        endaction
+      )))
+    )));
   endmodule
   // instanciating simulator
   let bid_probes <- mkRVBSCore(s, mkRVInit, mkRVIFetch_RVFI_DII, reset_by bridge.new_rst);
