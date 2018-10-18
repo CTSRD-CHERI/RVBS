@@ -113,7 +113,7 @@ module memoryMap (RVBS_Mem_Slave);
   `else
   String dtbimg = "dtb.hex";
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- mkAXILiteMem('h2000, dtbimg);
+  AXILiteSlave#(ADDR_sz, DATA_sz) dtb <- mkAXILiteMem('h2000, Valid(dtbimg));
   // CharIO
   AXILiteSlave#(ADDR_sz, DATA_sz) charIO <- mkAXILiteSocketCharIO("CHAR_IO", 6000);
   // clint
@@ -129,7 +129,7 @@ module memoryMap (RVBS_Mem_Slave);
   `else
   Integer memsize = 'h10000000;
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, memimg);
+  AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, Valid(memimg));
   // interconnect
   Vector#(NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;

@@ -227,7 +227,7 @@ module mkRVBS (Empty);
   let bridge <- mkRVFI_DII_Bridge("RVFI_DII", 5000);
   // create a memory
   module memShim (Array#(Mem#(PAddr, Bit#(DATA_sz))));
-    Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, "/dev/null");
+    Mem#(PAddr, Bit#(DATA_sz)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, Invalid);
     // 2 memory interfaces
     Mem#(PAddr, Bit#(DATA_sz)) m[2];
     for (Integer i = 0; i < 2; i = i + 1) begin
