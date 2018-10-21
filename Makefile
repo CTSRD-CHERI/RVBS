@@ -95,6 +95,9 @@ endif
 ifeq ($(RVFI_DII),1)
 BSCFLAGS += -D RVFI_DII
 RVBSNAME := $(RVBSNAME)-rvfi-dii
+else ifeq ($(ISA_TEST),1)
+BSCFLAGS += -D ISA_TEST
+RVBSNAME := $(RVBSNAME)-isa-tests
 endif
 
 # generated files directories

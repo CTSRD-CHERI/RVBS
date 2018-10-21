@@ -75,8 +75,6 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
   endmodule
 endinstance
 
-typedef 1 NMASTERS;
-typedef 4 NSLAVES;
 `define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz)
 `define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz)
 // mem req helpers
@@ -104,7 +102,9 @@ function `SLAVE_T offsetSlave(`SLAVE_T s, Integer offset) = interface AXILiteSla
   interface r  = s.r;
 endinterface;
 
-module memoryMap (RVBS_Mem_Slave);
+module simMemoryMap (RVBS_Mem_Slave);
+  `define NMASTERS 1
+  `define NSLAVES 4
   // input shim
   AXILiteShim#(ADDR_sz, DATA_sz) shimData <- mkAXILiteShim;
   // DTB
@@ -131,14 +131,14 @@ module memoryMap (RVBS_Mem_Slave);
   `endif
   AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2(memsize, Valid(memimg));
   // interconnect
-  Vector#(NMASTERS, `MASTER_T) ms;
+  Vector#(`NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;
-  Vector#(NSLAVES, `SLAVE_T) ss;
+  Vector#(`NSLAVES, `SLAVE_T) ss;
   ss[0] = offsetSlave(dtb,                'h00004000);
   ss[1] = offsetSlave(charIO,             'h10000000);
   ss[2] = offsetSlave(clint.axiLiteSlave, 'h02000000);
   ss[3] = offsetSlave(mem[1],             'h80000000);
-  MappingTable#(NSLAVES, ADDR_sz) maptab = newVector;
+  MappingTable#(`NSLAVES, ADDR_sz) maptab = newVector;
   maptab[0] = Range{base: 'h00004000, size: 'h02000};
   maptab[1] = Range{base: 'h10000000, size: 'h01000};
   maptab[2] = Range{base: 'h02000000, size: 'h10000};
@@ -150,7 +150,60 @@ module memoryMap (RVBS_Mem_Slave);
   method Bool peekMEIP = False;
   method Bool peekMTIP = clint.peekMTIP;
   method Bool peekMSIP = clint.peekMSIP;
+  `undef NMASTERS
+  `undef NSLAVES
 endmodule
+
+module testMemoryMap (RVBS_Mem_Slave);
+  `define NMASTERS 1
+  `define NSLAVES 2
+  // input shim
+  AXILiteShim#(ADDR_sz, DATA_sz) shimData <- mkAXILiteShim;
+  // memory module
+  `ifdef MEM_IMG
+  String memimg = `MEM_IMG;
+  `else
+  String memimg = "test-prog.hex";
+  `endif
+  AXILiteSlave#(ADDR_sz, DATA_sz) mem[2] <- mkAXILiteSharedMem2('h10000, Valid(memimg));
+  // tester
+  module mkAXILiteTester (AXILiteSlave#(ADDR_sz, DATA_sz));
+    let shim <- mkAXILiteShim;
+    rule doWrite;
+      let awflit <- shim.master.aw.get;
+      let wflit  <- shim.master.w.get;
+      if (wflit.wstrb[0] == 1 && wflit.wdata[0] == 1) $display("TEST SUCCESS");
+      else $display("TEST FAILURE");
+      $finish(0);
+    endrule
+    rule doRead;
+      let arflit <- shim.master.ar.get;
+      $display("tester should not be read");
+      $finish(0);
+    endrule
+    return shim.slave;
+  endmodule
+  AXILiteSlave#(ADDR_sz, DATA_sz) tester <- mkAXILiteTester;
+  // interconnect
+  Vector#(`NMASTERS, `MASTER_T) ms;
+  ms[0] = shimData.master;
+  Vector#(`NSLAVES, `SLAVE_T) ss;
+  ss[0] = offsetSlave(mem[1], 'h80000000);
+  ss[1] = tester;
+  MappingTable#(`NSLAVES, ADDR_sz) maptab = newVector;
+  maptab[0] = Range{base: 'h80000000, size: 'h01000};
+  maptab[1] = Range{base: 'h80001000, size: 'h01000};
+  mkAXILiteBus(maptab, ms, ss);
+  // interfaces
+  interface axiLiteSlaveInst = offsetSlave(mem[0], 'h80000000);
+  interface axiLiteSlaveData = shimData.slave;
+  method Bool peekMEIP = False;
+  method Bool peekMTIP = False;
+  method Bool peekMSIP = False;
+  `undef NMASTERS
+  `undef NSLAVES
+endmodule
+
 `undef MASRTER_T
 `undef SLAVE_T
 
@@ -162,7 +215,11 @@ module top (Empty);
   // RVBS instance
   let rvbs <- mkRVBS(reset_pc);
   // mem map
-  let memMap <- memoryMap;
+  `ifdef ISA_TEST
+  let memoryMap <- testMemoryMap;
+  `else
+  let memoryMap <- simMemoryMap;
+  `endif
   // plug things in
-  mkConnection(rvbs, memMap);
+  mkConnection(rvbs, memoryMap);
 endmodule
