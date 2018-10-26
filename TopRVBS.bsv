@@ -94,8 +94,8 @@ module mkMemShim (MemShim);
   Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
     // which response ?
-    let expectWriteRsp <- mkFIFO;
-    let rspFF <- mkBypassFIFO;
+    let expectWriteRsp <- mkFIFOF;
+    let rspFF <- mkBypassFIFOF;
     // drain responses
     (* mutually_exclusive = "drainBChannel, drainRChannel"*)
     rule drainBChannel (expectWriteRsp.first);
@@ -110,7 +110,8 @@ module mkMemShim (MemShim);
     endrule
     // convert requests/responses
     m[i] = interface Mem;
-      interface request = interface Put;
+      interface sink = interface Sink;
+        method canPut = expectWriteRsp.notFull;
         method put (req) = action
           case (req) matches
             tagged ReadReq .r: begin
@@ -125,7 +126,7 @@ module mkMemShim (MemShim);
           endcase
         endaction;
       endinterface;
-      interface response = toGet(rspFF);
+      interface source = toSource(rspFF);
     endinterface;
   end
   // wire up interfaces
@@ -231,11 +232,11 @@ module mkRVBS (Empty);
     // 2 memory interfaces
     Mem#(PAddr, Bit#(DATA_sz)) m[2];
     for (Integer i = 0; i < 2; i = i + 1) begin
-      let   rspFF <- mkBypassFIFO;
-      let errorFF <- mkFIFO;
+      let   rspFF <- mkBypassFIFOF;
+      let errorFF <- mkFIFOF;
       // get responses
       rule drainMemRsp(!errorFF.first);
-        let tmp <- mem[i].response.get;
+        let tmp <- mem[i].source.get;
         rspFF.enq(tmp);
         errorFF.deq;
       endrule
@@ -245,22 +246,23 @@ module mkRVBS (Empty);
       endrule
       // convert requests/responses
       m[i] = interface Mem;
-        interface request = interface Put;
+        interface sink = interface Sink;
+          method canPut = errorFF.notFull;
           method put (req) = action
             case (req) matches
               tagged ReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
-                mem[i].request.put(req);
+                mem[i].sink.put(req);
                 errorFF.enq(False);
               end
               tagged WriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
-                mem[i].request.put(req);
+                mem[i].sink.put(req);
                 errorFF.enq(False);
               end
               default: errorFF.enq(True);
             endcase
           endaction;
         endinterface;
-        interface response = toGet(rspFF);
+        interface source = toSource(rspFF);
       endinterface;
     end
     return m;
@@ -270,7 +272,7 @@ module mkRVBS (Empty);
   `ifdef SUPERVISOR_MODE
   Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem[0], 2, reset_by bridge.new_rst);
   Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem[1], 2, reset_by bridge.new_rst);
-  RVState s <- mkState(?, imem[1], dmem[1], imem[0], dmem[0], reset_by bridge.new_rst);
+  RVState s <- mkState(?, imem[1], dmem[1], imem[0], dmem[0], bridge, reset_by bridge.new_rst);
   `else
   RVState s <- mkState(?, mem[0], mem[1], bridge, reset_by bridge.new_rst);
   `endif

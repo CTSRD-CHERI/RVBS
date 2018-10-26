@@ -32,6 +32,7 @@ import ClientServer :: *;
 import GetPut :: *;
 //import UniqueWrappers :: * ;
 
+import BlueBasics :: *;
 import BlueUtils :: *;
 import Recipe :: *;
 import RVBS_BasicTypes :: *;
@@ -122,7 +123,7 @@ module [Module] mkSv32PageWalker#(
       printTLogPlusArgs("debug", $format("DEBUG - va[1].vpn0 = 0x%0x", va[1].vpn0));
       printTLogPlusArgs("debug", $format("DEBUG - log2(PTESIZE) = %0d", log2(`PTESIZE)));
       printTLogPlusArgs("vmem", $format("VMEM - Sv32 mem access, sending ", fshow(req)));
-      mem.request.put(req);
+      mem.sink.put(req);
     `ifdef PMP
     end
     `endif
@@ -143,7 +144,7 @@ module [Module] mkSv32PageWalker#(
         activeLookup[1] <= False;
         rsp.enq(x);
       endaction;
-      let tmp <- mem.response.get();
+      let tmp <- mem.source.get();
       case (tmp) matches
         tagged ReadRsp .r: begin
           Sv32PTE pte = unpack(r);

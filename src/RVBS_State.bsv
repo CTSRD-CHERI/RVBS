@@ -34,6 +34,7 @@ import Vector :: *;
 import BID :: *;
 import BlueUtils :: *;
 import SourceSink :: *;
+import MasterSlave :: *;
 import Recipe :: *;
 import RVBS_Traces :: *;
 import RVBS_Types :: *;
@@ -173,11 +174,11 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
       `else
         MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
       `endif
-        s.imem.request.put(req);
+        s.imem.sink.put(req);
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
       endaction)),
       action
-        let rsp <- s.imem.response.get;
+        let rsp <- s.imem.source.get;
         case (rsp) matches
           tagged ReadRsp .val: begin
             let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;

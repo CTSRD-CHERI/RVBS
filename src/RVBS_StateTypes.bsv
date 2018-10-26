@@ -27,8 +27,6 @@
  */
 
 import Vector :: *;
-import ClientServer :: *;
-import GetPut :: *;
 
 import BID :: *;
 import BlueUtils :: *;
@@ -44,6 +42,8 @@ import RVBS_VMTranslateTypes :: *;
 `endif
 `ifdef RVFI_DII
 import RVFI_DII :: *;
+import ClientServer :: *;
+import GetPut :: *;
 import FIFO :: *;
 `endif
 
