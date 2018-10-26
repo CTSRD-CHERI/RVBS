@@ -28,7 +28,6 @@
 
 import BlueBasics :: *;
 import BlueUtils :: *;
-import ClientServer :: *;
 
 // static parameters
 Bool static_HAS_M_MODE = True;
@@ -111,7 +110,7 @@ typedef struct {
   Maybe#(ExcCode) mExc;
 } AddrRsp#(type addr_t) deriving (Bits, FShow);
 
-typedef Server#(AddrReq#(addr_req), AddrRsp#(addr_rsp))  AddrLookup#(type addr_req, type addr_rsp);
+typedef Slave#(AddrReq#(addr_req), AddrRsp#(addr_rsp))  AddrLookup#(type addr_req, type addr_rsp);
 
 function Bit#(InstWidth) extractInst (Bit#(IMemWidth) blob) = truncate(blob);
 

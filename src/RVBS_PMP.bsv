@@ -26,21 +26,21 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import FIFO :: *;
+import FIFOF :: *;
 import SpecialFIFOs :: *;
 import Vector :: *;
 import DefaultValue :: *;
 import UniqueWrappers :: * ;
-import ClientServer :: * ;
-import GetPut :: * ;
 
 import BlueUtils :: *;
+import SourceSink :: *;
+import MasterSlave :: *;
 
 import RVBS_Types :: *;
 
 module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, PrivLvl plvl) (PMPLookup);
 
-  FIFO#(AddrRsp#(PAddr)) rsp <- mkBypassFIFO;
+  FIFOF#(AddrRsp#(PAddr)) rsp <- mkBypassFIFOF;
   // lookup method
   function lookup (req);
     // authorisation after match
@@ -86,13 +86,13 @@ module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, 
   endfunction
   // build the lookup interface
   let lookupWrapper <- mkUniqueWrapper(lookup);
-  interface request = interface Put; method put (req) = action
-    if (isValid(req.mExc)) rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-    else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
-    endaction; endinterface;
-  interface response = interface Get; method get = actionvalue
-    rsp.deq();
-    return rsp.first();
-  endactionvalue; endinterface;
+  interface sink = interface Sink;
+    method canPut = rsp.notFull;
+    method put (req) = action
+      if (isValid(req.mExc)) rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+      else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+    endaction;
+  endinterface;
+  interface source = toSource(rsp);
 
 endmodule

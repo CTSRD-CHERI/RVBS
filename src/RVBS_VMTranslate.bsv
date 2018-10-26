@@ -26,10 +26,8 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import FIFO :: *;
+import FIFOF :: *;
 import SpecialFIFOs :: *;
-import ClientServer :: *;
-import GetPut :: *;
 //import UniqueWrappers :: * ;
 
 import BlueBasics :: *;
@@ -80,7 +78,7 @@ typedef struct {
 } Sv32PTE deriving (Bits, FShow);
 
 module [Module] mkSv32PageWalker#(
-  FIFO#(AddrRsp#(PAddr)) rsp
+  FIFOF#(AddrRsp#(PAddr)) rsp
   , SATP satp
   , Mem#(PAddr, Bit#(XLEN)) mem // XXX TODO sort out physical address width (34)
   `ifdef PMP
@@ -102,14 +100,14 @@ module [Module] mkSv32PageWalker#(
   RecipeFSM memReq <- mkRecipeFSM(rPar(rBlock(
     `ifdef PMP
     action
-      pmp.request.put(AddrReq {
+      pmp.sink.put(AddrReq {
         addr: pteAddr,
         numBytes: `PTESIZE,
         reqType: rType[1],
         mExc: Invalid
       });
     endaction, action
-      let r <- pmp.response.get();
+      let r <- pmp.source.get();
       if (isValid(r.mExc)) rsp.enq(r); // terminate early on PMP exception
       else begin
         MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: r.addr, numBytes: `PTESIZE}; // XXX TODO sort out paddr size
@@ -202,7 +200,7 @@ module [Module] mkVMLookup#(CSRs csrs
   `endif
   ) (VMLookup);
   // local module instances
-  FIFO#(AddrRsp#(PAddr)) rsp <- mkBypassFIFO;
+  FIFOF#(AddrRsp#(PAddr)) rsp <- mkBypassFIFOF;
   `ifndef XLEN64 // MAX_XLEN = 32
   PageWalker sv32PageWalker <- mkSv32PageWalker(
     rsp
@@ -232,15 +230,16 @@ module [Module] mkVMLookup#(CSRs csrs
     endcase
   endaction;
   // build the lookup interface
-  interface request = interface Put; method put (req) = action
-    if (isValid(req.mExc)) begin
-      printTLogPlusArgs("vmem", $format("VMEM - incomming %s, pass it down", fshow(req.mExc)));
-      rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-    end else lookup(req);
-    //else rsp.enq(AddrRsp {addr: toPAddr(req.addr), mExc: Invalid});
-  endaction; endinterface;
-  interface response = interface Get; method get = actionvalue
-    rsp.deq();
-    return rsp.first();
-  endactionvalue; endinterface;
+  interface sink = interface Sink;
+    method canPut = rsp.notFull;
+    method put (req) = action
+      if (isValid(req.mExc)) begin
+        printTLogPlusArgs("vmem", $format("VMEM - incomming %s, pass it down", fshow(req.mExc)));
+        rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
+      end else lookup(req);
+      //else rsp.enq(AddrRsp {addr: toPAddr(req.addr), mExc: Invalid});
+    endaction;
+  endinterface;
+  interface source = toSource(rsp);
+
 endmodule

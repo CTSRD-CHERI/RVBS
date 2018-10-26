@@ -27,8 +27,6 @@
  */
 
 import ConfigReg :: *;
-import ClientServer :: *;
-import GetPut :: *;
 import Vector :: *;
 
 import BID :: *;
@@ -49,6 +47,8 @@ import RVBS_VMTranslate :: *;
 `ifdef RVFI_DII
 import RVFI_DII_Bridge :: *;
 import FIFO :: *;
+import ClientServer :: *;
+import GetPut :: *;
 `endif
 
 ////////////////////////////////
@@ -150,10 +150,10 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
         VAddr vaddr = s.pc.late;
       `ifdef SUPERVISOR_MODE
         let req = aReqIFetch(vaddr, 4, Invalid);
-        s.ivm.request.put(req);
+        s.ivm.sink.put(req);
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
       endaction, action
-        let rsp <- s.ivm.response.get;
+        let rsp <- s.ivm.source.get;
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
         PAddr paddr = rsp.addr;
       `else
@@ -165,10 +165,10 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
       `else
         let req = aReqIFetch(paddr, 4, Invalid);
       `endif
-        s.ipmp.request.put(req);
+        s.ipmp.sink.put(req);
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
       endaction, action
-        let rsp <- s.ipmp.response.get;
+        let rsp <- s.ipmp.source.get;
         MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
       `else
