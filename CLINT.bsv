@@ -37,7 +37,7 @@ import SourceSink :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 interface AXILiteCLINT#(numeric type addr_sz, numeric type data_sz);
-  interface AXILiteSlave#(addr_sz, data_sz) axiLiteSlave;
+  interface AXILiteSlave#(addr_sz, data_sz, 0) axiLiteSlave;
   method Bool peekMSIP;
   method Bool peekMTIP;
 endinterface
@@ -66,7 +66,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     `endif
   );
   // local state
-  AXILiteShim#(addr_sz, data_sz) shim <- mkAXILiteShim;
+  AXILiteShim#(addr_sz, data_sz, 0) shim <- mkAXILiteShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   `ifndef XLEN64 // 32-bit only
@@ -85,7 +85,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     let awflit <- shim.master.aw.get;
     let  wflit <- shim.master.w.get;
     // handle request
-    BLiteFlit bflit = defaultValue;
+    BLiteFlit#(0) bflit = defaultValue;
     case (awflit.awaddr[15:0])
       16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
       16'h4000: begin
@@ -117,7 +117,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     // get request
     let arflit <- shim.master.ar.get;
     // handle request
-    RLiteFlit#(data_sz) rflit = defaultValue;
+    RLiteFlit#(data_sz, 0) rflit = defaultValue;
     case (arflit.araddr[15:0])
       16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
       16'h4000: rflit.rdata = truncate(r_mtimecmp);
