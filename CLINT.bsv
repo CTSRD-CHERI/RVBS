@@ -37,7 +37,7 @@ import SourceSink :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 interface AXILiteCLINT#(numeric type addr_sz, numeric type data_sz);
-  interface AXILiteSlave#(addr_sz, data_sz, 0) axiLiteSlave;
+  interface AXILiteSlave#(addr_sz, data_sz, 0, 0, 0, 0, 0) axiLiteSlave;
   method Bool peekMSIP;
   method Bool peekMTIP;
 endinterface
@@ -66,7 +66,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     `endif
   );
   // local state
-  AXILiteShim#(addr_sz, data_sz, 0) shim <- mkAXILiteShim;
+  AXILiteShim#(addr_sz, data_sz, 0, 0, 0, 0, 0) shim <- mkAXILiteShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   `ifndef XLEN64 // 32-bit only

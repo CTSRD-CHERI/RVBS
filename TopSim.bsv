@@ -48,19 +48,24 @@ import CharIO :: *;
 `ifdef XLEN64
 typedef 56 ADDR_sz;
 typedef 64 DATA_sz;
-typedef  0 USER_sz;
 `else
 typedef 34 ADDR_sz;
 typedef 32 DATA_sz;
-typedef  0 USER_sz;
 `endif
+typedef  0 AWUSER_sz;
+typedef  0 WUSER_sz;
+typedef  0 BUSER_sz;
+typedef  0 ARUSER_sz;
+typedef  0 RUSER_sz;
+
+`define PARAMS ADDR_sz, DATA_sz, AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
 
 // memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 (* always_ready, always_enabled *)
 interface RVBS_Mem_Slave;
-  interface AXILiteSlave#(ADDR_sz, DATA_sz, USER_sz) axiLiteSlaveInst;
-  interface AXILiteSlave#(ADDR_sz, DATA_sz, USER_sz) axiLiteSlaveData;
+  interface AXILiteSlave#(`PARAMS) axiLiteSlaveInst;
+  interface AXILiteSlave#(`PARAMS) axiLiteSlaveData;
   method Bool peekMEIP;
   method Bool peekMTIP;
   method Bool peekMSIP;
@@ -77,16 +82,16 @@ instance Connectable#(RVBS_Ifc, RVBS_Mem_Slave);
   endmodule
 endinstance
 
-`define MASTER_T AXILiteMaster#(ADDR_sz, DATA_sz, USER_sz)
-`define SLAVE_T AXILiteSlave#(ADDR_sz, DATA_sz, USER_sz)
+`define MASTER_T AXILiteMaster#(`PARAMS)
+`define SLAVE_T AXILiteSlave#(`PARAMS)
 // mem req helpers
-function AWLiteFlit#(ADDR_sz, USER_sz) offsetAWFlit(
-  AWLiteFlit#(ADDR_sz, USER_sz) f,
+function AWLiteFlit#(ADDR_sz, AWUSER_sz) offsetAWFlit(
+  AWLiteFlit#(ADDR_sz, AWUSER_sz) f,
   Int#(ADDR_sz) o) = AWLiteFlit {
     awaddr: pack(unpack(f.awaddr) + o), awprot: f.awprot, awuser: f.awuser
   };
-function ARLiteFlit#(ADDR_sz, USER_sz) offsetARFlit(
-  ARLiteFlit#(ADDR_sz, USER_sz) f,
+function ARLiteFlit#(ADDR_sz, ARUSER_sz) offsetARFlit(
+  ARLiteFlit#(ADDR_sz, ARUSER_sz) f,
   Int#(ADDR_sz) o) = ARLiteFlit {
     araddr: pack(unpack(f.araddr) + o), arprot: f.arprot, aruser: f.aruser
   };
@@ -108,16 +113,16 @@ module simMemoryMap (RVBS_Mem_Slave);
   `define NMASTERS 1
   `define NSLAVES 4
   // input shim
-  AXILiteShim#(ADDR_sz, DATA_sz, USER_sz) shimData <- mkAXILiteShim;
+  AXILiteShim#(`PARAMS) shimData <- mkAXILiteShim;
   // DTB
   `ifdef DTB_IMG
   String dtbimg = `DTB_IMG;
   `else
   String dtbimg = "dtb.hex";
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz, 0) dtb <- mkAXILiteMem('h2000, Valid(dtbimg));
+  AXILiteSlave#(`PARAMS) dtb <- mkAXILiteMem('h2000, Valid(dtbimg));
   // CharIO
-  AXILiteSlave#(ADDR_sz, DATA_sz, 0) charIO <- mkAXILiteSocketCharIO("CHAR_IO", 6000);
+  AXILiteSlave#(`PARAMS) charIO <- mkAXILiteSocketCharIO("CHAR_IO", 6000);
   // clint
   AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
   // memory module
@@ -131,7 +136,7 @@ module simMemoryMap (RVBS_Mem_Slave);
   `else
   Integer memsize = 'h10000000;
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz, 0) mem[2] <- mkAXILiteSharedMem2(memsize, Valid(memimg));
+  AXILiteSlave#(`PARAMS) mem[2] <- mkAXILiteSharedMem2(memsize, Valid(memimg));
   // interconnect
   Vector#(`NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;
@@ -160,16 +165,16 @@ module testMemoryMap (RVBS_Mem_Slave);
   `define NMASTERS 1
   `define NSLAVES 2
   // input shim
-  AXILiteShim#(ADDR_sz, DATA_sz, USER_sz) shimData <- mkAXILiteShim;
+  AXILiteShim#(`PARAMS) shimData <- mkAXILiteShim;
   // memory module
   `ifdef MEM_IMG
   String memimg = `MEM_IMG;
   `else
   String memimg = "test-prog.hex";
   `endif
-  AXILiteSlave#(ADDR_sz, DATA_sz, 0) mem[2] <- mkAXILiteSharedMem2('h10000, Valid(memimg));
+  AXILiteSlave#(`PARAMS) mem[2] <- mkAXILiteSharedMem2('h10000, Valid(memimg));
   // tester
-  module mkAXILiteTester (AXILiteSlave#(ADDR_sz, DATA_sz, 0));
+  module mkAXILiteTester (AXILiteSlave#(`PARAMS));
     let shim <- mkAXILiteShim;
     rule doWrite;
       let awflit <- shim.master.aw.get;
@@ -185,7 +190,7 @@ module testMemoryMap (RVBS_Mem_Slave);
     endrule
     return shim.slave;
   endmodule
-  AXILiteSlave#(ADDR_sz, DATA_sz, 0) tester <- mkAXILiteTester;
+  AXILiteSlave#(`PARAMS) tester <- mkAXILiteTester;
   // interconnect
   Vector#(`NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;
@@ -206,6 +211,7 @@ module testMemoryMap (RVBS_Mem_Slave);
   `undef NSLAVES
 endmodule
 
+`undef PARAMS
 `undef MASRTER_T
 `undef SLAVE_T
 

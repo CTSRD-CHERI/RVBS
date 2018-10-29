@@ -45,7 +45,13 @@ import RVFI_DII :: *;
 
 typedef SizeOf#(PAddr) ADDR_sz;
 typedef TMax#(IMemWidth, DMemWidth) DATA_sz;
-typedef 0 USER_sz;
+typedef 0 AWUSER_sz;
+typedef 0 WUSER_sz;
+typedef 0 BUSER_sz;
+typedef 0 ARUSER_sz;
+typedef 0 RUSER_sz;
+
+`define PARAMS ADDR_sz, DATA_sz, AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
 
 ////////////////
 // Interfaces //
@@ -60,8 +66,8 @@ interface RVBS_Ifc;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMaster#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterInst;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterData;
+  interface AXILiteMaster#(`PARAMS) axiLiteMasterInst;
+  interface AXILiteMaster#(`PARAMS) axiLiteMasterData;
 endinterface
 
 (* always_ready, always_enabled *)
@@ -74,8 +80,8 @@ interface RVBS_Ifc_Synth;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterInst;
-  interface AXILiteMasterSynth#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterData;
+  interface AXILiteMasterSynth#(`PARAMS) axiLiteMasterInst;
+  interface AXILiteMasterSynth#(`PARAMS) axiLiteMasterData;
 endinterface
 
 /////////////////////////////////
@@ -84,13 +90,13 @@ endinterface
 
 interface MemShim;
   interface Array#(Mem#(PAddr, Bit#(DATA_sz))) internal;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterInst;
-  interface AXILiteMaster#(ADDR_sz, DATA_sz, USER_sz) axiLiteMasterData;
+  interface AXILiteMaster#(`PARAMS) axiLiteMasterInst;
+  interface AXILiteMaster#(`PARAMS) axiLiteMasterData;
 endinterface
 module mkMemShim (MemShim);
 
   // 2 AXI shims
-  List#(AXILiteShim#(ADDR_sz, DATA_sz, USER_sz)) shim <- replicateM(2, mkAXILiteShim);
+  List#(AXILiteShim#(`PARAMS)) shim <- replicateM(2, mkAXILiteShim);
   // 2 memory interfaces
   Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
@@ -298,3 +304,5 @@ module mkRVBS (Empty);
 
 endmodule
 `endif
+
+`undef PARAMS
