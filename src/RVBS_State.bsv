@@ -57,11 +57,11 @@ import GetPut :: *;
 
 module [Module] mkState#(
   VAddr reset_pc,
-  Mem#(PAddr, Bit#(IMemWidth)) imem
-  , Mem#(PAddr, Bit#(DMemWidth)) dmem
+  RVMem imem
+  , RVMem dmem
   `ifdef SUPERVISOR_MODE
-  , Mem#(PAddr, Bit#(IVMMemWidth)) ivmmem
-  , Mem#(PAddr, Bit#(DVMMemWidth)) dvmmem
+  , RVMem ivmmem
+  , RVMem dvmmem
   `endif
   `ifdef RVFI_DII
   , RVFI_DII_Bridge rvfi_dii_bridge
@@ -169,10 +169,10 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
       endaction, action
         let rsp <- s.ipmp.source.get;
-        MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: rsp.addr, numBytes: 4};
+        RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: 4};
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
       `else
-        MemReq#(PAddr, Bit#(IMemWidth)) req = tagged ReadReq {addr: paddr, numBytes: 4};
+        RVMemReq req = RVReadReq {addr: paddr, numBytes: 4};
       `endif
         s.imem.sink.put(req);
         printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
@@ -180,11 +180,11 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
       action
         let rsp <- s.imem.source.get;
         case (rsp) matches
-          tagged ReadRsp .val: begin
+          tagged RVReadRsp .val: begin
             let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
             asIfc(s.pc.early) <= s.pc + newInstSz;
             s.instByteSz <= newInstSz;
-            snk.put(extractInst(val));
+            snk.put(truncate(val));
           end
           default: snk.put(?);
         endcase

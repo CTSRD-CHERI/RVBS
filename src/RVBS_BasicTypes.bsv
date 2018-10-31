@@ -28,6 +28,7 @@
 
 import BlueBasics :: *;
 import BlueUtils :: *;
+import AXI :: *;
 
 // static parameters
 Bool static_HAS_M_MODE = True;
@@ -112,8 +113,6 @@ typedef struct {
 
 typedef Slave#(AddrReq#(addr_req), AddrRsp#(addr_rsp))  AddrLookup#(type addr_req, type addr_rsp);
 
-function Bit#(InstWidth) extractInst (Bit#(IMemWidth) blob) = truncate(blob);
-
 //TODO for SLL instruction, use something like this:
 // typedef TSub#(TLog#(XLEN), 1) BitShAmnt;
 
@@ -171,3 +170,64 @@ typedef enum {
   ECallFromU = 8, ECallFromS = 9, ECallFromM = 11,
   InstPgFault = 12, LoadPgFault = 13, StrAMOPgFault = 15
 } ExcCode deriving (Bits, Eq, FShow);
+
+// Memory interface
+// supports data of 128 bits (16 bytes)
+typedef union tagged {
+  struct {
+    PAddr addr;
+    BitPO#(4) numBytes;
+  } RVReadReq;
+  struct {
+    PAddr addr;
+    Bit#(16) byteEnable;
+    Bit#(128) data;
+  } RVWriteReq;
+} RVMemReq deriving (Bits, FShow);
+
+instance NeedRsp#(RVMemReq);
+  function needRsp(r) = True;
+endinstance
+
+instance ToAXIAWLiteFlit#(RVMemReq, PAddrWidth, user_sz);
+  function toAXIAWLiteFlit(x);
+    let w = x.RVWriteReq;
+    return AWLiteFlit {awaddr: pack(w.addr), awprot: 0, awuser: 0};
+  endfunction
+endinstance
+
+instance ToAXIWLiteFlit#(RVMemReq, 128, user_sz);
+  function toAXIWLiteFlit(x);
+    let w = x.RVWriteReq;
+    return WLiteFlit {wdata: pack(w.data), wstrb: w.byteEnable, wuser: 0};
+  endfunction
+endinstance
+
+instance ToAXIARLiteFlit#(RVMemReq, PAddrWidth, user_sz);
+  function toAXIARLiteFlit(x);
+    let r = x.RVReadReq;
+    return ARLiteFlit {araddr: pack(r.addr), arprot: 0, aruser: 0};
+  endfunction
+endinstance
+
+typedef union tagged {
+  Bit#(128) RVReadRsp;
+  void RVWriteRsp;
+  void RVBusError;
+} RVMemRsp deriving (Bits, FShow);
+
+instance FromAXIRLiteFlit#(RVMemRsp, 128, user_sz);
+  function fromAXIRLiteFlit(x) = case (x.rresp)
+    OKAY: RVReadRsp(unpack(x.rdata));
+    default: RVBusError;
+  endcase;
+endinstance
+
+instance FromAXIBLiteFlit#(RVMemRsp, user_sz);
+  function fromAXIBLiteFlit(x) = case (x.bresp)
+    OKAY: RVWriteRsp;
+    default: RVBusError;
+  endcase;
+endinstance
+
+typedef Slave#(RVMemReq, RVMemRsp) RVMem;

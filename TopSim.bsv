@@ -41,22 +41,18 @@ import Routable :: *;
 import BlueUtils :: *;
 import SourceSink :: *;
 import AXI4Lite :: *;
+import RVBS :: *;
 import TopRVBS :: *;
 import CLINT :: *;
 import CharIO :: *;
 
-`ifdef XLEN64
-typedef 56 ADDR_sz;
-typedef 64 DATA_sz;
-`else
-typedef 34 ADDR_sz;
-typedef 32 DATA_sz;
-`endif
-typedef  0 AWUSER_sz;
-typedef  0 WUSER_sz;
-typedef  0 BUSER_sz;
-typedef  0 ARUSER_sz;
-typedef  0 RUSER_sz;
+typedef PAddrWidth ADDR_sz;
+typedef 128 DATA_sz;
+typedef   0 AWUSER_sz;
+typedef   0 WUSER_sz;
+typedef   0 BUSER_sz;
+typedef   0 ARUSER_sz;
+typedef   0 RUSER_sz;
 
 `define PARAMS ADDR_sz, DATA_sz, AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
 
@@ -219,7 +215,7 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 module top (Empty);
   // RESET PC
-  Bit#(DATA_sz) reset_pc = 'h80000000;
+  let reset_pc = 'h80000000;
   // RVBS instance
   let rvbs <- mkRVBS(reset_pc);
   // mem map

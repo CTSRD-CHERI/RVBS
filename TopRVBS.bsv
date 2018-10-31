@@ -43,13 +43,13 @@ import RVBS :: *;
 import RVFI_DII :: *;
 `endif
 
-typedef SizeOf#(PAddr) ADDR_sz;
-typedef TMax#(IMemWidth, DMemWidth) DATA_sz;
-typedef 0 AWUSER_sz;
-typedef 0 WUSER_sz;
-typedef 0 BUSER_sz;
-typedef 0 ARUSER_sz;
-typedef 0 RUSER_sz;
+typedef PAddrWidth ADDR_sz;
+typedef 128 DATA_sz;
+typedef   0 AWUSER_sz;
+typedef   0 WUSER_sz;
+typedef   0 BUSER_sz;
+typedef   0 ARUSER_sz;
+typedef   0 RUSER_sz;
 
 `define PARAMS ADDR_sz, DATA_sz, AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
 
@@ -89,7 +89,7 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 
 interface MemShim;
-  interface Array#(Mem#(PAddr, Bit#(DATA_sz))) internal;
+  interface Array#(RVMem) internal;
   interface AXILiteMaster#(`PARAMS) axiLiteMasterInst;
   interface AXILiteMaster#(`PARAMS) axiLiteMasterData;
 endinterface
@@ -98,7 +98,7 @@ module mkMemShim (MemShim);
   // 2 AXI shims
   List#(AXILiteShim#(`PARAMS)) shim <- replicateM(2, mkAXILiteShim);
   // 2 memory interfaces
-  Mem#(Bit#(ADDR_sz), Bit#(DATA_sz)) m[2];
+  RVMem m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
     // which response ?
     let expectWriteRsp <- mkFIFOF;
@@ -116,16 +116,16 @@ module mkMemShim (MemShim);
       expectWriteRsp.deq;
     endrule
     // convert requests/responses
-    m[i] = interface Mem;
+    m[i] = interface RVMem;
       interface sink = interface Sink;
         method canPut = expectWriteRsp.notFull;
         method put (req) = action
           case (req) matches
-            tagged ReadReq .r: begin
+            tagged RVReadReq .r: begin
               shim[i].slave.ar.put(toAXIARLiteFlit(req));
               expectWriteRsp.enq(False);
             end
-            tagged WriteReq .w: begin
+            tagged RVWriteReq .w: begin
               shim[i].slave.aw.put(toAXIAWLiteFlit(req));
               shim[i].slave.w.put(toAXIWLiteFlit(req));
               expectWriteRsp.enq(True);
@@ -183,8 +183,8 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS_Ifc);
   let mem <- mkMemShim;
   // prepare state
   `ifdef SUPERVISOR_MODE
-  Mem#(PAddr, Bit#(IMemWidth)) imem[2] <- virtualize(mem.internal[0], 2);
-  Mem#(PAddr, Bit#(DMemWidth)) dmem[2] <- virtualize(mem.internal[1], 2);
+  RVMem imem[2] <- virtualize(mem.internal[0], 2);
+  RVMem dmem[2] <- virtualize(mem.internal[1], 2);
   RVState s <- mkState(reset_pc, imem[1], dmem[1], imem[0], dmem[0]);
   `else
   RVState s <- mkState(reset_pc, mem.internal[0], mem.internal[1]);

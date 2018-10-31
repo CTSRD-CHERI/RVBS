@@ -80,7 +80,7 @@ typedef struct {
 module [Module] mkSv32PageWalker#(
   FIFOF#(AddrRsp#(PAddr)) rsp
   , SATP satp
-  , Mem#(PAddr, Bit#(XLEN)) mem // XXX TODO sort out physical address width (34)
+  , RVMem mem
   `ifdef PMP
   , PMPLookup pmp
   `endif
@@ -110,10 +110,10 @@ module [Module] mkSv32PageWalker#(
       let r <- pmp.source.get();
       if (isValid(r.mExc)) rsp.enq(r); // terminate early on PMP exception
       else begin
-        MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: r.addr, numBytes: `PTESIZE}; // XXX TODO sort out paddr size
+        RVMemReq req = RVReadReq {addr: r.addr, numBytes: `PTESIZE};
     `else
     action
-      MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: pteAddr, numBytes: `PTESIZE}; // XXX TODO sort out paddr size
+      RVMemReq req = RVReadReq {addr: pteAddr, numBytes: `PTESIZE};
     `endif
       printTLogPlusArgs("debug", $format("DEBUG - a[1] = 0x%0x", a[1]));
       printTLogPlusArgs("debug", $format("DEBUG - i[1] = %0d", i[1]));
@@ -144,8 +144,8 @@ module [Module] mkSv32PageWalker#(
       endaction;
       let tmp <- mem.source.get();
       case (tmp) matches
-        tagged ReadRsp .r: begin
-          Sv32PTE pte = unpack(r);
+        tagged RVReadRsp .r: begin
+          Sv32PTE pte = unpack(truncate(r));
           printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - ", fshow(pte)));
           // invalid pte
           if (!pte.v || (!pte.r && pte.w)) finishLookup(pgFaultRsp);
@@ -194,7 +194,7 @@ endmodule
 `endif
 
 module [Module] mkVMLookup#(CSRs csrs
-  , Mem#(PAddr, Bit#(XLEN)) mem // XXX TODO sort out the physical address width (34)
+  , RVMem mem
   `ifdef PMP
   , PMPLookup pmp
   `endif

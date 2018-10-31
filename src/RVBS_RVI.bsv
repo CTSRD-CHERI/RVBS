@@ -423,9 +423,9 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   endaction, action
     let rsp <- s.dpmp.source.get();
     itrace(s.pc, fshow(rsp));
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
+    RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
   `else
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged ReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
+    RVMemReq req = RVReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
   `endif
     s.dmem.sink.put(req);
     itrace(s.pc, fshow(req));
@@ -433,12 +433,12 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   endaction, action
     let rsp <- s.dmem.source.get();
     case (rsp) matches
-      tagged ReadRsp .r: begin
+      tagged RVReadRsp .r: begin
         Bool isNeg = unpack(r[(args.numBytes*8)-1]);
         Bit#(XLEN) mask = (~0) << args.numBytes*8;
-        s.regFile.r[rd] <= (args.sgnExt && isNeg) ? r | mask : r & ~mask;
+        s.regFile.r[rd] <= (args.sgnExt && isNeg) ? truncate(r) | mask : truncate(r) & ~mask;
       end
-      tagged BusError: action trap(s, LoadAccessFault); endaction
+      tagged RVBusError: action trap(s, LoadAccessFault); endaction
     endcase
     itrace(s.pc, fshow(rsp));
     logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem rsp step");
@@ -485,9 +485,9 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   endaction, action
     let rsp <- s.dpmp.source.get();
     itrace(s.pc, fshow(rsp));
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: s.regFile.r[rs2]};
+    RVMemReq req = RVWriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: zeroExtend(s.regFile.r[rs2])};
   `else
-    MemReq#(PAddr, Bit#(XLEN)) req = tagged WriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: s.regFile.r[rs2]};
+    RVMemReq req = RVWriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: zeroExtend(s.regFile.r[rs2])};
   `endif
     s.dmem.sink.put(req);
   `ifdef RVFI_DII
@@ -499,8 +499,8 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   endaction, action
     let rsp <- s.dmem.source.get();
     case (rsp) matches
-      tagged WriteRsp .w: noAction;
-      tagged BusError: action trap(s, StrAMOAccessFault); endaction
+      tagged RVWriteRsp .w: noAction;
+      tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
     endcase
     itrace(s.pc, fshow(rsp));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem rsp step");

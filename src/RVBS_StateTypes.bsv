@@ -61,10 +61,10 @@ typedef struct {
   Array#(Reg#(Bool)) isTrap;
   ArchRegFile#(32, Bit#(XLEN)) regFile;
   CSRs csrs;
-  Mem#(PAddr, Bit#(IMemWidth)) imem;
-  Mem#(PAddr, Bit#(DMemWidth)) dmem;
-  Mem#(PAddr, Bit#(IVMMemWidth)) ivmmem;
-  Mem#(PAddr, Bit#(DVMMemWidth)) dvmmem;
+  RVMem imem;
+  RVMem dmem;
+  RVMem ivmmem;
+  RVMem dvmmem;
   `ifdef PMP
   PMPLookup ipmp;
   PMPLookup dpmp;

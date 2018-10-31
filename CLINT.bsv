@@ -59,11 +59,14 @@ endfunction
 
 module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   provisos (
-    `ifndef XLEN64
-    Add#(32, 0, data_sz)
-    `else
-    Add#(64, 0, data_sz)
-    `endif
+    //
+    Add#(a__, 64, data_sz),
+    Add#(b__, 8, TDiv#(data_sz, 8)),
+    //
+    Add#(c__, 32, data_sz),
+    Add#(d__, 4, TDiv#(data_sz, 8)),
+    //
+    Add#(e__, 1, data_sz)
   );
   // local state
   AXILiteShim#(addr_sz, data_sz, 0, 0, 0, 0, 0) shim <- mkAXILiteShim;
@@ -89,7 +92,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     case (awflit.awaddr[15:0])
       16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
       16'h4000: begin
-        let cmp_bot = merge(r_mtimecmp, zeroExtend(wflit.wdata), zeroExtend(wflit.wstrb));
+        let cmp_bot = merge(r_mtimecmp, truncate(wflit.wdata), truncate(wflit.wstrb));
         `ifndef XLEN64 // 32-bit only
         let newval = merge(cmp_bot, zeroExtend(cmp_top) << 32, unpack(8'hF0));
         `else
@@ -100,7 +103,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
       end
       `ifndef XLEN64 // 32-bit only
       16'h4004:
-        cmp_top <= merge(truncateLSB(r_mtimecmp), wflit.wdata, wflit.wstrb);
+        cmp_top <= merge(truncateLSB(r_mtimecmp), truncate(wflit.wdata), truncate(wflit.wstrb));
       `endif
       16'hBFF8: bflit.bresp = SLVERR;
       default: bflit.bresp = SLVERR;
@@ -120,11 +123,11 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     RLiteFlit#(data_sz, 0) rflit = defaultValue;
     case (arflit.araddr[15:0])
       16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
-      16'h4000: rflit.rdata = truncate(r_mtimecmp);
-      16'hBFF8: rflit.rdata = truncate(r_mtime);
+      16'h4000: rflit.rdata = zeroExtend(r_mtimecmp);
+      16'hBFF8: rflit.rdata = zeroExtend(r_mtime);
       `ifndef XLEN64 // 32-bit only
-      16'h4004: rflit.rdata = truncateLSB(r_mtimecmp);
-      16'hBFFC: rflit.rdata = truncateLSB(r_mtime);
+      16'h4004: rflit.rdata = zeroExtend(r_mtimecmp);
+      16'hBFFC: rflit.rdata = zeroExtend(r_mtime);
       `endif
       default: rflit.rresp = SLVERR;
     endcase
