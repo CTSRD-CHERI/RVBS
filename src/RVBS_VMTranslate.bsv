@@ -34,6 +34,7 @@ import BlueBasics :: *;
 import BlueUtils :: *;
 import Recipe :: *;
 import RVBS_BasicTypes :: *;
+import RVBS_MemTypes :: *;
 import RVBS_CSRTypes :: *;
 import RVBS_PMPTypes :: *;
 import RVBS_VMTranslateTypes :: *;

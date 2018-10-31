@@ -33,6 +33,7 @@ import BlueUtils :: *;
 import Recipe :: *;
 import RVBS_Traces :: *;
 import RVBS_BasicTypes :: *;
+import RVBS_MemTypes :: *;
 import RVBS_CSRTypes :: *;
 `ifdef PMP
 import RVBS_PMPTypes :: *;

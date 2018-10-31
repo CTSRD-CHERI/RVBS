@@ -26,6 +26,6 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import RVBS_BasicTypes :: *;
+import RVBS_MemTypes :: *;
 
 typedef AddrLookup#(VAddr, PAddr) VMLookup;

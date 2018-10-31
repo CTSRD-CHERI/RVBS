@@ -31,6 +31,9 @@ package RVBS_Types;
 import RVBS_BasicTypes :: *;
 export RVBS_BasicTypes :: *;
 
+import RVBS_MemTypes :: *;
+export RVBS_MemTypes :: *;
+
 import RVBS_CSRTypes :: *;
 export RVBS_CSRTypes :: *;
 
