@@ -49,6 +49,7 @@ Several Bluesim build targets are available:
   * `MEM_SIZE` can be used to specify the size of the memory in bytes
   * `MEM_IMG` can be used to specify the memory image used to initialize the memory
   * `MEM_DELAY` can be set to enable artificial memory delay
+
 The generated simulator is found under the `output/` folder, and when run, will execute the program found in `test-prog.hex`.
 
 #### Examples
