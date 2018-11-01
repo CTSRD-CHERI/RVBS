@@ -41,17 +41,14 @@ Once the libraries are available, you can build RVBS and specify a number of bui
 
 ### Bluesim
 
-Some additional build time environment variables are available when building a simulator. Specifically, one can set **one** of:
+Several Bluesim build targets are available:
 
-- `ISA_TEST` to get a simulator that can be used for running the ISA tests from [riscv-tests](https://github.com/riscv/riscv-tests)
-- `RVFI_DII` to get a rvfi-dii server to be used with a [TestRIG](https://github.com/CTSRD-CHERI/TestRIG) configuration
-
-If neither of `ISA_TEST` or `RVFI_DII` environment variables are set, the default simulator produced can be further configured using:
-
-- `MEM_SIZE` can be used to specify the size of the memory in bytes
-- `MEM_IMG` can be used to specify the memory image used to initialize the memory
-- `MEM_DELAY` can be set to enable artificial memory delay
-
+- `isa-test` to get a simulator that can be used for running the ISA tests from [riscv-tests](https://github.com/riscv/riscv-tests)
+- `rfvi-dii` to get a rvfi-dii server to be used with a [TestRIG](https://github.com/CTSRD-CHERI/TestRIG) configuration
+- `sim` to get the default simulator. It can be further configured using:
+  * `MEM_SIZE` can be used to specify the size of the memory in bytes
+  * `MEM_IMG` can be used to specify the memory image used to initialize the memory
+  * `MEM_DELAY` can be set to enable artificial memory delay
 The generated simulator is found under the `output/` folder, and when run, will execute the program found in `test-prog.hex`.
 
 #### Examples
@@ -65,13 +62,13 @@ $ make RVM=1 XLEN=64 MEM_SIZE=32768 sim
 - To build a 32-bit bluesim simulator with support for compressed instructions and as an rvfi-dii server, you can run:
 
 ```sh
-$ make RVC=1 RVFI_DII=1 sim
+$ make RVC=1 rvfi-dii
 ```
 
 - To build a 32-bit bluesim simulator capable of running the ISA tests, you can run:
 
 ```sh
-$ make ISA_TEST=1 sim
+$ make isa-test
 ```
 
 #### Run time flags

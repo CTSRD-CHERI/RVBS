@@ -38,6 +38,9 @@ SOCKETUTILSDIR = $(BLUESTUFFDIR)/SocketPacketUtils
 RVBSSRCDIR = src
 BSVPATH = +:$(RVBSSRCDIR):$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(BLUESTUFFDIR):$(AXIDIR):$(BLUEBASICSDIR):$(BLUEUTILSDIR):$(RVFIDIIDIR)
 
+RVBSSRCS = $(wildcard $(RVBSSRCDIR)/*.bsv)
+RVBSSRCS += RVBS_Wrappers.bsv
+
 BSCFLAGS = -p $(BSVPATH) -check-assert
 
 ifdef MEM_SIZE
@@ -92,13 +95,6 @@ ifeq ($(PMP),1)
 BSCFLAGS += -D PMP
 RVBSNAME := $(RVBSNAME)-pmp
 endif
-ifeq ($(RVFI_DII),1)
-BSCFLAGS += -D RVFI_DII
-RVBSNAME := $(RVBSNAME)-rvfi-dii
-else ifeq ($(ISA_TEST),1)
-BSCFLAGS += -D ISA_TEST
-RVBSNAME := $(RVBSNAME)-isa-tests
-endif
 
 # generated files directories
 BUILDDIR = build
@@ -109,8 +105,6 @@ OUTPUTDIR = output
 VDIR = $(OUTPUTDIR)/$(RVBSNAME)-vdir
 INFODIR = $(OUTPUTDIR)/$(RVBSNAME)-info
 
-BSCFLAGS += -bdir $(BDIR)
-BSCFLAGS += -info-dir $(INFODIR)
 BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
 #BSCFLAGS += -steps-warn-interval n
@@ -118,38 +112,53 @@ BSCFLAGS += -steps-warn-interval 500000
 BSCFLAGS += +RTS -K20M -RTS
 
 BSC = bsc
-# Bluespec is not compatible with gcc > 4.9
-# This is actually problematic when using $test$plusargs
+#XXX Bluespec is not compatible with gcc > 4.9
+#XXX This is actually problematic when using $test$plusargs/strings or something?
 CC = gcc-4.8
 CXX = g++-4.8
 
-# Top level module
-ifeq ($(RVFI_DII), 1)
-SIMTOPFILE = TopRVBS.bsv
-SIMTOPMOD = mkRVBS
-else
-SIMTOPFILE = TopSim.bsv
-SIMTOPMOD = top
-endif
-VERILOGTOPFILE = TopRVBS.bsv
-VERILOGTOPMOD = rvbs
+all: sim isa-test rvfi-dii verilog clint-verilog
 
-.PHONY: sim verilog
+sim: Top_sim.bsv $(RVBSSRCS)
+	mkdir -p $(INFODIR)-sim $(BDIR)-sim $(SIMDIR)-sim $(OUTPUTDIR)
+	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
-all: sim
-sim: $(SIMTOPMOD)
+isa-test: Top_isa_test.bsv $(RVBSSRCS)
+	mkdir -p $(INFODIR)-isa-test $(BDIR)-isa-test $(SIMDIR)-isa-test $(OUTPUTDIR)
+	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-isa-test -simdir $(SIMDIR)-isa-test -info-dir $(INFODIR)-isa-test -sim -g mkRVBS_isa_test -u $<
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-isa-test -simdir $(SIMDIR)-isa-test -info-dir $(INFODIR)-isa-test -sim -o $(OUTPUTDIR)/$(RVBSNAME)-isa-test -e mkRVBS_isa_test $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
-$(SIMTOPMOD): $(RVBSSRCDIR)/*.bsv
-	mkdir -p $(INFODIR) $(BDIR) $(SIMDIR) $(OUTPUTDIR)
-	$(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -g $(SIMTOPMOD) -u $(SIMTOPFILE)
-	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -simdir $(SIMDIR) -sim -o $(OUTPUTDIR)/$(RVBSNAME) -e $(SIMTOPMOD) $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
+rvfi-dii: Top_rvfi_dii.bsv $(RVBSSRCS)
+	mkdir -p $(INFODIR)-rvfi-dii $(BDIR)-rvfi-dii $(SIMDIR)-rvfi-dii $(OUTPUTDIR)
+	$(BSC) $(BSCFLAGS) -D RVFI_DII -bdir $(BDIR)-rvfi-dii -simdir $(SIMDIR)-rvfi-dii -info-dir $(INFODIR)-rvfi-dii -sim -g mkRVBS_rvfi_dii -u $<
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-rvfi-dii -simdir $(SIMDIR)-rvfi-dii -info-dir $(INFODIR)-rvfi-dii -sim -o $(OUTPUTDIR)/$(RVBSNAME)-rvfi-dii -e mkRVBS_rvfi_dii $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
-verilog: $(RVBSSRCDIR)/*.bsv
-	mkdir -p $(INFODIR) $(BDIR) $(VDIR)
-	$(BSC) $(BSCFLAGS) -vdir $(VDIR) -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g $(VERILOGTOPMOD) -u $(VERILOGTOPFILE)
+verilog: $(RVBSSRCS)
+	mkdir -p $(INFODIR)-verilog $(BDIR)-verilog $(VDIR)-verilog
+	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-verilog -vdir $(VDIR)-verilog -info-dir $(INFODIR)-verilog -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g mkRVBS_synth -u RVBS_Wrappers.bsv
 
-.PHONY: clean mrproper
-clean:
-	rm -rf $(BDIR) $(SIMDIR)
-mrproper: clean
-	rm -rf $(INFODIR) $(VDIR) $(OUTPUTDIR) $(BUILDDIR)
+.PHONY: clean clean-sim clean-isa-test clean-rvfi-dii clean-verilog
+clean: clean-sim clean-isa-test clean-rvfi-dii clean-verilog
+	rm -rf $(BUILDDIR)
+clean-sim:
+	rm -rf $(BDIR)-sim $(SIMDIR)-sim
+clean-isa-test:
+	rm -rf $(BDIR)-isa-test $(SIMDIR)-isa-test
+clean-rvfi-dii:
+	rm -rf $(BDIR)-rvfi-dii $(SIMDIR)-rvfi-dii
+clean-verilog:
+	rm -rf $(BDIR)-verilog
+
+.PHONY: mrproper mrproper-sim mrproper-isa-test mrproper-rvfi-dii mrproper-verilog
+mrproper: mrproper-sim mrproper-isa-test mrproper-rvfi-dii mrproper-verilog clean
+	rm -rf $(OUTPUTDIR)
+mrproper-sim: clean-sim
+	#rm -rf $(INFODIR)-sim $(VDIR) $(OUTPUTDIR)-sim $(BUILDDIR)-sim
+	rm -rf $(INFODIR)-sim
+mrproper-isa-test: clean-isa-test
+	rm -rf $(INFODIR)-isa-test
+mrproper-rvfi-dii: clean-rvfi-dii
+	rm -rf $(INFODIR)-rvfi-dii
+mrproper-verilog: clean-verilog
+	rm -rf $(INFODIR)-verilog $(VDIR)-verilog

@@ -491,8 +491,8 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   `endif
     s.dmem.sink.put(req);
   `ifdef RVFI_DII
-    s.mem_wdata[0] <= req.WriteReq.data;
-    s.mem_wmask[0] <= req.WriteReq.byteEnable;
+    s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
+    s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
   `endif
     itrace(s.pc, fshow(req));
     logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");
