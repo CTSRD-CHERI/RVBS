@@ -36,10 +36,10 @@ BLUEBASICSDIR = $(BLUESTUFFDIR)/BlueBasics
 BLUEUTILSDIR = $(BLUESTUFFDIR)/BlueUtils
 SOCKETUTILSDIR = $(BLUESTUFFDIR)/SocketPacketUtils
 RVBSSRCDIR = src
-BSVPATH = +:$(RVBSSRCDIR):$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(BLUESTUFFDIR):$(AXIDIR):$(BLUEBASICSDIR):$(BLUEUTILSDIR):$(RVFIDIIDIR)
+BSVPATH = +:$(RVBSSRCDIR):$(RVBSSRCDIR)/rvbs:$(RVBSSRCDIR)/toplevels:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(BLUESTUFFDIR):$(AXIDIR):$(BLUEBASICSDIR):$(BLUEUTILSDIR):$(RVFIDIIDIR)
 
-RVBSSRCS = $(wildcard $(RVBSSRCDIR)/*.bsv)
-RVBSSRCS += RVBS_Wrappers.bsv
+RVBSSRCS = $(wildcard $(RVBSSRCDIR)/rvbs/*.bsv)
+RVBSSRCS += $(wildcard $(RVBSSRCDIR)/*.bsv)
 
 BSCFLAGS = -p $(BSVPATH) -check-assert
 
@@ -119,24 +119,24 @@ CXX = g++-4.8
 
 all: sim isa-test rvfi-dii verilog clint-verilog
 
-sim: Top_sim.bsv $(RVBSSRCS)
+sim: $(RVBSSRCDIR)/toplevels/Top_sim.bsv $(RVBSSRCS)
 	mkdir -p $(INFODIR)-sim $(BDIR)-sim $(SIMDIR)-sim $(OUTPUTDIR)
 	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
 	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
-isa-test: Top_isa_test.bsv $(RVBSSRCS)
+isa-test: $(RVBSSRCDIR)/toplevels/Top_isa_test.bsv $(RVBSSRCS)
 	mkdir -p $(INFODIR)-isa-test $(BDIR)-isa-test $(SIMDIR)-isa-test $(OUTPUTDIR)
 	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-isa-test -simdir $(SIMDIR)-isa-test -info-dir $(INFODIR)-isa-test -sim -g mkRVBS_isa_test -u $<
 	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-isa-test -simdir $(SIMDIR)-isa-test -info-dir $(INFODIR)-isa-test -sim -o $(OUTPUTDIR)/$(RVBSNAME)-isa-test -e mkRVBS_isa_test $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
-rvfi-dii: Top_rvfi_dii.bsv $(RVBSSRCS)
+rvfi-dii: $(RVBSSRCDIR)/toplevels/Top_rvfi_dii.bsv $(RVBSSRCS)
 	mkdir -p $(INFODIR)-rvfi-dii $(BDIR)-rvfi-dii $(SIMDIR)-rvfi-dii $(OUTPUTDIR)
 	$(BSC) $(BSCFLAGS) -D RVFI_DII -bdir $(BDIR)-rvfi-dii -simdir $(SIMDIR)-rvfi-dii -info-dir $(INFODIR)-rvfi-dii -sim -g mkRVBS_rvfi_dii -u $<
 	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-rvfi-dii -simdir $(SIMDIR)-rvfi-dii -info-dir $(INFODIR)-rvfi-dii -sim -o $(OUTPUTDIR)/$(RVBSNAME)-rvfi-dii -e mkRVBS_rvfi_dii $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
 verilog: $(RVBSSRCS)
 	mkdir -p $(INFODIR)-verilog $(BDIR)-verilog $(VDIR)-verilog
-	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-verilog -vdir $(VDIR)-verilog -info-dir $(INFODIR)-verilog -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g mkRVBS_synth -u RVBS_Wrappers.bsv
+	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-verilog -vdir $(VDIR)-verilog -info-dir $(INFODIR)-verilog -opt-undetermined-vals -unspecified-to X -D NO_LOGS -verilog -g mkRVBS_synth -u $(RVBSSRCDIR)/RVBS_Wrappers.bsv
 
 .PHONY: clean clean-sim clean-isa-test clean-rvfi-dii clean-verilog
 clean: clean-sim clean-isa-test clean-rvfi-dii clean-verilog
