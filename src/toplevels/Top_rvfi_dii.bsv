@@ -44,6 +44,9 @@ module mkRVBS_rvfi_dii (Empty);
   let bridge <- mkRVFI_DII_Bridge("RVFI_DII", 5000);
   // create a memory
   module memShim (Array#(RVMem));
+    `ifdef RVXCHERI
+    Mem#(PAddr, Bit#(1)) mem_tag[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, Invalid);
+    `endif
     Mem#(PAddr, Bit#(128)) mem[2] <- mkMemSimWithOffset(2, 'h80000000, 'h10000, Invalid);
     // 2 memory interfaces
     RVMem m[2];
@@ -53,8 +56,17 @@ module mkRVBS_rvfi_dii (Empty);
       // get responses
       rule drainMemRsp(!errorFF.first);
         let rsp <- mem[i].source.get;
+        `ifdef RVXCHERI
+        let tag <- mem_tag[i].source.get;
+        `endif
         case (rsp) matches
-          tagged ReadRsp .data: rspFF.enq(RVReadRsp(data));
+          tagged ReadRsp .data: rspFF.enq(RVReadRsp(
+            `ifdef RVXCHERI
+            tuple2(tag.ReadRsp, data)
+            `else
+            data
+            `endif
+          ));
           tagged WriteRsp: rspFF.enq(RVWriteRsp);
         endcase
         errorFF.deq;
@@ -71,12 +83,20 @@ module mkRVBS_rvfi_dii (Empty);
             case (req) matches
               tagged RVReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
                 mem[i].sink.put(ReadReq{addr: r.addr, numBytes: r.numBytes});
+                `ifdef RVXCHERI
+                mem_tag[i].sink.put(ReadReq{addr: r.addr, numBytes: 1});
+                `endif
                 errorFF.enq(False);
               end
               tagged RVWriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
                 mem[i].sink.put(WriteReq{
                   addr: w.addr, byteEnable: w.byteEnable, data: w.data
                 });
+                `ifdef RVXCHERI
+                mem_tag[i].sink.put(WriteReq{
+                  addr: w.addr, byteEnable: 1, data: w.captag
+                });
+                `endif
                 errorFF.enq(False);
               end
               default: errorFF.enq(True);
