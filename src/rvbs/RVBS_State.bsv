@@ -181,10 +181,15 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
         let rsp <- s.imem.source.get;
         case (rsp) matches
           tagged RVReadRsp .val: begin
-            let newInstSz = (val[1:0] == 2'b11) ? 4 : 2;
+            `ifdef RVXCHERI
+            match {.captag, .data} = val;
+            `else
+            let data = val;
+            `endif
+            let newInstSz = (data[1:0] == 2'b11) ? 4 : 2;
             asIfc(s.pc.early) <= s.pc + newInstSz;
             s.instByteSz <= newInstSz;
-            snk.put(truncate(val));
+            snk.put(truncate(data));
           end
           default: snk.put(?);
         endcase

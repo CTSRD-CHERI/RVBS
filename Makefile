@@ -36,7 +36,9 @@ BLUEBASICSDIR = $(BLUESTUFFDIR)/BlueBasics
 BLUEUTILSDIR = $(BLUESTUFFDIR)/BlueUtils
 SOCKETUTILSDIR = $(BLUESTUFFDIR)/SocketPacketUtils
 RVBSSRCDIR = src
-BSVPATH = +:$(RVBSSRCDIR):$(RVBSSRCDIR)/rvbs:$(RVBSSRCDIR)/toplevels:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(BLUESTUFFDIR):$(AXIDIR):$(BLUEBASICSDIR):$(BLUEUTILSDIR):$(RVFIDIIDIR)
+CHERISOCDIR = $(RVBSSRCDIR)/toplevels/CHERISOC
+CHERISOCPATH = $(CHERISOCDIR):$(CHERISOCDIR)/PISM/src:%/Libraries/TLM3:%/Libraries/Axi:$(CHERISOCDIR)/TagController/TagController:$(CHERISOCDIR)/TagController/TagController/CacheCore
+BSVPATH = +:$(RVBSSRCDIR):$(RVBSSRCDIR)/rvbs:$(RVBSSRCDIR)/toplevels:$(BIDDIR):$(RECIPEDIR):$(BITPATDIR):$(BLUESTUFFDIR):$(AXIDIR):$(BLUEBASICSDIR):$(BLUEUTILSDIR):$(CHERISOCPATH):$(RVFIDIIDIR)
 
 RVBSSRCS = $(wildcard $(RVBSSRCDIR)/rvbs/*.bsv)
 RVBSSRCS += $(wildcard $(RVBSSRCDIR)/*.bsv)
@@ -82,6 +84,10 @@ BSCFLAGS += -D RVN
 USER_MODE = 1
 RVBSNAME := $(RVBSNAME)n
 endif
+ifeq ($(RVXCHERI),1)
+BSCFLAGS += -D RVXCHERI
+RVBSNAME := $(RVBSNAME)xcheri
+endif
 ifeq ($(SUPERVISOR_MODE),1)
 BSCFLAGS += -D SUPERVISOR_MODE
 USER_MODE = 1
@@ -117,12 +123,42 @@ BSC = bsc
 CC = gcc-4.8
 CXX = g++-4.8
 
-all: sim isa-test rvfi-dii verilog clint-verilog
+all: sim sim-cheri isa-test rvfi-dii verilog clint-verilog
 
-sim: $(RVBSSRCDIR)/toplevels/Top_sim.bsv $(RVBSSRCS)
+ifeq ($(RVXCHERI),1)
+TOPSIM = $(RVBSSRCDIR)/toplevels/Top_cheri.bsv
+SIMFLAGS = $(BSCFLAGS) -D MEM128 -D CAP128 -D BLUESIM -L . -l pism
+SIMDEP = $(TOPSIM) $(RVBSSRCDIR) link-pism
+CLEANSIMDEP = clean-link-pism
+link-pism:
+	$(MAKE) -C $(CHERISOCDIR)/PISM/src/pismdev pism
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/libpism.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/dram.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/ethercap.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/uart.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/fb.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/sdcard.so
+	ln -fs $(CHERISOCDIR)/PISM/src/pismdev/virtio_block.so
+	ln -fs $(CHERISOCDIR)/PISM/memoryconfig
+clean-link-pism:
+	$(MAKE) -C $(CHERISOCDIR)/PISM/src/pismdev clean
+	rm -f libpism.so
+	rm -f dram.so
+	rm -f ethercap.so
+	rm -f uart.so
+	rm -f fb.so
+	rm -f sdcard.so
+	rm -f virtio_block.so
+	rm -f memoryconfig
+else
+TOPSIM = $(RVBSSRCDIR)/toplevels/Top_sim.bsv
+SIMFLAGS = $(BSCFLAGS)
+SIMDEP = $(TOPSIM) $(RVBSSRCDIR)
+endif
+sim: $(SIMDEP)
 	mkdir -p $(INFODIR)-sim $(BDIR)-sim $(SIMDIR)-sim $(OUTPUTDIR)
-	$(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
-	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
+	$(BSC) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
+	CC=$(CC) CXX=$(CXX) $(BSC) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
 isa-test: $(RVBSSRCDIR)/toplevels/Top_isa_test.bsv $(RVBSSRCS)
 	mkdir -p $(INFODIR)-isa-test $(BDIR)-isa-test $(SIMDIR)-isa-test $(OUTPUTDIR)
@@ -141,7 +177,7 @@ verilog: $(RVBSSRCS)
 .PHONY: clean clean-sim clean-isa-test clean-rvfi-dii clean-verilog
 clean: clean-sim clean-isa-test clean-rvfi-dii clean-verilog
 	rm -rf $(BUILDDIR)
-clean-sim:
+clean-sim: $(CLEANSIMDEP)
 	rm -rf $(BDIR)-sim $(SIMDIR)-sim
 clean-isa-test:
 	rm -rf $(BDIR)-isa-test $(SIMDIR)-isa-test

@@ -84,6 +84,9 @@ typedef union tagged {
     PAddr addr;
     Bit#(16) byteEnable;
     Bit#(128) data;
+    `ifdef RVXCHERI
+    Bit#(1) captag;
+    `endif
   } RVWriteReq;
 } RVMemReq deriving (Bits, FShow);
 
@@ -98,10 +101,21 @@ instance ToAXIAWLiteFlit#(RVMemReq, PAddrWidth, user_sz);
   endfunction
 endinstance
 
-instance ToAXIWLiteFlit#(RVMemReq, 128, user_sz);
+instance ToAXIWLiteFlit#(RVMemReq, 128, user_sz)
+  `ifdef RVXCHERI
+  provisos (Add#(0, user_sz, 1))
+  `endif
+  ;
   function toAXIWLiteFlit(x);
     let w = x.RVWriteReq;
-    return WLiteFlit {wdata: pack(w.data), wstrb: w.byteEnable, wuser: 0};
+    return WLiteFlit {
+      wdata: pack(w.data), wstrb: w.byteEnable,
+      `ifdef RVXCHERI
+      wuser: w.captag
+      `else
+      wuser: 0
+      `endif
+    };
   endfunction
 endinstance
 
@@ -113,14 +127,27 @@ instance ToAXIARLiteFlit#(RVMemReq, PAddrWidth, user_sz);
 endinstance
 
 typedef union tagged {
+  `ifdef RVXCHERI
+  Tuple2#(Bit#(1), Bit#(128)) RVReadRsp;
+  `else
   Bit#(128) RVReadRsp;
+  `endif
   void RVWriteRsp;
   void RVBusError;
 } RVMemRsp deriving (Bits, FShow);
 
-instance FromAXIRLiteFlit#(RVMemRsp, 128, user_sz);
+instance FromAXIRLiteFlit#(RVMemRsp, 128, user_sz)
+  `ifdef RVXCHERI
+  provisos (Add#(0, user_sz, 1))
+  `endif
+  ;
   function fromAXIRLiteFlit(x) = case (x.rresp)
-    OKAY: RVReadRsp(unpack(x.rdata));
+    OKAY:
+      `ifdef RVXCHERI
+      RVReadRsp(tuple2(x.ruser, unpack(x.rdata)));
+      `else
+      RVReadRsp(unpack(x.rdata));
+      `endif
     default: RVBusError;
   endcase;
 endinstance

@@ -119,5 +119,5 @@ module mkRVBS_sim (Empty);
 endmodule
 
 `undef AXI_PARAMS
-`undef MASRTER_T
+`undef MASTER_T
 `undef SLAVE_T

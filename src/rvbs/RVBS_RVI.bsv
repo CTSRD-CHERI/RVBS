@@ -434,9 +434,14 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
     let rsp <- s.dmem.source.get();
     case (rsp) matches
       tagged RVReadRsp .r: begin
-        Bool isNeg = unpack(r[(args.numBytes*8)-1]);
+        `ifdef RVXCHERI
+        match {.captag, .data} = r;
+        `else
+        let data = r;
+        `endif
+        Bool isNeg = unpack(data[(args.numBytes*8)-1]);
         Bit#(XLEN) mask = (~0) << args.numBytes*8;
-        s.regFile.r[rd] <= (args.sgnExt && isNeg) ? truncate(r) | mask : truncate(r) & ~mask;
+        s.regFile.r[rd] <= (args.sgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask;
       end
       tagged RVBusError: action trap(s, LoadAccessFault); endaction
     endcase
@@ -485,9 +490,23 @@ function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) r
   endaction, action
     let rsp <- s.dpmp.source.get();
     itrace(s.pc, fshow(rsp));
-    RVMemReq req = RVWriteReq {addr: rsp.addr, byteEnable: ~((~0) << args.numBytes), data: zeroExtend(s.regFile.r[rs2])};
+    RVMemReq req = RVWriteReq {
+      addr: rsp.addr,
+      byteEnable: ~((~0) << args.numBytes),
+      data: zeroExtend(s.regFile.r[rs2])
+      `ifdef RVXCHERI
+      , captag: 0
+      `endif
+    };
   `else
-    RVMemReq req = RVWriteReq {addr: paddr, byteEnable: ~((~0) << args.numBytes), data: zeroExtend(s.regFile.r[rs2])};
+    RVMemReq req = RVWriteReq {
+      addr: paddr,
+      byteEnable: ~((~0) << args.numBytes),
+      data: zeroExtend(s.regFile.r[rs2])
+      `ifdef RVXCHERI
+      , captag: 0
+      `endif
+    };
   `endif
     s.dmem.sink.put(req);
   `ifdef RVFI_DII

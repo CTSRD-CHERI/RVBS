@@ -52,8 +52,11 @@ export mkRVBS_synth;
 export mkRVBS_CLINT;
 export mkRVBS_CLINT_synth;
 
+`ifdef RVXCHERI
+`define AXI_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
+`else
 `define AXI_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
-
+`endif
 ////////////////
 // Interfaces //
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,8 +267,15 @@ endmodule
 (* synthesize *)
 module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
+
+
   let  rvbs <- mkRVBS(reset_pc);
   let clint <- mkAXILiteCLINT;
+  `ifndef RVXCHERI
+  AXILiteSlave#(`AXI_PARAMS) clintSlave = clint.axiLiteSlave;
+  `else
+  AXILiteSlave#(`AXI_PARAMS) clintSlave = dropUserFields(clint.axiLiteSlave);
+  `endif
   let  shim <- mkAXILiteShim;
   let clintWriteRspFF <- mkFIFOF;
   let  clintReadRspFF <- mkFIFOF;
@@ -275,8 +285,8 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
     let awflit <- rvbs.dataAXILiteMaster.aw.get;
     let  wflit <- rvbs.dataAXILiteMaster.w.get;
     if (awflit.awaddr >= 'h02000000 && awflit.awaddr < 'h02001000) begin
-      clint.axiLiteSlave.aw.put(awflit);
-      clint.axiLiteSlave.w.put(wflit);
+      clintSlave.aw.put(awflit);
+      clintSlave.w.put(wflit);
       clintWriteRspFF.enq(True);
     end else begin
       shim.slave.aw.put(awflit);
@@ -285,8 +295,8 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
     end
   endrule
 
-  rule connectClintB (clint.axiLiteSlave.b.canGet && clintWriteRspFF.first);
-    let bflit <- clint.axiLiteSlave.b.get;
+  rule connectClintB (clintSlave.b.canGet && clintWriteRspFF.first);
+    let bflit <- clintSlave.b.get;
     rvbs.dataAXILiteMaster.b.put(bflit);
     clintWriteRspFF.deq;
   endrule
@@ -300,7 +310,7 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
   rule connectAR (rvbs.dataAXILiteMaster.ar.canGet);
     let arflit <- rvbs.dataAXILiteMaster.ar.get;
     if (arflit.araddr >= 'h02000000 && arflit.araddr < 'h02001000) begin
-      clint.axiLiteSlave.ar.put(arflit);
+      clintSlave.ar.put(arflit);
       clintReadRspFF.enq(True);
     end else begin
       shim.slave.ar.put(arflit);
@@ -308,8 +318,8 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
     end
   endrule
 
-  rule connectClintR (clint.axiLiteSlave.r.canGet && clintReadRspFF.first);
-    let rflit <- clint.axiLiteSlave.r.get;
+  rule connectClintR (clintSlave.r.canGet && clintReadRspFF.first);
+    let rflit <- clintSlave.r.get;
     rvbs.dataAXILiteMaster.r.put(rflit);
     clintReadRspFF.deq;
   endrule
