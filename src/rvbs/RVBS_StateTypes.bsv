@@ -61,6 +61,8 @@ typedef struct {
   Reg#(VAddr) instByteSz;
   Array#(Reg#(Bool)) isTrap;
   ArchRegFile#(32, Bit#(XLEN)) regFile;
+  function Bit#(XLEN) f(Bit#(5) idx) rGPR;
+  function Action f(Bit#(5) idx, Bit#(XLEN) data) wGPR;
   CSRs csrs;
   RVMem imem;
   RVMem dmem;

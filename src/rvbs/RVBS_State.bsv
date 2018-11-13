@@ -86,6 +86,10 @@ module [Module] mkState#(
   s.instByteSz <- mkBypassRegU;
   s.isTrap <- mkCReg(2, False);
   s.regFile <- mkRegFileZ;
+  function readGPR(i); return s.regFile.r[i]; endfunction
+  s.rGPR = readGPR;
+  function writeGPR(i, x) = action s.regFile.r[i] <= x; endaction;
+  s.wGPR = writeGPR;
   s.csrs <- mkCSRs();
   // Memory interfaces
   s.imem = imem;
