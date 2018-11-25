@@ -36,6 +36,10 @@ import    BlueUtils :: *;
 import          BID :: *;
 import         RVBS :: *;
 import    RVBS_Core :: *;
+`ifdef RVXCHERI
+import     CHERICap :: *;
+import      CHERICC :: *;
+`endif
 
 (* synthesize *)
 module mkRVBS_rvfi_dii (Empty);
@@ -123,14 +127,26 @@ module mkRVBS_rvfi_dii (Empty);
     defineInitEntry(rSeq(rBlock(
       printTLogPlusArgs("itrace", "-------- Reseting --------"),
       action s.pc <= 'h80000000; endaction, action s.pc.commit; endaction,
-      writeReg(cnt, 0),
+      `ifdef RVXCHERI
+      action RawCap c0 = nullCap; s.wCR(0, Data(pack(c0))); endaction,
+      writeReg(cnt, 1),
       rWhile(cnt < 32, rFastSeq(rBlock(
-        action s.regFile.r[cnt] <= 0; endaction,
+        s.wCR(truncate(cnt), Cap(almightyCap)),
         action
           s.regFile.commit;
           cnt <= cnt + 1;
         endaction
       )))
+      `else
+      writeReg(cnt, 0),
+      rWhile(cnt < 32, rFastSeq(rBlock(
+        s.wGPR(truncate(cnt), 0),
+        action
+          s.regFile.commit;
+          cnt <= cnt + 1;
+        endaction
+      )))
+      `endif
     )));
   endmodule
   // instanciating simulator

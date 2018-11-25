@@ -41,6 +41,10 @@ import RVBS_PMPTypes :: *;
 `ifdef SUPERVISOR_MODE
 import RVBS_VMTranslateTypes :: *;
 `endif
+`ifdef RVXCHERI
+import CHERICap :: *;
+import CHERICC :: *;
+`endif
 `ifdef RVFI_DII
 import RVFI_DII :: *;
 import ClientServer :: *;
@@ -52,6 +56,19 @@ import FIFO :: *;
 // RISC-V architectural state //
 ////////////////////////////////////////////////////////////////////////////////
 
+`ifdef RVXCHERI
+`ifdef XLEN64
+typedef CHERICCCap#(64, 46, 6, 2) RawCap;
+//typedef CHERICCCap#(32, 16, 6, 6)  RawCap;
+`else
+typedef CHERICCCap#(32, 16, 6, 2)  RawCap;
+`endif
+typedef union tagged {
+  RawCap Cap;
+  Bit#(TAdd#(XLEN, XLEN)) Data;
+} CapType deriving (Bits);
+`endif
+
 // state type
 typedef struct {
   Reg#(PrivLvl) currentPrivLvl;
@@ -60,9 +77,17 @@ typedef struct {
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
   Array#(Reg#(Bool)) isTrap;
+  `ifdef RVXCHERI
+  ArchRegFile#(32, CapType) regFile;
+  `else
   ArchRegFile#(32, Bit#(XLEN)) regFile;
+  `endif
   function Bit#(XLEN) f(Bit#(5) idx) rGPR;
   function Action f(Bit#(5) idx, Bit#(XLEN) data) wGPR;
+  `ifdef RVXCHERI
+  function CapType f(Bit#(5) idx) rCR;
+  function Action f(Bit#(5) idx, CapType data) wCR;
+  `endif
   CSRs csrs;
   RVMem imem;
   RVMem dmem;
@@ -114,6 +139,7 @@ instance State#(RVState);
     // first do the  RVFI_DII reporting
     s.iFF.deq;
     s.count <= s.count + 1;
+    // TODO Update to new BSV-RVFI-DII bridge and parameterize the struct on XLEN
     s.rvfi_dii_bridge.inst.response.put(RVFI_DII_Execution{
       rvfi_order: s.count,
       rvfi_trap:  s.isTrap[1],
@@ -128,7 +154,11 @@ instance State#(RVState);
       rvfi_pc_wdata:  s.pc.late,
       rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
+      `ifdef RVXCHERI
+      rvfi_rd_wdata:  truncate(s.regFile.rd_new_val.Data),
+      `else
       rvfi_rd_wdata:  s.regFile.rd_new_val,
+      `endif
       rvfi_mem_addr:  s.mem_addr[1],
       rvfi_mem_rmask: ?,
       rvfi_mem_wmask: s.mem_wmask[1],

@@ -226,9 +226,9 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS);
   // initialization
   module [ISADefModule] mkRVInit#(RVState st) (Empty);
     defineInitEntry(rSeq(rBlock(action
-      st.regFile.r[10] <= 0;
+      st.wGPR(10, 0);
     endaction, action
-      st.regFile.r[11] <= 'h00004000;
+      st.wGPR(11, 'h00004000);
     endaction)));
   endmodule
   // instanciating simulator

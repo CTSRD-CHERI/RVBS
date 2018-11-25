@@ -44,6 +44,10 @@ import RVBS_PMP :: *;
 `ifdef SUPERVISOR_MODE
 import RVBS_VMTranslate :: *;
 `endif
+`ifdef RVXCHERI
+import CHERICap :: *;
+import CHERICC :: *;
+`endif
 `ifdef RVFI_DII
 import RVFI_DII_Bridge :: *;
 import FIFO :: *;
@@ -85,11 +89,25 @@ module [Module] mkState#(
   s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
   s.isTrap <- mkCReg(2, False);
+  `ifdef RVXCHERI
+  RawCap r0 = nullCap;
+  RawCap rs = almightyCap;
+  s.regFile <- mkRegFileInitZ(Data(pack(r0)), Cap(rs));
+  function readGPR(i); return truncate(s.regFile.r[i].Data); endfunction
+  s.rGPR = readGPR;
+  function writeGPR(i, x) = action s.regFile.r[i] <= Data(zeroExtend(x)); endaction;
+  s.wGPR = writeGPR;
+  function readCR(i); return s.regFile.r[i]; endfunction
+  s.rCR = readCR;
+  function writeCR(i, x) = action s.regFile.r[i] <= x; endaction;
+  s.wCR = writeCR;
+  `else
   s.regFile <- mkRegFileZ;
   function readGPR(i); return s.regFile.r[i]; endfunction
   s.rGPR = readGPR;
   function writeGPR(i, x) = action s.regFile.r[i] <= x; endaction;
   s.wGPR = writeGPR;
+  `endif
   s.csrs <- mkCSRs();
   // Memory interfaces
   s.imem = imem;
