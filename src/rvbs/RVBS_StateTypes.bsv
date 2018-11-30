@@ -58,11 +58,18 @@ import FIFO :: *;
 
 `ifdef RVXCHERI
 `ifdef XLEN64
-typedef CHERICCCap#(64, 46, 6, 2) RawCap;
-//typedef CHERICCCap#(32, 16, 6, 6)  RawCap;
+typedef 64 CC_ADDR;
+typedef 46 CC_BOUNDS;
+typedef  6 CC_EXP;
+typedef  6 CC_OTYPE;
 `else
-typedef CHERICCCap#(32, 16, 6, 2)  RawCap;
+typedef 32 CC_ADDR;
+typedef 16 CC_BOUNDS;
+typedef  6 CC_EXP;
+typedef  2 CC_OTYPE;
 `endif
+typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) RawCap;
+Bit#(CC_OTYPE) otypeMax = ~0;
 typedef union tagged {
   RawCap Cap;
   Bit#(TAdd#(XLEN, XLEN)) Data;

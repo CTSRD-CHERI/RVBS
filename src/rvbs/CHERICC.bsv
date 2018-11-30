@@ -143,31 +143,31 @@ endinstance
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
-  Bit#(4)                                uperms;
+  UPerms                                 uperms;
   Perms                                  perms;
-  Bit#(TSub#(addr_, TAdd#(bounds_, 15))) res; // 15 permission bits and bounds_ bits to deduct
+  Bit#(TSub#(addr_, TAdd#(bounds_, AllPermsSz))) res; // 15 permission bits and bounds_ bits to deduct
   CHERICCBounds#(`div2(bounds_), e_, t_) bounds;
   Bit#(addr_)                            addr;
 } CHERICCCap#(numeric type addr_, numeric type bounds_, numeric type e_, numeric type t_);
 
 instance Bits#(CHERICCCap#(addr_, bounds_, e_, t_),
-               TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, 15)))) provisos(
+               TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, AllPermsSz)))) provisos(
     Bits#(CHERICCBounds#(TDiv#(bounds_, 2), e_, t_), bounds_),
-    Add#(TAdd#(bounds_, 15), res_, addr_)
+    Add#(TAdd#(bounds_, AllPermsSz), res_, addr_)
   );
   function pack(cap);
-    Bit#(4)       uperms = cap.uperms;
-    Bit#(11)       perms = pack(cap.perms);
-    Bit#(res_)       res = cap.res;
-    Bit#(bounds_) bounds = pack(cap.bounds);
-    Bit#(addr_)     addr = cap.addr;
+    Bit#(SizeOf#(UPerms)) uperms = cap.uperms;
+    Bit#(SizeOf#(Perms))   perms = pack(cap.perms);
+    Bit#(res_)              res = cap.res;
+    Bit#(bounds_)        bounds = pack(cap.bounds);
+    Bit#(addr_)            addr = cap.addr;
     return {uperms, perms, res, bounds, addr};
   endfunction
   //function pack(cap) = {cap.uperms, pack(cap.perms), cap.res, pack(cap.bounds), cap.addr};
   function unpack(raw) = CHERICCCap {
-    uperms: raw[2*`i(addr_)-1:2*`i(addr_)-4],
-    perms:  unpack(raw[2*`i(addr_)-5:2*`i(addr_)-15]),
-    res:    raw[2*`i(addr_)-16:`i(addr_)+`i(bounds_)],
+    uperms: raw[2*`i(addr_)-1:2*`i(addr_)-`i(SizeOf#(UPerms))],
+    perms:  unpack(raw[2*`i(addr_)-5:2*`i(addr_)-`i(AllPermsSz)]),
+    res:    raw[2*`i(addr_)-`i(AllPermsSz)-1:`i(addr_)+`i(bounds_)],
     bounds: unpack(raw[`i(addr_)+`i(bounds_)-1:`i(addr_)]),
     addr:   raw[`i(addr_)-1:0]
   };
@@ -219,7 +219,7 @@ function Bit#(`div2(bounds_))
   getTopFieldCC(CHERICCCap#(addr_, bounds_, e_, t_) cap);
   Bit#(2) c_carry = 2'b00;
   Bit#(2) c_len   = 2'b01;
-  Bit#(`sub2(`div2(bounds_))) partialTop;
+  Bit#(`sub2(`div2(bounds_))) partialTop = 0;
   case (cap.bounds) matches
     tagged Exp0 .b: begin
       if (zeroExtend(b.top) < b.base) c_carry = 2'b01;
@@ -267,7 +267,7 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
   function getPerms(cap) = cap.perms;
   //////////////////////////////////////////////////////////////////////////////
   function setPerms(cap, perms);
-    cap.perms = unpack(perms);
+    cap.perms = perms;
     return cap;
   endfunction
   //////////////////////////////////////////////////////////////////////////////
@@ -299,7 +299,7 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
         };
       end
       default: if (sealed == True) begin
-        let new_e = case (cap.bounds) matches
+        Bit#(e_) new_e = case (cap.bounds) matches
           tagged EmbeddedExp .b: b.e;
           default: 0;
         endcase;

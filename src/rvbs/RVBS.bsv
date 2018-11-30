@@ -46,5 +46,9 @@ export RVBS_RVM :: *;
 import RVBS_RVC :: *;
 export RVBS_RVC :: *;
 `endif
+`ifdef RVXCHERI
+import RVBS_RVXCHERI :: *;
+export RVBS_RVXCHERI :: *;
+`endif
 
 endpackage

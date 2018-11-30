@@ -37,21 +37,37 @@ typedef struct {
     Bool permitUnseal;
     Bool permitCCall;
     Bool permitSeal;
-    Bool permitStoreEphemeralCap;
+    Bool permitStoreLocalCap;
     Bool permitStoreCap;
     Bool permitLoadCap;
     Bool permitStore;
     Bool permitLoad;
     Bool permitExecute;
-    Bool nonEphemeral;
+    Bool global;
 } Perms deriving(Bits, Eq, FShow);
+instance Bitwise#(Perms);
+  function \& (x1, x2) = unpack(pack(x1) & pack(x2));
+  function \| (x1, x2) = unpack(pack(x1) | pack(x2));
+  function \^ (x1, x2) = unpack(pack(x1) ^ pack(x2));
+  function \~^ (x1, x2) = unpack(pack(x1) ~^ pack(x2));
+  function \^~ (x1, x2) = unpack(pack(x1) ^~ pack(x2));
+  function invert (x) = unpack(invert (pack(x))); //XXX Bluespec ref guide uses x1 here but simply x for other single arg methods...
+  function \<< (x1, x2) = unpack(pack(x1) << x2);
+  function \>> (x1, x2) = unpack(pack(x1) >> x2);
+  function msb (x) = msb(pack(x));
+  function lsb (x) = lsb(pack(x));
+endinstance
+
+typedef Bit#(4) UPerms;
+
+typedef TAdd#(SizeOf#(UPerms), SizeOf#(Perms)) AllPermsSz;
 
 typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t determines (ot, n));
   `define BigBit Bit#(TAdd#(n, 1))
-  function Bit#(4)  getUPerms    (t cap);
-  function t        setUPerms    (t cap, Bit#(4) uperms);
+  function UPerms   getUPerms    (t cap);
+  function t        setUPerms    (t cap, UPerms uperms);
   function Perms    getPerms     (t cap);
-  function t        setPerms     (t cap, Bit#(11) perms);
+  function t        setPerms     (t cap, Perms perms);
   function Bool     getSealed    (t cap);
   function t        setSealed    (t cap, Bool sealed);
   function Bool     canRepSealed (t cap, Bool sealed) =

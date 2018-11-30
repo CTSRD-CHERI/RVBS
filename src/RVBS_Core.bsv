@@ -47,6 +47,9 @@ module [Module] mkRVBSCore#(RVState s,
   `ifdef RVC
     modList = append(modList, list(mkRV32C));
   `endif
+  `ifdef RVXCHERI
+    modList = append(modList, list(mkRV32XCHERI));
+  `endif
   `ifdef XLEN64
   modList = append(modList, list(mkRV64I));
     `ifdef RVM
@@ -54,6 +57,9 @@ module [Module] mkRVBSCore#(RVState s,
     `endif
     `ifdef RVC
       modList = append(modList, list(mkRV64C));
+    `endif
+    `ifdef RVXCHERI
+      //modList = append(modList, list(mkRV64XCHERI));
     `endif
   `endif
   let bid_probes <- mkISASim(s, modList);

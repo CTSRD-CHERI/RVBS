@@ -114,8 +114,9 @@ INFODIR = $(OUTPUTDIR)/$(RVBSNAME)-info
 BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -show-rule-rel \* \*
 #BSCFLAGS += -steps-warn-interval n
-BSCFLAGS += -steps-warn-interval 500000
-BSCFLAGS += +RTS -K20M -RTS
+BSCFLAGS += -steps-warn-interval 3000000
+#BSCFLAGS += +RTS -K20M -RTS
+BSCFLAGS += +RTS -K40M -RTS
 
 BSC = bsc
 #XXX Bluespec is not compatible with gcc > 4.9
