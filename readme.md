@@ -6,14 +6,14 @@
 
 RVBS currently supports:
 
-- 32-bit and 64-bit RISC-V *I* base integer instructions
-- RISC-V *M* integer multiply/divide instructions
-- RISC-V *C* compressed instructions
-- *Machine/Supervisor/User privilege modes*
-- *Sv32* virtual memory translation mechanism **without Sv32 memory protection features**
-- *PMP* physical memory protection mechanism
+- 32-bit and 64-bit RISC-V **I** base integer instructions
+- RISC-V **M** integer multiply/divide instructions
+- RISC-V **C** compressed instructions
+- **Machine/Supervisor/User** privilege modes
+- **Sv32** virtual memory translation mechanism **without Sv32 memory protection features**
+- **PMP** physical memory protection mechanism
 
-RVBS supports traps between privilege modes, but *Supervisor mode* is not fully implemented.
+RVBS supports traps between privilege modes, but **Supervisor mode** is not fully implemented.
 
 ## Building RVBS
 
@@ -88,10 +88,11 @@ $ make RVC=1 XLEN=32 verilog
 ```
 The generated verilog can be found in the `output/rvbs-rv32ic-vdir/` folder. Specifically, the `rvbs` verilog module with an AXI4Lite interface can be found in `output/rvbs-rv32ic-vdir/rvbs.v`.
 
-### TODO
+### TODOs, upcoming features and experimentations...
 
-Not currently implemented:
-- `RVN` can be used to enable the *N* extention for *User mode* interrupt and exception support
+- sv39/sv48 memory virtualisation
+- N extention for User mode interrupt and exception support
+- CHERI extension
 
 ## References
 
