@@ -94,7 +94,9 @@ module mkCSRs(CSRs);
   // machine information registers
   //////////////////////////////////////////////////////////////////////////////
   csrs.mvendorid <- mkCSR(defaultValue); // mvendorid 12'hF11
-  csrs.marchid   <- mkCSR(0); // marchid 12'hF12
+  //csrs.marchid   <- mkCSR(0); // marchid 12'hF12
+  // XXX recently allocated marchid: https://github.com/riscv/riscv-isa-manual/blob/master/marchid.md
+  csrs.marchid   <- mkCSR(10); // marchid 12'hF12
   csrs.mimpid    <- mkCSR(0); // mimpid 12'hF13
   csrs.mhartid   <- mkCSR(0); // mhartid 12'hF14
 
