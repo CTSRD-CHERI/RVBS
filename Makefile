@@ -124,7 +124,7 @@ BSC = bsc
 CC = gcc-4.8
 CXX = g++-4.8
 
-all: sim sim-cheri isa-test rvfi-dii verilog clint-verilog
+all: sim isa-test rvfi-dii verilog
 
 ifeq ($(RVXCHERI),1)
 TOPSIM = $(RVBSSRCDIR)/toplevels/Top_cheri.bsv
