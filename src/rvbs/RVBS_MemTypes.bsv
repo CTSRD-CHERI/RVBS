@@ -51,6 +51,8 @@ typedef XLEN DVMMemWidth;
 
 // RV load/store/ifetch util types
 typedef enum {READ, WRITE, IFETCH} RVMemReqType deriving (Bits, Eq, FShow);
+typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
+typedef struct { String name; Integer numBytes; } StrArgs;
 
 typedef struct
 {

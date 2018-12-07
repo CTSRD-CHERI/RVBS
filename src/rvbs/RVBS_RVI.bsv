@@ -37,6 +37,7 @@ import BitPat :: *;
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_Traces :: *;
+import RVBS_MemAccess :: *;
 
 `ifdef XLEN32
 /////////////////////////
@@ -392,63 +393,8 @@ endaction;
   |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
   +-------------------------------------+--------+--------+--------+----------+
 */
-typedef struct { String name; Integer numBytes; Bool sgnExt; } LoadArgs;
-function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = list(
-  action
-    VAddr vaddr = s.rGPR(rs1) + signExtend(imm);
-  `ifdef RVFI_DII
-    s.mem_addr[0] <= vaddr;
-  `endif
-  `ifdef SUPERVISOR_MODE
-    let req = aReqRead(vaddr, args.numBytes, Invalid);
-    s.dvm.sink.put(req);
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "vmTranslate lookup step");
-  endaction, action
-    let rsp <- s.dvm.source.get();
-    itrace(s.pc, fshow(rsp));
-    PAddr paddr = rsp.addr;
-  `else
-    PAddr paddr = toPAddr(vaddr);
-  `endif
-  `ifdef PMP
-  `ifdef SUPERVISOR_MODE
-    let req = aReqRead(paddr, args.numBytes, rsp.mExc);
-  `else
-    let req = aReqRead(paddr, args.numBytes, Invalid);
-  `endif
-    s.dpmp.sink.put(req);
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "pmp lookup step");
-  endaction, action
-    let rsp <- s.dpmp.source.get();
-    itrace(s.pc, fshow(rsp));
-    RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
-  `else
-    RVMemReq req = RVReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
-  `endif
-    s.dmem.sink.put(req);
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem req step");
-  endaction, action
-    let rsp <- s.dmem.source.get();
-    case (rsp) matches
-      tagged RVReadRsp .r: begin
-        `ifdef RVXCHERI
-        match {.captag, .data} = r;
-        `else
-        let data = r;
-        `endif
-        Bool isNeg = unpack(data[(args.numBytes*8)-1]);
-        Bit#(XLEN) mask = (~0) << args.numBytes*8;
-        s.wGPR(rd, (args.sgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
-      end
-      tagged RVBusError: action trap(s, LoadAccessFault); endaction
-    endcase
-    itrace(s.pc, fshow(rsp));
-    logInst(s.pc, fmtInstI(args.name, rd, rs1, imm), "mem rsp step");
-  endaction);
-// TODO deal with exceptions
+function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+  readData(s, args, s.rGPR(rs1) + signExtend(imm), rd);
 
 /*
   S-type
@@ -458,74 +404,10 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
   +----------------------------+--------+--------+--------+--------+----------+
 */
-typedef struct { String name; Integer numBytes; } StrArgs;
 function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-  return list(action
-    VAddr vaddr = s.rGPR(rs1) + signExtend(imm);
-  `ifdef RVFI_DII
-    s.mem_addr[0] <= vaddr;
-  `endif
-  `ifdef SUPERVISOR_MODE
-    let req = aReqWrite(vaddr, args.numBytes, Invalid);
-    s.dvm.sink.put(req);
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "vmTranslate lookup step");
-  endaction, action
-    let rsp <- s.dvm.source.get();
-    itrace(s.pc, fshow(rsp));
-    PAddr paddr = rsp.addr;
-  `else
-    PAddr paddr = toPAddr(vaddr);
-  `endif
-  `ifdef PMP
-  `ifdef SUPERVISOR_MODE
-    let req = aReqWrite(paddr, args.numBytes, rsp.mExc);
-  `else
-    let req = aReqWrite(paddr, args.numBytes, Invalid);
-  `endif
-    s.dpmp.sink.put(req);
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "pmp lookup step");
-  endaction, action
-    let rsp <- s.dpmp.source.get();
-    itrace(s.pc, fshow(rsp));
-    RVMemReq req = RVWriteReq {
-      addr: rsp.addr,
-      byteEnable: ~((~0) << args.numBytes),
-      data: zeroExtend(s.rGPR(rs2))
-      `ifdef RVXCHERI
-      , captag: 0
-      `endif
-    };
-  `else
-    RVMemReq req = RVWriteReq {
-      addr: paddr,
-      byteEnable: ~((~0) << args.numBytes),
-      data: zeroExtend(s.rGPR(rs2))
-      `ifdef RVXCHERI
-      , captag: 0
-      `endif
-    };
-  `endif
-    s.dmem.sink.put(req);
-  `ifdef RVFI_DII
-    s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
-    s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
-  `endif
-    itrace(s.pc, fshow(req));
-    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem req step");
-  endaction, action
-    let rsp <- s.dmem.source.get();
-    case (rsp) matches
-      tagged RVWriteRsp .w: noAction;
-      tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
-    endcase
-    itrace(s.pc, fshow(rsp));
-    logInst(s.pc, fmtInstS(args.name, rs1, rs2, imm), "mem rsp step");
-  endaction);
+  return writeData(s, args, s.rGPR(rs1) + signExtend(imm), zeroExtend(s.rGPR(rs2)));
 endfunction
-// TODO deal with exceptions
 
 //////////////////
 // Memory Model //
