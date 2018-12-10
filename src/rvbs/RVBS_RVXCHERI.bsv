@@ -35,45 +35,10 @@ import  RVBS_Types :: *;
 import   RVBS_Trap :: *;
 import RVBS_Traces :: *;
 
-// XXX placeholders
-////////////////////////////////////////////////////////////////////////////////
-typedef enum {
-  CapExcNone              = 'h00, // None
-  CapExcLength            = 'h01, // Length Violation
-  CapExcTag               = 'h02, // Tag Violation
-  CapExcSeal              = 'h03, // Seal Violation
-  CapExcType              = 'h04, // Type Violation
-  CapExcCall              = 'h05, // Call Trap
-  CapExcRet               = 'h06, // Return Trap
-  CapExcUnderflowTSS      = 'h07, // Underflow of trusted system stack
-  CapExcUser              = 'h08, // User-defined Permision Violation
-  CapExcTLBNoStore        = 'h09, // TLB prohibits store capability
-  CapExcInexact           = 'h0a, // Requested bounds cannot be represented exactly
-  CapExcGlobal            = 'h10, // Global Violation
-  CapExcPermExe           = 'h11, // Permit_Execute Violation
-  CapExcPermLoad          = 'h12, // Permit_Load Violation
-  CapExcPermStore         = 'h13, // Permit_Store Violation
-  CapExcPermLoadCap       = 'h14, // Permit_Load_Capability Violation
-  CapExcPermStoreCap      = 'h15, // Permit_Store_Capability Violation
-  CapExcPermStoreLocalCap = 'h16, // Permit_Store_Local_Capability Violation
-  CapExcPermSeal          = 'h17, // Permit_Seal Violation
-  CapExcAccessSysReg      = 'h18, // Access_System_Registers Violation
-  CapExcPermCCall         = 'h19, // Premit_CCall Violation
-  CapExcPermCCallIDC      = 'h1a, // Premit_CCall IDC Violation
-  CapExcPermUnseal        = 'h1c  // Premit_Unseal Violation
-} CapExcCode deriving (Bits, Eq, FShow);
-function Action capTrap (RVState s, CapExcCode exc, Bit#(5) idx) = noAction;
 function Action notImplemented(String str) = action
   $display(str + " is not currently implemented");
   $finish(0);
 endaction;
-// Helper functions
-////////////////////////////////////////////////////////////////////////////////
-
-function Bool isCap(CapType cap) = case (cap) matches
-  tagged Cap ._: return True;
-  default: return False;
-endcase;
 
 // Capability inspection instructions
 ////////////////////////////////////////////////////////////////////////////////

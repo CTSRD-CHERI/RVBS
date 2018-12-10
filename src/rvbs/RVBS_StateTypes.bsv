@@ -74,6 +74,11 @@ typedef union tagged {
   RawCap Cap;
   Bit#(TAdd#(XLEN, XLEN)) Data;
 } CapType deriving (Bits);
+// Helper functions
+function Bool isCap(CapType cap) = case (cap) matches
+  tagged Cap ._: return True;
+  default: return False;
+endcase;
 `endif
 
 // state type
@@ -96,6 +101,9 @@ typedef struct {
   function Action f(Bit#(5) idx, CapType data) wCR;
   `endif
   CSRs csrs;
+  `ifdef RVXCHERI
+  ArchReg#(CapType) ddc;
+  `endif
   RVMem imem;
   RVMem dmem;
   RVMem ivmmem;

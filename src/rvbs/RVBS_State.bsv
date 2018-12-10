@@ -90,9 +90,9 @@ module [Module] mkState#(
   s.instByteSz <- mkBypassRegU;
   s.isTrap <- mkCReg(2, False);
   `ifdef RVXCHERI
-  RawCap r0 = nullCap;
-  RawCap rs = almightyCap;
-  s.regFile <- mkRegFileInitZ(Data(pack(r0)), Cap(rs));
+  RawCap nCap = nullCap;
+  RawCap yCap = almightyCap;
+  s.regFile <- mkRegFileInitZ(Data(pack(nCap)), Cap(yCap));
   function readGPR(i); return truncate(s.regFile.r[i].Data); endfunction
   s.rGPR = readGPR;
   function writeGPR(i, x) = action s.regFile.r[i] <= Data(zeroExtend(x)); endaction;
@@ -109,6 +109,10 @@ module [Module] mkState#(
   s.wGPR = writeGPR;
   `endif
   s.csrs <- mkCSRs();
+  `ifdef RVXCHERI
+  // CHERI specific state
+  s.ddc <- mkArchReg(Cap(yCap));
+  `endif
   // Memory interfaces
   s.imem = imem;
   s.dmem = dmem;

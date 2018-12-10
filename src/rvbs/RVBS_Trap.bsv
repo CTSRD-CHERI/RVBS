@@ -125,6 +125,18 @@ instance Trap#(function Action f(RVState s, ExcCode code, Action side_effect));
   endaction;
 endinstance
 
+`ifdef RVXCHERI
+typeclass CapTrap#(type a); a capTrap; endtypeclass
+
+instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(6) idx));
+  function capTrap(s, exc, idx) = noAction; // TODO
+endinstance
+
+instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(5) idx));
+  function capTrap(s, exc, idx) = noAction; // TODO & zeroExtend
+endinstance
+`endif
+
 function Maybe#(IntCode) checkIRQ (RVState s);
   Bool lvl_ie = case (s.currentPrivLvl)
     M: s.csrs.mstatus.mie;

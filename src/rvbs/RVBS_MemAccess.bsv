@@ -26,7 +26,10 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import BlueUtils :: *;
 import BlueBasics :: *;
+
+import CHERICap :: *;
 
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
@@ -35,14 +38,14 @@ import RVBS_Traces :: *;
 // Read access
 
 function List#(Action) readMem(
-    RVState s,
-    LoadArgs args,
-    VAddr vaddr,
-    Bit#(5) dest
-    `ifdef RVXCHERI
-    , Bool capRead
-    `endif
-  ) = list(
+  RVState s,
+  LoadArgs args,
+  VAddr vaddr,
+  Bit#(5) dest
+  `ifdef RVXCHERI
+  , Bool capRead
+  `endif
+) = list(
   action
   `ifdef RVFI_DII
     s.mem_addr[0] <= vaddr;
@@ -81,14 +84,15 @@ function List#(Action) readMem(
       tagged RVReadRsp .r: begin
         `ifdef RVXCHERI
         match {.captag, .data} = r;
+        RawCap newCap = unpack(truncate(data));
         `else
         let data = r;
         `endif
         Bool isNeg = unpack(data[(args.numBytes*8)-1]);
         Bit#(XLEN) mask = (~0) << args.numBytes*8;
         `ifdef RVXCHERI
-        let newData = Data(data);
-        if (captag) newData = Cap(unpack(data));
+        let newData = Data(pack(newCap));
+        if (captag == 1) newData = Cap(newCap);
         if (capRead) s.wCR(dest, newData);
         else
         `endif
@@ -105,11 +109,13 @@ function List#(Action) readData(
   LoadArgs args,
   VAddr vaddr,
   Bit#(5) dest
-) = readMem(s, args, vaddr, dest
-  `ifdef RVXCHERI
-  , False
+) =
+  `ifndef RVXCHERI
+  readMem(s, args, vaddr, dest);
+  `else
+  readMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, dest, False);
   `endif
-);
+  // XXX 6'b100001 is ddc
 
 `ifdef RVXCHERI
 function List#(Action) readCap(
@@ -117,7 +123,47 @@ function List#(Action) readCap(
   LoadArgs args,
   VAddr vaddr,
   Bit#(5) dest
-) = readMem(s, args, vaddr, dest, True);
+) = readMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, dest, True);
+// XXX 6'b100001 is ddc
+
+function List#(Action) capReadData(
+  RVState s,
+  LoadArgs args,
+  Bit#(5) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  Bit#(5) dest
+) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, False);
+
+function List#(Action) capReadCap(
+  RVState s,
+  LoadArgs args,
+  Bit#(5) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  Bit#(5) dest
+) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, True);
+
+function List#(Action) readMem_cap_check(
+  RVState s,
+  LoadArgs args,
+  Bit#(6) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  Bit#(5) dest,
+  Bool capRead
+);
+  /*
+  if (!isCap(cap)) return list(capTrap(s, CapExcTag, capIdx));
+  else if (getSealed(cap.Cap)) return list(capTrap(s, CapExcSeal, capIdx));
+  else if (!getPerms(cap.Cap).permitLoad) return list(capTrap(s, CapExcPermLoad, capIdx));
+  else if (capRead && !getPerms(cap.Cap).permitLoadCap) return list(capTrap(s, CapExcPermLoadCap, capIdx));
+  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return list(capTrap(s, CapExcLength, capIdx));
+  else if (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap)) return list(capTrap(s, CapExcLength, capIdx));
+  else return readMem(s, args, vaddr, dest, capRead);
+  */
+  return list(noAction);
+endfunction
 `endif
 
 // Write access
@@ -202,8 +248,8 @@ function List#(Action) writeData(
 `ifdef RVXCHERI
 function List#(Action) writeCap(
   RVState s,
-  LoadArgs args,
+  StrArgs args,
   VAddr vaddr,
   CapType cap
-) = writeMem(s, args, vaddr, cap.Data, isCap(cap));
+) = writeMem(s, args, vaddr, zeroExtend(pack(cap.Data)), isCap(cap));
 `endif
