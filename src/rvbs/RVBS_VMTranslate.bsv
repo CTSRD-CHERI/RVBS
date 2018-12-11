@@ -145,7 +145,11 @@ module [Module] mkSv32PageWalker#(
       endaction;
       let tmp <- mem.source.get();
       case (tmp) matches
+        `ifndef RVXCHERI
         tagged RVReadRsp .r: begin
+        `else
+        tagged RVReadRsp {._, .r}: begin
+        `endif
           Sv32PTE pte = unpack(truncate(r));
           printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - ", fshow(pte)));
           // invalid pte
