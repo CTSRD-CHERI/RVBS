@@ -26,6 +26,7 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import Recipe :: *;
 import BlueUtils :: *;
 import BlueBasics :: *;
 
@@ -36,8 +37,9 @@ import RVBS_Trap :: *;
 import RVBS_Traces :: *;
 
 // Read access
+////////////////////////////////////////////////////////////////////////////////
 
-function List#(Action) readMem(
+function Recipe readMem(
   RVState s,
   LoadArgs args,
   VAddr vaddr,
@@ -45,7 +47,7 @@ function List#(Action) readMem(
   `ifdef RVXCHERI
   , Bool capRead
   `endif
-) = list(
+) = rFastSeq(rBlock(
   action
   `ifdef RVFI_DII
     s.mem_addr[0] <= vaddr;
@@ -101,10 +103,11 @@ function List#(Action) readMem(
       tagged RVBusError: action trap(s, LoadAccessFault); endaction
     endcase
     itrace(s.pc, fshow(rsp));
-  endaction);
+  endaction
+));
 // TODO deal with exceptions
 
-function List#(Action) readData(
+function Recipe readData(
   RVState s,
   LoadArgs args,
   VAddr vaddr,
@@ -118,7 +121,7 @@ function List#(Action) readData(
   // XXX 6'b100001 is ddc
 
 `ifdef RVXCHERI
-function List#(Action) readCap(
+function Recipe readCap(
   RVState s,
   LoadArgs args,
   VAddr vaddr,
@@ -126,7 +129,7 @@ function List#(Action) readCap(
 ) = readMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, dest, True);
 // XXX 6'b100001 is ddc
 
-function List#(Action) capReadData(
+function Recipe capReadData(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
@@ -135,7 +138,7 @@ function List#(Action) capReadData(
   Bit#(5) dest
 ) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, False);
 
-function List#(Action) capReadCap(
+function Recipe capReadCap(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
@@ -144,7 +147,7 @@ function List#(Action) capReadCap(
   Bit#(5) dest
 ) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, True);
 
-function List#(Action) readMem_cap_check(
+function Recipe readMem_cap_check(
   RVState s,
   LoadArgs args,
   Bit#(6) capIdx,
@@ -152,28 +155,25 @@ function List#(Action) readMem_cap_check(
   VAddr vaddr,
   Bit#(5) dest,
   Bool capRead
-);
-  /*
-  if (!isCap(cap)) return list(capTrap(s, CapExcTag, capIdx));
-  else if (getSealed(cap.Cap)) return list(capTrap(s, CapExcSeal, capIdx));
-  else if (!getPerms(cap.Cap).permitLoad) return list(capTrap(s, CapExcPermLoad, capIdx));
-  else if (capRead && !getPerms(cap.Cap).permitLoadCap) return list(capTrap(s, CapExcPermLoadCap, capIdx));
-  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return list(capTrap(s, CapExcLength, capIdx));
-  else if (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap)) return list(capTrap(s, CapExcLength, capIdx));
-  else return readMem(s, args, vaddr, dest, capRead);
-  */
-  return list(noAction);
-endfunction
+) = rFastSeq(rBlock(
+  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
+  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
+  rIfElse (!getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
+  rIfElse (capRead && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+    readMem(s, args, vaddr, dest, capRead)))))))
+));
 `endif
 
 // Write access
+////////////////////////////////////////////////////////////////////////////////
 
-function List#(Action) writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
+function Recipe writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
     `ifdef RVXCHERI
     , Bool isCap
     `endif
-  );
-  return list(action
+  ) = rFastSeq(rBlock(action
   `ifdef RVFI_DII
     s.mem_addr[0] <= vaddr;
   `endif
@@ -230,26 +230,65 @@ function List#(Action) writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) 
       tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
     endcase
     itrace(s.pc, fshow(rsp));
-  endaction);
-endfunction
+  endaction
+));
 // TODO deal with exceptions
 
-function List#(Action) writeData(
+function Recipe writeData(
   RVState s,
   StrArgs args,
   VAddr vaddr,
   Bit#(128) wdata
-) = writeMem(s, args, vaddr, wdata
-  `ifdef RVXCHERI
-  , False
+) =
+  `ifndef RVXCHERI
+  writeMem(s, args, vaddr, wdata);
+  `else
+  writeMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, wdata, False);
   `endif
-);
+  // XXX 6'b100001 is ddc
 
 `ifdef RVXCHERI
-function List#(Action) writeCap(
+function Recipe writeCap(
   RVState s,
   StrArgs args,
   VAddr vaddr,
   CapType cap
-) = writeMem(s, args, vaddr, zeroExtend(pack(cap.Data)), isCap(cap));
+) = writeMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, zeroExtend(pack(cap.Data)), isCap(cap));
+// XXX 6'b100001 is ddc
+
+function Recipe capWriteData(
+  RVState s,
+  StrArgs args,
+  Bit#(5) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  Bit#(128) wdata
+) = writeMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, wdata, False);
+
+function Recipe capWriteCap(
+  RVState s,
+  StrArgs args,
+  Bit#(5) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  CapType wcap
+) = writeMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, zeroExtend(pack(wcap.Data)), isCap(wcap));
+
+function Recipe writeMem_cap_check(
+  RVState s,
+  StrArgs args,
+  Bit#(6) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  Bit#(128) wdata,
+  Bool capWrite
+) = rFastSeq(rBlock(
+  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
+  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
+  rIfElse (!getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
+  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+    writeMem(s, args, vaddr, wdata, capWrite)))))))
+));
 `endif

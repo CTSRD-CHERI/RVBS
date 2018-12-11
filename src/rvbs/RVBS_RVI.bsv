@@ -29,6 +29,7 @@
 import Vector :: *;
 import Printf :: *;
 
+import Recipe :: *;
 import BID :: *;
 import BlueBasics :: *;
 import BlueUtils :: *;
@@ -393,7 +394,7 @@ endaction;
   |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
   +-------------------------------------+--------+--------+--------+----------+
 */
-function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+function Recipe load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
   readData(s, args, s.rGPR(rs1) + signExtend(imm), rd);
 
 /*
@@ -404,7 +405,7 @@ function List#(Action) load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1,
   |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
   +----------------------------+--------+--------+--------+--------+----------+
 */
-function List#(Action) store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
+function Recipe store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
   return writeData(s, args, s.rGPR(rs1) + signExtend(imm), zeroExtend(s.rGPR(rs2)));
 endfunction

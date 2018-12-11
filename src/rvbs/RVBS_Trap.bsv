@@ -27,6 +27,7 @@
  */
 
 import BID :: *;
+import Recipe :: *;
 import BlueUtils :: *;
 import BitPat :: *;
 import RVBS_Traces :: *;
@@ -134,6 +135,10 @@ endinstance
 
 instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(5) idx));
   function capTrap(s, exc, idx) = noAction; // TODO & zeroExtend
+endinstance
+
+instance CapTrap#(function Recipe capTrap (a x, b y, c z)) provisos (CapTrap#(function Action capTrap (a x, b y, c z)));
+  function capTrap(x, y, z) = rAct(capTrap(x, y, z));
 endinstance
 `endif
 
