@@ -36,6 +36,33 @@ import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_Traces :: *;
 
+`ifdef RVXCHERI
+// helpers
+typedef union tagged {
+  Tuple2#(Bit#(5), CapType) CapAccessHandle;
+  VAddr DDCAccessHandle;
+} MemAccessHandle;
+
+function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(RVState s, MemAccessHandle h);
+  Bit#(6) idx = ?;
+  CapType cap = ?;
+  VAddr vaddr = ?;
+  case (h) matches
+    tagged CapAccessHandle {.h_idx, .h_cap}: begin
+      idx = zeroExtend(h_idx);
+      cap = h_cap;
+      vaddr = truncate(getAddr(cap.Cap));
+    end
+    tagged DDCAccessHandle .h_addr: begin
+      idx = 6'b100001; // this is DDC
+      cap = s.ddc;
+      vaddr = truncate(getBase(cap.Cap)) + h_addr;
+    end
+  endcase
+  return tuple3(idx, cap, vaddr);
+endfunction
+`endif
+
 // Read access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,7 +143,7 @@ function Recipe readData(
   `ifndef RVXCHERI
   readMem(s, args, vaddr, dest);
   `else
-  readMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, dest, False);
+  readMem_cap_check(s, args, DDCAccessHandle(vaddr), dest, False);
   `endif
   // XXX 6'b100001 is ddc
 
@@ -126,44 +153,40 @@ function Recipe readCap(
   LoadArgs args,
   VAddr vaddr,
   Bit#(5) dest
-) = readMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, dest, True);
+) = readMem_cap_check(s, args, DDCAccessHandle(vaddr), dest, True);
 // XXX 6'b100001 is ddc
 
 function Recipe capReadData(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
-  CapType cap,
-  VAddr vaddr,
   Bit#(5) dest
-) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, False);
+) = readMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, False);
 
 function Recipe capReadCap(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
-  CapType cap,
-  VAddr vaddr,
   Bit#(5) dest
-) = readMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, dest, True);
+) = readMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, True);
 
 function Recipe readMem_cap_check(
   RVState s,
   LoadArgs args,
-  Bit#(6) capIdx,
-  CapType cap,
-  VAddr vaddr,
+  MemAccessHandle handle,
   Bit#(5) dest,
   Bool capRead
-) = rFastSeq(rBlock(
+);
+  match {.capIdx, .cap, .vaddr} = unpackHandle(s, handle);
+  return rFastSeq(rBlock(
   rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
   rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
   rIfElse (!getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
   rIfElse (capRead && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
   rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
   rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-    readMem(s, args, vaddr, dest, capRead)))))))
-));
+    readMem(s, args, vaddr, dest, capRead)))))))));
+endfunction
 `endif
 
 // Write access
@@ -243,7 +266,7 @@ function Recipe writeData(
   `ifndef RVXCHERI
   writeMem(s, args, vaddr, wdata);
   `else
-  writeMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, wdata, False);
+  writeMem_cap_check(s, args, DDCAccessHandle(vaddr), wdata, False);
   `endif
   // XXX 6'b100001 is ddc
 
@@ -253,42 +276,38 @@ function Recipe writeCap(
   StrArgs args,
   VAddr vaddr,
   CapType cap
-) = writeMem_cap_check(s, args, 6'b100001, s.ddc, truncate(getBase(s.ddc.Cap)) + vaddr, zeroExtend(pack(cap.Data)), isCap(cap));
+) = writeMem_cap_check(s, args, DDCAccessHandle(vaddr), zeroExtend(pack(cap.Data)), isCap(cap));
 // XXX 6'b100001 is ddc
 
 function Recipe capWriteData(
   RVState s,
   StrArgs args,
   Bit#(5) capIdx,
-  CapType cap,
-  VAddr vaddr,
   Bit#(128) wdata
-) = writeMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, wdata, False);
+) = writeMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), wdata, False);
 
 function Recipe capWriteCap(
   RVState s,
   StrArgs args,
   Bit#(5) capIdx,
-  CapType cap,
-  VAddr vaddr,
   CapType wcap
-) = writeMem_cap_check(s, args, zeroExtend(capIdx), cap, vaddr, zeroExtend(pack(wcap.Data)), isCap(wcap));
+) = writeMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), zeroExtend(pack(wcap.Data)), isCap(wcap));
 
 function Recipe writeMem_cap_check(
   RVState s,
   StrArgs args,
-  Bit#(6) capIdx,
-  CapType cap,
-  VAddr vaddr,
+  MemAccessHandle handle,
   Bit#(128) wdata,
   Bool capWrite
-) = rFastSeq(rBlock(
+);
+  match {.capIdx, .cap, .vaddr} = unpackHandle(s, handle);
+  return rFastSeq(rBlock(
   rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
   rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
   rIfElse (!getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
   rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
   rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
   rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-    writeMem(s, args, vaddr, wdata, capWrite)))))))
-));
+    writeMem(s, args, vaddr, wdata, capWrite)))))))));
+endfunction
 `endif
