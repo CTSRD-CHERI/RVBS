@@ -28,6 +28,7 @@
 
 import ConfigReg :: *;
 import Vector :: *;
+import SpecialFIFOs :: *;
 
 import BID :: *;
 import BlueUtils :: *;
@@ -114,6 +115,8 @@ module [Module] mkState#(
   s.ddc <- mkArchReg(Cap(yCap));
   `endif
   // Memory interfaces
+  s.readMem  <- mkBypassFIFOF;
+  s.writeMem <- mkBypassFIFOF;
   s.imem = imem;
   s.dmem = dmem;
   `ifdef SUPERVISOR_MODE

@@ -40,7 +40,7 @@ module [Module] mkRVBSCore#(RVState s,
   (BIDProbes);
 
   // instanciating simulator
-  let modList = list(init, iFetch, mkRVTrap, mkRV32I);
+  let modList = list(init, iFetch, mkRVCommon, mkRVTrap, mkRV32I);
   `ifdef RVM
     modList = append(modList, list(mkRV32M));
   `endif

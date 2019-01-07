@@ -26,6 +26,8 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import FIFOF :: *;
+
 import Recipe :: *;
 import BlueUtils :: *;
 import BlueBasics :: *;
@@ -36,102 +38,99 @@ import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
 
-`ifdef RVXCHERI
-// helpers
-typedef union tagged {
-  Tuple2#(Bit#(5), CapType) CapAccessHandle;
-  VAddr DDCAccessHandle;
-} MemAccessHandle;
-
-function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(RVState s, MemAccessHandle h);
-  Bit#(6) idx = ?;
-  CapType cap = ?;
-  VAddr vaddr = ?;
-  case (h) matches
-    tagged CapAccessHandle {.h_idx, .h_cap}: begin
-      idx = zeroExtend(h_idx);
-      cap = h_cap;
-      vaddr = truncate(getAddr(cap.Cap));
-    end
-    tagged DDCAccessHandle .h_addr: begin
-      idx = 6'b100001; // this is DDC
-      cap = s.ddc;
-      vaddr = truncate(getBase(cap.Cap)) + h_addr;
-    end
-  endcase
-  return tuple3(idx, cap, vaddr);
-endfunction
-`endif
-
 // Read access
 ////////////////////////////////////////////////////////////////////////////////
 
-function Recipe readMem(
+function Recipe doReadMem(
   RVState s,
-  LoadArgs args,
+  `ifndef RVXCHERI
   VAddr vaddr,
-  Bit#(5) dest
+  `else
+  MemAccessHandle handle,
+  `endif
+  Bit#(5) dest,
+  BitPO#(4) numBytes,
+  Bool sgnExt
   `ifdef RVXCHERI
   , Bool capRead
   `endif
-) = rFastSeq(rBlock(
-  action
-  `ifdef RVFI_DII
-    s.mem_addr[0] <= vaddr;
-  `endif
-  `ifdef SUPERVISOR_MODE
-    let req = aReqRead(vaddr, args.numBytes, Invalid);
-    s.dvm.sink.put(req);
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dvm.source.get();
-    itrace(s, fshow(rsp));
-    PAddr paddr = rsp.addr;
+);
+  `ifdef RVXCHERI
+  match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, handle);
+  return rFastSeq(rBlock(
+  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
+  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
+  rIfElse (!getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
+  rIfElse (capRead && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+    rFastSeq(rBlock(
   `else
-    PAddr paddr = toPAddr(vaddr);
+  return rFastSeq(rBlock(
   `endif
-  `ifdef PMP
-  `ifdef SUPERVISOR_MODE
-    let req = aReqRead(paddr, args.numBytes, rsp.mExc);
+    action
+    `ifdef RVFI_DII
+      s.mem_addr[0] <= vaddr;
+    `endif
+    `ifdef SUPERVISOR_MODE
+      let req = aReqRead(vaddr, numBytes, Invalid);
+      s.dvm.sink.put(req);
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dvm.source.get();
+      itrace(s, fshow(rsp));
+      PAddr paddr = rsp.addr;
+    `else
+      PAddr paddr = toPAddr(vaddr);
+    `endif
+    `ifdef PMP
+    `ifdef SUPERVISOR_MODE
+      let req = aReqRead(paddr, numBytes, rsp.mExc);
+    `else
+      let req = aReqRead(paddr, numBytes, Invalid);
+    `endif
+      s.dpmp.sink.put(req);
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dpmp.source.get();
+      itrace(s, fshow(rsp));
+      RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: numBytes};
+    `else
+      RVMemReq req = RVReadReq {addr: paddr, numBytes: numBytes};
+    `endif
+      s.dmem.sink.put(req);
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dmem.source.get();
+      case (rsp) matches
+        tagged RVReadRsp .r: begin
+          `ifdef RVXCHERI
+          match {.captag, .data} = r;
+          RawCap newCap = unpack(truncate(data));
+          `else
+          let data = r;
+          `endif
+          let topIdx = {readBitPO(numBytes), 3'b000};
+          Bool isNeg = unpack(data[topIdx-1]);
+          Bit#(XLEN) mask = (~0) << topIdx;
+          `ifdef RVXCHERI
+          let newData = Data(pack(newCap));
+          if (captag == 1) newData = Cap(newCap);
+          if (capRead) s.wCR(dest, newData);
+          else
+          `endif
+          s.wGPR(dest, (sgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
+        end
+        tagged RVBusError: action trap(s, LoadAccessFault); endaction
+      endcase
+      itrace(s, fshow(rsp));
+    endaction
+  `ifdef RVXCHERI
+  ))))))))));
   `else
-    let req = aReqRead(paddr, args.numBytes, Invalid);
+  ));
   `endif
-    s.dpmp.sink.put(req);
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dpmp.source.get();
-    itrace(s, fshow(rsp));
-    RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
-  `else
-    RVMemReq req = RVReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
-  `endif
-    s.dmem.sink.put(req);
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dmem.source.get();
-    case (rsp) matches
-      tagged RVReadRsp .r: begin
-        `ifdef RVXCHERI
-        match {.captag, .data} = r;
-        RawCap newCap = unpack(truncate(data));
-        `else
-        let data = r;
-        `endif
-        Bool isNeg = unpack(data[(args.numBytes*8)-1]);
-        Bit#(XLEN) mask = (~0) << args.numBytes*8;
-        `ifdef RVXCHERI
-        let newData = Data(pack(newCap));
-        if (captag == 1) newData = Cap(newCap);
-        if (capRead) s.wCR(dest, newData);
-        else
-        `endif
-        s.wGPR(dest, (args.sgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
-      end
-      tagged RVBusError: action trap(s, LoadAccessFault); endaction
-    endcase
-    itrace(s, fshow(rsp));
-  endaction
-));
+endfunction
 // TODO deal with exceptions
 
 function Recipe readData(
@@ -141,11 +140,10 @@ function Recipe readData(
   Bit#(5) dest
 ) =
   `ifndef RVXCHERI
-  readMem(s, args, vaddr, dest);
+  rAct(s.readMem.enq(tuple4(vaddr, dest, fromInteger(args.numBytes), args.sgnExt)));
   `else
-  readMem_cap_check(s, args, DDCAccessHandle(vaddr), dest, False);
+  rAct(s.readMem.enq(tuple5(DDCAccessHandle(vaddr), dest, fromInteger(args.numBytes), args.sgnExt, False)));
   `endif
-  // XXX 6'b100001 is ddc
 
 `ifdef RVXCHERI
 function Recipe readCap(
@@ -153,108 +151,116 @@ function Recipe readCap(
   LoadArgs args,
   VAddr vaddr,
   Bit#(5) dest
-) = readMem_cap_check(s, args, DDCAccessHandle(vaddr), dest, True);
-// XXX 6'b100001 is ddc
+) = rAct(s.readMem.enq(tuple5(DDCAccessHandle(vaddr), dest, fromInteger(args.numBytes), args.sgnExt, True)));
 
 function Recipe capReadData(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
   Bit#(5) dest
-) = readMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, False);
+) = rAct(s.readMem.enq(tuple5(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, fromInteger(args.numBytes), args.sgnExt, False)));
 
 function Recipe capReadCap(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
   Bit#(5) dest
-) = readMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, True);
-
-function Recipe readMem_cap_check(
-  RVState s,
-  LoadArgs args,
-  MemAccessHandle handle,
-  Bit#(5) dest,
-  Bool capRead
-);
-  match {.capIdx, .cap, .vaddr} = unpackHandle(s, handle);
-  return rFastSeq(rBlock(
-  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
-  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
-  rIfElse (!getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
-  rIfElse (capRead && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
-  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
-  rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-    readMem(s, args, vaddr, dest, capRead)))))))));
-endfunction
+) = rAct(s.readMem.enq(tuple5(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, fromInteger(args.numBytes), args.sgnExt, True)));
 `endif
 
 // Write access
 ////////////////////////////////////////////////////////////////////////////////
 
-function Recipe writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
-    `ifdef RVXCHERI
-    , Bool isCap
+function Recipe doWriteMem(
+  RVState s,
+  `ifndef RVXCHERI
+  VAddr vaddr,
+  `else
+  MemAccessHandle handle,
+  `endif
+  BitPO#(4) numBytes,
+  Bit#(128) wdata
+  `ifdef RVXCHERI
+  , Bool capWrite
+  `endif
+);
+  `ifdef RVXCHERI
+  match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, handle);
+  return rFastSeq(rBlock(
+  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
+  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
+  rIfElse (!getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
+  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+    rFastSeq(rBlock(
+  `else
+  return rFastSeq(rBlock(
+  `endif
+    action
+    `ifdef RVFI_DII
+      s.mem_addr[0] <= vaddr;
     `endif
-  ) = rFastSeq(rBlock(action
-  `ifdef RVFI_DII
-    s.mem_addr[0] <= vaddr;
-  `endif
-  `ifdef SUPERVISOR_MODE
-    let req = aReqWrite(vaddr, args.numBytes, Invalid);
-    s.dvm.sink.put(req);
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dvm.source.get();
-    itrace(s, fshow(rsp));
-    PAddr paddr = rsp.addr;
+    `ifdef SUPERVISOR_MODE
+      let req = aReqWrite(vaddr, readBitPO(numBytes), Invalid);
+      s.dvm.sink.put(req);
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dvm.source.get();
+      itrace(s, fshow(rsp));
+      PAddr paddr = rsp.addr;
+    `else
+      PAddr paddr = toPAddr(vaddr);
+    `endif
+    `ifdef PMP
+    `ifdef SUPERVISOR_MODE
+      let req = aReqWrite(paddr, readBitPO(numBytes), rsp.mExc);
+    `else
+      let req = aReqWrite(paddr, readBitPO(numBytes), Invalid);
+    `endif
+      s.dpmp.sink.put(req);
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dpmp.source.get();
+      itrace(s, fshow(rsp));
+      RVMemReq req = RVWriteReq {
+        addr: rsp.addr,
+        byteEnable: ~((~0) << readBitPO(numBytes)),
+        data: wdata
+        `ifdef RVXCHERI
+        , captag: pack(capWrite)
+        `endif
+      };
+    `else
+      RVMemReq req = RVWriteReq {
+        addr: paddr,
+        byteEnable: ~((~0) << readBitPO(numBytes)),
+        data: wdata
+        `ifdef RVXCHERI
+        , captag: pack(capWrite)
+        `endif
+      };
+    `endif
+      s.dmem.sink.put(req);
+    `ifdef RVFI_DII
+      s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
+      s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
+    `endif
+      itrace(s, fshow(req));
+    endaction, action
+      let rsp <- s.dmem.source.get();
+      case (rsp) matches
+        tagged RVWriteRsp .w: noAction;
+        tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
+      endcase
+      itrace(s, fshow(rsp));
+    endaction
+  `ifdef RVXCHERI
+  ))))))))));
   `else
-    PAddr paddr = toPAddr(vaddr);
+  ));
   `endif
-  `ifdef PMP
-  `ifdef SUPERVISOR_MODE
-    let req = aReqWrite(paddr, args.numBytes, rsp.mExc);
-  `else
-    let req = aReqWrite(paddr, args.numBytes, Invalid);
-  `endif
-    s.dpmp.sink.put(req);
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dpmp.source.get();
-    itrace(s, fshow(rsp));
-    RVMemReq req = RVWriteReq {
-      addr: rsp.addr,
-      byteEnable: ~((~0) << args.numBytes),
-      data: wdata
-      `ifdef RVXCHERI
-      , captag: pack(isCap)
-      `endif
-    };
-  `else
-    RVMemReq req = RVWriteReq {
-      addr: paddr,
-      byteEnable: ~((~0) << args.numBytes),
-      data: wdata
-      `ifdef RVXCHERI
-      , captag: pack(isCap)
-      `endif
-    };
-  `endif
-    s.dmem.sink.put(req);
-  `ifdef RVFI_DII
-    s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
-    s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
-  `endif
-    itrace(s, fshow(req));
-  endaction, action
-    let rsp <- s.dmem.source.get();
-    case (rsp) matches
-      tagged RVWriteRsp .w: noAction;
-      tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
-    endcase
-    itrace(s, fshow(rsp));
-  endaction
-));
+endfunction
 // TODO deal with exceptions
 
 function Recipe writeData(
@@ -264,11 +270,10 @@ function Recipe writeData(
   Bit#(128) wdata
 ) =
   `ifndef RVXCHERI
-  writeMem(s, args, vaddr, wdata);
+  rAct(s.writeMem.enq(tuple3(vaddr, fromInteger(args.numBytes), wdata)));
   `else
-  writeMem_cap_check(s, args, DDCAccessHandle(vaddr), wdata, False);
+  rAct(s.writeMem.enq(tuple4(DDCAccessHandle(vaddr), fromInteger(args.numBytes), wdata, False)));
   `endif
-  // XXX 6'b100001 is ddc
 
 `ifdef RVXCHERI
 function Recipe writeCap(
@@ -276,38 +281,19 @@ function Recipe writeCap(
   StrArgs args,
   VAddr vaddr,
   CapType cap
-) = writeMem_cap_check(s, args, DDCAccessHandle(vaddr), zeroExtend(pack(cap.Data)), isCap(cap));
-// XXX 6'b100001 is ddc
+) = rAct(s.writeMem.enq(tuple4(DDCAccessHandle(vaddr), fromInteger(args.numBytes), zeroExtend(pack(cap.Data)), isCap(cap))));
 
 function Recipe capWriteData(
   RVState s,
   StrArgs args,
   Bit#(5) capIdx,
   Bit#(128) wdata
-) = writeMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), wdata, False);
+) = rAct(s.writeMem.enq(tuple4(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), fromInteger(args.numBytes), wdata, False)));
 
 function Recipe capWriteCap(
   RVState s,
   StrArgs args,
   Bit#(5) capIdx,
   CapType wcap
-) = writeMem_cap_check(s, args, CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), zeroExtend(pack(wcap.Data)), isCap(wcap));
-
-function Recipe writeMem_cap_check(
-  RVState s,
-  StrArgs args,
-  MemAccessHandle handle,
-  Bit#(128) wdata,
-  Bool capWrite
-);
-  match {.capIdx, .cap, .vaddr} = unpackHandle(s, handle);
-  return rFastSeq(rBlock(
-  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
-  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
-  rIfElse (!getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
-  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
-  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
-  rIfElse (zeroExtend(vaddr) + fromInteger(args.numBytes) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-    writeMem(s, args, vaddr, wdata, capWrite)))))))));
-endfunction
+) = rAct(s.writeMem.enq(tuple4(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), fromInteger(args.numBytes), zeroExtend(pack(wcap.Data)), isCap(wcap))));
 `endif

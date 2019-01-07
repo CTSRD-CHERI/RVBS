@@ -27,6 +27,7 @@
  */
 
 import Vector :: *;
+import FIFOF :: *;
 
 import BID :: *;
 import BlueUtils :: *;
@@ -79,6 +80,30 @@ function Bool isCap(CapType cap) = case (cap) matches
   tagged Cap ._: return True;
   default: return False;
 endcase;
+// Capability handle helper types
+typedef union tagged {
+  Tuple2#(Bit#(5), CapType) CapAccessHandle;
+  VAddr DDCAccessHandle;
+} MemAccessHandle deriving (Bits);
+
+function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, MemAccessHandle h);
+  Bit#(6) idx = ?;
+  CapType cap = ?;
+  VAddr vaddr = ?;
+  case (h) matches
+    tagged CapAccessHandle {.h_idx, .h_cap}: begin
+      idx = zeroExtend(h_idx);
+      cap = h_cap;
+      vaddr = truncate(getAddr(cap.Cap));
+    end
+    tagged DDCAccessHandle .h_addr: begin
+      idx = 6'b100001; // this is DDC
+      cap = ddc;
+      vaddr = truncate(getBase(cap.Cap)) + h_addr;
+    end
+  endcase
+  return tuple3(idx, cap, vaddr);
+endfunction
 `endif
 
 // state type
@@ -103,6 +128,11 @@ typedef struct {
   CSRs csrs;
   `ifdef RVXCHERI
   ArchReg#(CapType) ddc;
+  FIFOF#(Tuple5#(MemAccessHandle, Bit#(5), BitPO#(4), Bool, Bool)) readMem;
+  FIFOF#(Tuple4#(MemAccessHandle, BitPO#(4), Bit#(128), Bool)) writeMem;
+  `else
+  FIFOF#(Tuple4#(VAddr, Bit#(5), BitPO#(4), Bool)) readMem;
+  FIFOF#(Tuple3#(VAddr, BitPO#(4), Bit#(128))) writeMem;
   `endif
   RVMem imem;
   RVMem dmem;

@@ -26,16 +26,16 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import            BID :: *;
-import         BitPat :: *;
-import         Recipe :: *;
+import             BID :: *;
+import          BitPat :: *;
+import          Recipe :: *;
 
-import       CHERICap :: *;
+import        CHERICap :: *;
 
-import     RVBS_Types :: *;
-import      RVBS_Trap :: *;
-import    RVBS_Traces :: *;
-import RVBS_MemAccess :: *;
+import      RVBS_Types :: *;
+import       RVBS_Trap :: *;
+import RVBS_TraceInsts :: *;
+import  RVBS_MemAccess :: *;
 
 function Action notImplemented(String str) = action
   $display(str + " is not currently implemented");
