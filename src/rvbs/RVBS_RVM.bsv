@@ -31,7 +31,7 @@ import BitPat :: *;
 import BlueUtils :: *;
 
 import RVBS_Types :: *;
-import RVBS_Traces :: *;
+import RVBS_TraceInsts :: *;
 
 // div helper
 function t safeDiv(t a, t b) provisos (Arith#(t), Eq#(t)) = a / ((b == 0) ? 1 : b);
@@ -55,7 +55,7 @@ function t safeRem(t a, t b) provisos (Arith#(t), Eq#(t)) = a % ((b == 0) ? 1 : 
 function Action instrMUL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TMul#(XLEN, 2)) tmp = zeroExtend(s.rGPR(rs1)) * zeroExtend(s.rGPR(rs2));
   s.wGPR(rd, truncate(tmp));
-  logInst(s.pc, fmtInstR("mul", rd, rs1, rs2));
+  logInst(s, fmtInstR("mul", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -64,7 +64,7 @@ endaction;
 function Action instrMULH (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(TMul#(XLEN, 2)) tmp = unpack(signExtend(s.rGPR(rs1))) * unpack(signExtend(s.rGPR(rs2)));
   s.wGPR(rd, truncateLSB(pack(tmp)));
-  logInst(s.pc, fmtInstR("mulh", rd, rs1, rs2));
+  logInst(s, fmtInstR("mulh", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -73,7 +73,7 @@ endaction;
 function Action instrMULHSU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(TMul#(XLEN, 2)) tmp = unpack(signExtend(s.rGPR(rs1))) * unpack(zeroExtend(s.rGPR(rs2)));
   s.wGPR(rd, truncateLSB(pack(tmp)));
-  logInst(s.pc, fmtInstR("mulhsu", rd, rs1, rs2));
+  logInst(s, fmtInstR("mulhsu", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -82,7 +82,7 @@ endaction;
 function Action instrMULHU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TMul#(XLEN, 2)) tmp = zeroExtend(s.rGPR(rs1)) * zeroExtend(s.rGPR(rs2));
   s.wGPR(rd, truncateLSB(tmp));
-  logInst(s.pc, fmtInstR("mulhu", rd, rs1, rs2));
+  logInst(s, fmtInstR("mulhu", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -94,7 +94,7 @@ function Action instrDIV (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = act
     Int#(XLEN) tmp = safeDiv(unpack(s.rGPR(rs1)), unpack(s.rGPR(rs2)));
     s.wGPR(rd, pack(tmp));
   end
-  logInst(s.pc, fmtInstR("div", rd, rs1, rs2));
+  logInst(s, fmtInstR("div", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -102,7 +102,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrDIVU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, (s.rGPR(rs2) == 0) ? ~0 : safeDiv(s.rGPR(rs1), s.rGPR(rs2)));
-  logInst(s.pc, fmtInstR("divu", rd, rs1, rs2));
+  logInst(s, fmtInstR("divu", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -111,7 +111,7 @@ endaction;
 function Action instrREM (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Int#(XLEN) tmp = unpack(s.rGPR(rs1)) % unpack(s.rGPR(rs2)); // XXX use safeRem ?
   s.wGPR(rd, (s.rGPR(rs2) == 0) ? s.rGPR(rs1) : pack(tmp));
-  logInst(s.pc, fmtInstR("rem", rd, rs1, rs2));
+  logInst(s, fmtInstR("rem", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -119,7 +119,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrREMU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, (s.rGPR(rs2) == 0) ? s.rGPR(rs1) : s.rGPR(rs1) % s.rGPR(rs2)); // XXX
-  logInst(s.pc, fmtInstR("remu", rd, rs1, rs2));
+  logInst(s, fmtInstR("remu", rd, rs1, rs2));
 endaction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ endmodule
 function Action instrMULW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(32) tmp = truncate(s.rGPR(rs1)) * truncate(s.rGPR(rs2));
   s.wGPR(rd, signExtend(tmp));
-  logInst(s.pc, fmtInstR("mulw", rd, rs1, rs2));
+  logInst(s, fmtInstR("mulw", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -171,7 +171,7 @@ function Action instrDIVW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = ac
     Int#(32) tmp = safeDiv(unpack(truncate(s.rGPR(rs1))), unpack(truncate(s.rGPR(rs2))));
     s.wGPR(rd, signExtend(pack(tmp)));
   end
-  logInst(s.pc, fmtInstR("divw", rd, rs1, rs2));
+  logInst(s, fmtInstR("divw", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -183,7 +183,7 @@ function Action instrDIVUW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = a
     Bit#(32) tmp = safeDiv(truncate(s.rGPR(rs1)), truncate(s.rGPR(rs2)));
     s.wGPR(rd, signExtend(tmp));
   end
-  logInst(s.pc, fmtInstR("divuw", rd, rs1, rs2));
+  logInst(s, fmtInstR("divuw", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -195,7 +195,7 @@ function Action instrREMW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = ac
     Int#(32) tmp = safeRem(unpack(truncate(s.rGPR(rs1))), unpack(truncate(s.rGPR(rs2))));
     s.wGPR(rd, signExtend(pack(tmp)));
   end
-  logInst(s.pc, fmtInstR("remw", rd, rs1, rs2));
+  logInst(s, fmtInstR("remw", rd, rs1, rs2));
 endaction;
 
 // funct7 = MULDIV = 0000001
@@ -207,7 +207,7 @@ function Action instrREMUW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = a
     Bit#(32) tmp = safeRem(truncate(s.rGPR(rs1)), truncate(s.rGPR(rs2)));
     s.wGPR(rd, signExtend(tmp));
   end
-  logInst(s.pc, fmtInstR("remuw", rd, rs1, rs2));
+  logInst(s, fmtInstR("remuw", rd, rs1, rs2));
 endaction;
 
 ////////////////////////////////////////////////////////////////////////////////

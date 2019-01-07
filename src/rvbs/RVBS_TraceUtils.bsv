@@ -26,8 +26,9 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-import BlueUtils :: *;
-import RVBS_BasicTypes :: *;
+//import BlueUtils :: *;
+//import RVBS_BasicTypes :: *;
+//import RVBS_StateTypes :: *;
 
 ///////////////////
 // Logging utils //
@@ -53,119 +54,6 @@ function Fmt rName(Bit#(5) r) = abiRegName(r);
 `else
 function Fmt rName(Bit#(5) r) = gpRegName(r);
 `endif
-
-function Action itrace (Bit#(XLEN) pc, Fmt msg) =
-  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ", pc, msg));
-
-typeclass LogInst#(type a); a logInst; endtypeclass
-
-instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y));
-  function logInst(pc, msg) = itrace(pc, msg);
-endinstance
-
-instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y, Fmt z));
-  function logInst(pc, msg0, msg1) = itrace(pc, $format(msg0, "  \t--\t", msg1));
-endinstance
-
-instance LogInst#(function Action f(Bit#(XLEN) x, Fmt y, String z));
-  function logInst(pc, msg0, msg1) = itrace(pc, $format(msg0, "  \t--\t", msg1));
-endinstance
-
-/*
-  I-type
-
-   31                                 20 19    15 14    12 11     7 6        0
-  +-------------------------------------+--------+--------+--------+----------+
-  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
-  +-------------------------------------+--------+--------+--------+----------+
-
-function a patIType (Bit#(3) funct3, Bit#(7) opcode) =
-  pat(v, v, n(funct3), v, n(opcode))
-// RHS arguments: (Bit#(12) imm11_0, Bit#(5) rs1, Bit#(5) rd)
-
-  I-type - shifts by a constant
-
-   31              25 24              20 19    15 14    12 11     7 6        0
-  +------------------+------------------+--------+--------+--------+----------+
-  |     imm[11:5]    |     imm[4:0]     |   rs1  | funct3 |   rd   |  opcode  |
-  +------------------+------------------+--------+--------+--------+----------+
-
-function a patITypeShamt (Bit#(7) imm_11_5, Bit#(3) funct3, Bit#(7) opcode) =
-  pat(n(imm_11_5), v, v, n(funct3), v, n(opcode))
-// RHS arguments: (Bit#(7) imm11_5, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd)
-*/
-function Fmt fmtInstI(String i, Bit#(5) rd, Bit#(5) rs1, Bit#(12) imm) =
-  $format(i, "\t", rName(rd), ", ", rName(rs1), ", 0x%0x", imm);
-/*
-  R-type
-
-   31                        25 24    20 19    15 14    12 11     7 6        0
-  +----------------------------+--------+--------+--------+--------+----------+
-  |           funct7           |   rs2  |   rs1  | funct3 |   rd   |  opcode  |
-  +----------------------------+--------+--------+--------+--------+----------+
-
-function BitPat#() patRType (Bit#(7) funct7, Bit#(3) funct3, Bit#(7) opcode) =
-  return pat(n(funct7), v, v, n(funct3), v, n(opcode))
-// RHS arguments: (Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd)
-*/
-function Fmt fmtInstR(String i, Bit#(5) rd, Bit#(5) rs1, Bit#(5) rs2) =
-  $format(i, "\t", rName(rd), ", ", rName(rs1), ", ", rName(rs2));
-/*
-  U-type
-
-   31                                                   12 11     7 6        0
-  +-------------------------------------------------------+--------+----------+
-  |                       imm[31:12]                      |   rd   |  opcode  |
-  +-------------------------------------------------------+--------+----------+
-
-function a patUType (Bit#(7) opcode) =
-  pat(v, v, n(opcode))
-// RHS arguments: (Bit#(20) imm31_12, Bit#(5) rd)
-*/
-function Fmt fmtInstU(String i, Bit#(5) rd, Bit#(20) imm) =
-  $format(i, "\t", rName(rd), ", 0x%0x", imm);
-/*
-  J-type
-
-     31    30              21    20   19                12 11     7 6        0
-  +-------+------------------+-------+--------------------+--------+----------+
-  |imm[20]|     imm[10:1]    |imm[11]|     imm[19:12]     |   rd   |  opcode  |
-  +-------+------------------+-------+--------------------+--------+----------+
-
-function a patJType (Bit#(7) opcode) =
-  pat(v, v, v, v, v, n(opcode))
-// RHS arguments: (Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm11, Bit#(8) imm19_12, Bit#(5) rd)
-*/
-function Fmt fmtInstJ(String i, Bit#(5) rd, Bit#(XLEN) imm) =
-  $format(i, "\t", rName(rd), ", 0x%0x", imm);
-/*
-  B-type
-
-     31    30      25 24    20 19    15 14    12 11       8    7    6        0
-  +-------+----------+--------+--------+--------+----------+-------+----------+
-  |imm[12]| imm[10:5]|   rs2  |   rs1  | funct3 | imm[4:1] |imm[11]|  opcode  |
-  +-------+----------+--------+--------+--------+----------+-------+----------+
-
-function a patBType (Bit#(3) funct3, Bit#(7) opcode) =
-  pat(v, v, v, v, n(funct3), v, v, n(opcode))
-// RHS arguments: (Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11)
-*/
-function Fmt fmtInstB(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
-  $format(i, "\t", rName(rs1),", ", rName(rs2), ", 0x%0x", imm);
-/*
-  S-type
-
-   31                        25 24    20 19    15 14    12 11     7 6        0
-  +----------------------------+--------+--------+--------+--------+----------+
-  |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
-  +----------------------------+--------+--------+--------+--------+----------+
-
-function a patSType (Bit#(3) funct3, Bit#(7) opcode) =
-  pat(v, v, v, n(funct3), v, n(opcode))
-// RHS arguments: (Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0)
-*/
-function Fmt fmtInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
-  $format(i, "\t", rName(rs1),", ", rName(rs2), ", 0x%0x", imm);
 
 // CSRs logging
 function Fmt csrName(Bit#(12) idx) = case (idx)

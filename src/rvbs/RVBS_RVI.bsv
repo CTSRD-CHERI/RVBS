@@ -37,7 +37,8 @@ import BitPat :: *;
 
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
-import RVBS_Traces :: *;
+import RVBS_TraceUtils :: *;
+import RVBS_TraceInsts :: *;
 import RVBS_MemAccess :: *;
 
 `ifdef XLEN32
@@ -76,14 +77,14 @@ endaction;
 // XXX pseudo-op: MV, NOP
 function Action instrADDI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) + signExtend(imm));
-  logInst(s.pc, fmtInstI("addi", rd, rs1, imm));
+  logInst(s, fmtInstI("addi", rd, rs1, imm));
 endaction;
 
 // funct3 = SLTI = 010
 // opcode = OP-IMM = 0010011
 function Action instrSLTI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signedLT(s.rGPR(rs1),signExtend(imm)) ? 1 : 0);
-  logInst(s.pc, fmtInstI("slti", rd, rs1, imm));
+  logInst(s, fmtInstI("slti", rd, rs1, imm));
 endaction;
 
 // funct3 = SLTIU = 011
@@ -91,21 +92,21 @@ endaction;
 // XXX pseudo-op: SEQZ
 function Action instrSLTIU (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, (s.rGPR(rs1) < signExtend(imm)) ? 1 : 0);
-  logInst(s.pc, fmtInstI("sltiu", rd, rs1, imm));
+  logInst(s, fmtInstI("sltiu", rd, rs1, imm));
 endaction;
 
 // funct3 = ANDI = 111
 // opcode = OP-IMM = 0010011
 function Action instrANDI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) & signExtend(imm));
-  logInst(s.pc, fmtInstI("andi", rd, rs1, imm));
+  logInst(s, fmtInstI("andi", rd, rs1, imm));
 endaction;
 
 // funct3 = ORI = 110
 // opcode = OP-IMM = 0010011
 function Action instrORI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) | signExtend(imm));
-  logInst(s.pc, fmtInstI("ori", rd, rs1, imm));
+  logInst(s, fmtInstI("ori", rd, rs1, imm));
 endaction;
 
 // funct3 = XORI = 100
@@ -113,7 +114,7 @@ endaction;
 // XXX pseudo-op: NOT
 function Action instrXORI (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) ^ signExtend(imm));
-  logInst(s.pc, fmtInstI("xori", rd, rs1, imm));
+  logInst(s, fmtInstI("xori", rd, rs1, imm));
 endaction;
 
 /*
@@ -130,7 +131,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSLLI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) << imm4_0);
-  logInst(s.pc, fmtInstI("slli", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("slli", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 // imm[11:5] = 0000000
@@ -138,7 +139,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSRLI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) >> imm4_0);
-  logInst(s.pc, fmtInstI("srli", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("srli", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 // imm[11:5] = 0100000
@@ -146,7 +147,7 @@ endaction;
 // opcode = OP-IMM = 0010011
 function Action instrSRAI (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, arithRightShift(s.rGPR(rs1), imm4_0));
-  logInst(s.pc, fmtInstI("srai", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("srai", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 /*
@@ -161,13 +162,13 @@ endaction;
 // opcode = LUI = 0110111
 function Action instrLUI (RVState s, Bit#(20) imm, Bit#(5) rd) = action
   s.wGPR(rd, signExtend({imm, 12'b0}));
-  logInst(s.pc, fmtInstU("lui", rd, imm));
+  logInst(s, fmtInstU("lui", rd, imm));
 endaction;
 
 // opcode = AUIPC = 0010111
 function Action instrAUIPC (RVState s, Bit#(20) imm, Bit#(5) rd) = action
   s.wGPR(rd, s.pc + signExtend({imm, 12'b0}));
-  logInst(s.pc, fmtInstU("auipc", rd, imm));
+  logInst(s, fmtInstU("auipc", rd, imm));
 endaction;
 
 //////////////////////////////////////////
@@ -187,7 +188,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrADD (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) + s.rGPR(rs2));
-  logInst(s.pc, fmtInstR("add", rd, rs1, rs2));
+  logInst(s, fmtInstR("add", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -195,7 +196,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSLT (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, (signedLT(s.rGPR(rs1), s.rGPR(rs2))) ? 1 : 0);
-  logInst(s.pc, fmtInstR("slt", rd, rs1, rs2));
+  logInst(s, fmtInstR("slt", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -203,7 +204,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSLTU (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, (s.rGPR(rs1) < s.rGPR(rs2)) ? 1 : 0);
-  logInst(s.pc, fmtInstR("sltu", rd, rs1, rs2));
+  logInst(s, fmtInstR("sltu", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -211,7 +212,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrAND (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) & s.rGPR(rs2));
-  logInst(s.pc, fmtInstR("and", rd, rs1, rs2));
+  logInst(s, fmtInstR("and", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -219,7 +220,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrOR (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) | s.rGPR(rs2));
-  logInst(s.pc, fmtInstR("or", rd, rs1, rs2));
+  logInst(s, fmtInstR("or", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -227,7 +228,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrXOR (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) ^ s.rGPR(rs2));
-  logInst(s.pc, fmtInstR("xor", rd, rs1, rs2));
+  logInst(s, fmtInstR("xor", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -236,7 +237,7 @@ endaction;
 function Action instrSLL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, s.rGPR(rs1) << shiftAmnt);
-  logInst(s.pc, fmtInstR("sll", rd, rs1, rs2));
+  logInst(s, fmtInstR("sll", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -245,7 +246,7 @@ endaction;
 function Action instrSRL (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, s.rGPR(rs1) >> shiftAmnt);
-  logInst(s.pc, fmtInstR("srl", rd, rs1, rs2));
+  logInst(s, fmtInstR("srl", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0100000
@@ -253,7 +254,7 @@ endaction;
 // opcode = OP = 0110011
 function Action instrSUB (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, s.rGPR(rs1) - s.rGPR(rs2));
-  logInst(s.pc, fmtInstR("sub", rd, rs1, rs2));
+  logInst(s, fmtInstR("sub", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0100000
@@ -262,7 +263,7 @@ endaction;
 function Action instrSRA (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(TLog#(XLEN)) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, arithRightShift(s.rGPR(rs1), shiftAmnt));
-  logInst(s.pc, fmtInstR("sra", rd, rs1, rs2));
+  logInst(s, fmtInstR("sra", rd, rs1, rs2));
 endaction;
 
 ///////////////////////////////////
@@ -289,7 +290,7 @@ function Action instrJAL(RVState s, Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm
     s.pc <= tgt;
     s.wGPR(rd, s.pc + s.instByteSz);
   end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
-  logInst(s.pc, fmtInstJ("jal", rd, imm));
+  logInst(s, fmtInstJ("jal", rd, imm));
 endaction;
 
 /*
@@ -310,7 +311,7 @@ function Action instrJALR (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
     s.pc <= tgt;
     s.wGPR(rd, s.pc + s.instByteSz);
   end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
-  logInst(s.pc, fmtInstI("jalr", rd, rs1, imm));
+  logInst(s, fmtInstI("jalr", rd, rs1, imm));
 endaction;
 
 //////////////////////////
@@ -339,7 +340,7 @@ endaction;
 function Action instrBEQ (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (s.rGPR(rs1) == s.rGPR(rs2)) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("beq", rs1, rs2, imm));
+  logInst(s, fmtInstB("beq", rs1, rs2, imm));
 endaction;
 
 // funct3 = BNE = 001
@@ -347,7 +348,7 @@ endaction;
 function Action instrBNE (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (s.rGPR(rs1) != s.rGPR(rs2)) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("bne", rs1, rs2, imm));
+  logInst(s, fmtInstB("bne", rs1, rs2, imm));
 endaction;
 
 // funct3 = BLT = 100
@@ -355,7 +356,7 @@ endaction;
 function Action instrBLT (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (signedLT(s.rGPR(rs1), s.rGPR(rs2))) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("blt", rs1, rs2, imm));
+  logInst(s, fmtInstB("blt", rs1, rs2, imm));
 endaction;
 
 // funct3 = BLTU = 110
@@ -363,7 +364,7 @@ endaction;
 function Action instrBLTU (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (s.rGPR(rs1) < s.rGPR(rs2)) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("bltu", rs1, rs2, imm));
+  logInst(s, fmtInstB("bltu", rs1, rs2, imm));
 endaction;
 
 // funct3 = BGE = 101
@@ -371,7 +372,7 @@ endaction;
 function Action instrBGE (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (signedGE(s.rGPR(rs1), s.rGPR(rs2))) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("bge", rs1, rs2, imm));
+  logInst(s, fmtInstB("bge", rs1, rs2, imm));
 endaction;
 
 // funct3 = BGEU = 111
@@ -379,7 +380,7 @@ endaction;
 function Action instrBGEU (RVState s, Bit#(1) imm12, Bit#(6) imm10_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(4) imm4_1, Bit#(1) imm11) = action
   Bit#(XLEN) imm = {signExtend(imm12),imm11,imm10_5,imm4_1,1'b0};
   if (s.rGPR(rs1) >= s.rGPR(rs2)) branchCommon(s, s.pc + imm);
-  logInst(s.pc, fmtInstB("bgeu", rs1, rs2, imm));
+  logInst(s, fmtInstB("bgeu", rs1, rs2, imm));
 endaction;
 
 /////////////////////////////////
@@ -475,8 +476,8 @@ function Action instrCSRRW(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rd == 0) ? rwCSRReqNoRead(imm, s.rGPR(rs1)) : rwCSRReq(imm, s.rGPR(rs1));
   `instCSRCommon
-  //logInst(s.pc, fmtInstI("csrrw", rd, rs1, imm), csrName(imm));
-  logInst(s.pc, fmtInstI("csrrw", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
+  //logInst(s, fmtInstI("csrrw", rd, rs1, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrw", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
 endaction;
 
 // funct3 = CSRRS = 010
@@ -490,8 +491,8 @@ function Action instrCSRRS(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rs1 == 0) ? rsCSRReqNoWrite(imm, s.rGPR(rs1)) : rsCSRReq(imm, s.rGPR(rs1));
   `instCSRCommon
-  //logInst(s.pc, fmtInstI("csrrs", rd, rs1, imm), csrName(imm));
-  logInst(s.pc, fmtInstI("csrrs", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
+  //logInst(s, fmtInstI("csrrs", rd, rs1, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrs", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
 endaction;
 
 // funct3 = CSRRC = 011
@@ -503,8 +504,8 @@ function Action instrCSRRC(RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   */
   let r = (rs1 == 0) ? rcCSRReqNoWrite(imm, s.rGPR(rs1)) : rcCSRReq(imm, s.rGPR(rs1));
   `instCSRCommon
-  //logInst(s.pc, fmtInstI("csrrc", rd, rs1, imm), csrName(imm));
-  logInst(s.pc, fmtInstI("csrrc", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
+  //logInst(s, fmtInstI("csrrc", rd, rs1, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrc", rd, rs1, imm), $format("rs1 (0x%0x) into ", s.rGPR(rs1), csrName(imm)));
 endaction;
 
 // funct3 = CSRRWI = 101
@@ -516,7 +517,7 @@ function Action instrCSRRWI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   */
   let r = (rd == 0) ? rwCSRReqNoRead(imm, zeroExtend(zimm)) : rwCSRReq(imm, zeroExtend(zimm));
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrwi", rd, zimm, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrwi", rd, zimm, imm), csrName(imm));
 endaction;
 
 // funct3 = CSRRSI = 110
@@ -528,7 +529,7 @@ function Action instrCSRRSI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   */
   let r = (zimm == 0) ? rsCSRReqNoWrite(imm, zeroExtend(zimm)) : rsCSRReq(imm, zeroExtend(zimm));
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrsi", rd, zimm, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrsi", rd, zimm, imm), csrName(imm));
 endaction;
 
 // funct3 = CSRRCI = 111
@@ -540,7 +541,7 @@ function Action instrCSRRCI(RVState s, Bit#(12) imm, Bit#(5) zimm, Bit#(5) rd) =
   */
   let r = (zimm == 0) ? rcCSRReqNoWrite(imm, zeroExtend(zimm)) : rcCSRReq(imm, zeroExtend(zimm));
   `instCSRCommon
-  logInst(s.pc, fmtInstI("csrrci", rd, zimm, imm), csrName(imm));
+  logInst(s, fmtInstI("csrrci", rd, zimm, imm), csrName(imm));
 endaction;
 
 `undef instCSRCommon
@@ -648,7 +649,7 @@ endmodule
 // XXX pseudo-op: SEXT.W
 function Action instrADDIW (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] + signExtend(imm)));
-  logInst(s.pc, fmtInstI("addiw", rd, rs1, imm));
+  logInst(s, fmtInstI("addiw", rd, rs1, imm));
 endaction;
 
 /*
@@ -666,7 +667,7 @@ endaction;
 function Action instrSLLI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.wGPR(rd, s.rGPR(rs1) << imm5_0);
-  logInst(s.pc, fmtInstI("slli", rd, rs1, zeroExtend(imm5_0)));
+  logInst(s, fmtInstI("slli", rd, rs1, zeroExtend(imm5_0)));
 endaction;
 
 // imm[11:6] = 000000
@@ -675,7 +676,7 @@ endaction;
 function Action instrSRLI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.wGPR(rd, s.rGPR(rs1) >> imm5_0);
-  logInst(s.pc, fmtInstI("srli", rd, rs1, zeroExtend(imm5_0)));
+  logInst(s, fmtInstI("srli", rd, rs1, zeroExtend(imm5_0)));
 endaction;
 
 // imm[11:6] = 010000
@@ -684,7 +685,7 @@ endaction;
 function Action instrSRAI64 (RVState s, Bit#(6) imm5_0, Bit#(5) rs1, Bit#(5) rd) = action
   // TODO check MXL and imm[5] for exception in RV32I mode
   s.wGPR(rd, arithRightShift(s.rGPR(rs1), imm5_0));
-  logInst(s.pc, fmtInstI("srai", rd, rs1, zeroExtend(imm5_0)));
+  logInst(s, fmtInstI("srai", rd, rs1, zeroExtend(imm5_0)));
 endaction;
 
 // imm[11:5] = 0000000
@@ -692,7 +693,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSLLIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] << imm4_0));
-  logInst(s.pc, fmtInstI("slliw", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("slliw", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 // imm[11:5] = 0000000
@@ -700,7 +701,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSRLIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] >> imm4_0));
-  logInst(s.pc, fmtInstI("srliw", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("srliw", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 // imm[11:5] = 0100000
@@ -708,7 +709,7 @@ endaction;
 // opcode = OP-IMM-32 = 0011011
 function Action instrSRAIW (RVState s, Bit#(5) imm4_0, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(arithRightShift(s.rGPR(rs1)[31:0], imm4_0)));
-  logInst(s.pc, fmtInstI("sraiw", rd, rs1, zeroExtend(imm4_0)));
+  logInst(s, fmtInstI("sraiw", rd, rs1, zeroExtend(imm4_0)));
 endaction;
 
 //////////////////////////////////////////
@@ -728,7 +729,7 @@ endaction;
 // opcode = OP-32 = 0111011
 function Action instrADDW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] + s.rGPR(rs2)[31:0]));
-  logInst(s.pc, fmtInstR("addw", rd, rs1, rs2));
+  logInst(s, fmtInstR("addw", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0100000
@@ -736,7 +737,7 @@ endaction;
 // opcode = OP-32 = 0111011
 function Action instrSUBW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] - s.rGPR(rs2)[31:0]));
-  logInst(s.pc, fmtInstR("subw", rd, rs1, rs2));
+  logInst(s, fmtInstR("subw", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -745,7 +746,7 @@ endaction;
 function Action instrSLLW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] << shiftAmnt));
-  logInst(s.pc, fmtInstR("sllw", rd, rs1, rs2));
+  logInst(s, fmtInstR("sllw", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0000000
@@ -754,7 +755,7 @@ endaction;
 function Action instrSRLW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, signExtend(s.rGPR(rs1)[31:0] >> shiftAmnt));
-  logInst(s.pc, fmtInstR("srlw", rd, rs1, rs2));
+  logInst(s, fmtInstR("srlw", rd, rs1, rs2));
 endaction;
 
 // funct7 = 0100000
@@ -763,7 +764,7 @@ endaction;
 function Action instrSRAW (RVState s, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) rd) = action
   Bit#(5) shiftAmnt = truncate(s.rGPR(rs2));
   s.wGPR(rd, signExtend(arithRightShift(s.rGPR(rs1)[31:0], shiftAmnt)));
-  logInst(s.pc, fmtInstR("sraw", rd, rs1, rs2));
+  logInst(s, fmtInstR("sraw", rd, rs1, rs2));
 endaction;
 
 module [ISADefModule] mkRV64I#(RVState s) ();

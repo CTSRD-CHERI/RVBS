@@ -30,8 +30,8 @@ import BID :: *;
 import Recipe :: *;
 import BlueUtils :: *;
 import BitPat :: *;
-import RVBS_Traces :: *;
 import RVBS_Types :: *;
+import RVBS_TraceInsts :: *;
 
 ////////////////
 // Trap logic //
@@ -186,12 +186,12 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   function Action instrMRET () = action
     if (s.currentPrivLvl < M) begin
       trap(s, IllegalInst);
-      logInst(s.pc, $format("mret"));
+      logInst(s, $format("mret"));
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, M);
       s.currentPrivLvl <= toLvl;
       s.pc <= pack(s.csrs.mepc);
-      logInst(s.pc, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
+      logInst(s, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
   defineInstEntry("mret", pat(n(12'b001100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrMRET);
@@ -205,12 +205,12 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   function Action instrSRET () = action
     if (s.currentPrivLvl < S || (s.currentPrivLvl == S && s.csrs.mstatus.tsr)) begin
       trap(s, IllegalInst);
-      logInst(s.pc, $format("sret"));
+      logInst(s, $format("sret"));
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, S);
       s.currentPrivLvl <= toLvl;
       s.pc <= pack(s.csrs.sepc);
-      logInst(s.pc, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
+      logInst(s, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
   defineInstEntry("sret", pat(n(12'b000100000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrSRET);
@@ -227,7 +227,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     if (s.currentPrivLvl < U || !static_HAS_N_EXT) trap(s, IllegalInst);
     else assignM(s.currentPrivLvl, popStatusStack(s.csrs.mstatus, U));
     // trace
-    logInst(s.pc, $format("uret"));
+    logInst(s, $format("uret"));
   endaction;
   defineInstEntry("uret", pat(n(12'b000000000010), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrURET);
   `endif
@@ -244,7 +244,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       S &&& (s.csrs.mstatus.tw && limit_reached): action trap(s, IllegalInst); endaction
       default: noAction;
     endcase
-    logInst(s.pc, $format("wfi"), $format("IMPLEMENTED AS NOP"));
+    logInst(s, $format("wfi"), $format("IMPLEMENTED AS NOP"));
   endaction;
   defineInstEntry("wfi", pat(n(12'b000100000101), n(5'b00000), n(3'b000), n(5'b00000), n(7'b1110011)), instrWFI);
 

@@ -34,7 +34,7 @@ import CHERICap :: *;
 
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
-import RVBS_Traces :: *;
+import RVBS_TraceInsts :: *;
 
 `ifdef RVXCHERI
 // helpers
@@ -82,10 +82,10 @@ function Recipe readMem(
   `ifdef SUPERVISOR_MODE
     let req = aReqRead(vaddr, args.numBytes, Invalid);
     s.dvm.sink.put(req);
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dvm.source.get();
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
     PAddr paddr = toPAddr(vaddr);
@@ -97,16 +97,16 @@ function Recipe readMem(
     let req = aReqRead(paddr, args.numBytes, Invalid);
   `endif
     s.dpmp.sink.put(req);
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dpmp.source.get();
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
     RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: fromInteger(args.numBytes)};
   `else
     RVMemReq req = RVReadReq {addr: paddr, numBytes: fromInteger(args.numBytes)};
   `endif
     s.dmem.sink.put(req);
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dmem.source.get();
     case (rsp) matches
@@ -129,7 +129,7 @@ function Recipe readMem(
       end
       tagged RVBusError: action trap(s, LoadAccessFault); endaction
     endcase
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
   endaction
 ));
 // TODO deal with exceptions
@@ -203,10 +203,10 @@ function Recipe writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
   `ifdef SUPERVISOR_MODE
     let req = aReqWrite(vaddr, args.numBytes, Invalid);
     s.dvm.sink.put(req);
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dvm.source.get();
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
     PAddr paddr = rsp.addr;
   `else
     PAddr paddr = toPAddr(vaddr);
@@ -218,10 +218,10 @@ function Recipe writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
     let req = aReqWrite(paddr, args.numBytes, Invalid);
   `endif
     s.dpmp.sink.put(req);
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dpmp.source.get();
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
     RVMemReq req = RVWriteReq {
       addr: rsp.addr,
       byteEnable: ~((~0) << args.numBytes),
@@ -245,14 +245,14 @@ function Recipe writeMem(RVState s, StrArgs args, VAddr vaddr, Bit#(128) wdata
     s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
     s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
   `endif
-    itrace(s.pc, fshow(req));
+    itrace(s, fshow(req));
   endaction, action
     let rsp <- s.dmem.source.get();
     case (rsp) matches
       tagged RVWriteRsp .w: noAction;
       tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
     endcase
-    itrace(s.pc, fshow(rsp));
+    itrace(s, fshow(rsp));
   endaction
 ));
 // TODO deal with exceptions

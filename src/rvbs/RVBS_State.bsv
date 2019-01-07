@@ -34,7 +34,7 @@ import BlueUtils :: *;
 import SourceSink :: *;
 import MasterSlave :: *;
 import Recipe :: *;
-import RVBS_Traces :: *;
+import RVBS_TraceUtils :: *;
 import RVBS_Types :: *;
 import RVBS_CSRs :: *;
 import RVBS_Trap :: *;
