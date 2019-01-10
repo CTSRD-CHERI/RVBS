@@ -93,7 +93,7 @@ module [Module] mkState#(
   `ifdef RVXCHERI
   RawCap nCap = nullCap;
   RawCap yCap = almightyCap;
-  s.regFile <- mkRegFileInitZ(Data(pack(nCap)), Cap(yCap));
+  s.regFile <- mkRegFileInitZ(Data(pack(nCap)), Data(pack(nCap)));
   function readGPR(i); return truncate(s.regFile.r[i].Data); endfunction
   s.rGPR = readGPR;
   function writeGPR(i, x) = action s.regFile.r[i] <= Data(zeroExtend(x)); endaction;
@@ -112,7 +112,32 @@ module [Module] mkState#(
   s.csrs <- mkCSRs();
   `ifdef RVXCHERI
   // CHERI specific state
-  s.ddc <- mkArchReg(Cap(yCap));
+  s.pcc  <- mkArchReg(Cap(yCap));
+  s.ddc  <- mkArchReg(Cap(yCap));
+  s.utcc      <- mkArchReg(Data(pack(nCap)));
+  s.uscratchc <- mkArchReg(Data(pack(nCap)));
+  s.uepcc     <- mkArchReg(Data(pack(nCap)));
+  s.stcc      <- mkArchReg(Data(pack(nCap)));
+  s.sscratchc <- mkArchReg(Data(pack(nCap)));
+  s.sepcc     <- mkArchReg(Data(pack(nCap)));
+  s.mtcc      <- mkArchReg(Data(pack(nCap)));
+  s.mscratchc <- mkArchReg(Data(pack(nCap)));
+  s.mepcc     <- mkArchReg(Data(pack(nCap)));
+  function getCapSpecial(idx) = case (idx)
+    0: Valid(asIfc(s.pcc));
+    1: Valid(asIfc(s.ddc));
+    4: Valid(asIfc(s.utcc));
+    6: Valid(asIfc(s.uscratchc));
+    7: Valid(asIfc(s.uepcc));
+    12: Valid(asIfc(s.stcc));
+    14: Valid(asIfc(s.sscratchc));
+    15: Valid(asIfc(s.sepcc));
+    28: Valid(asIfc(s.mtcc));
+    30: Valid(asIfc(s.mscratchc));
+    31: Valid(asIfc(s.mepcc));
+    default: Invalid;
+  endcase;
+  s.getCSpecial = getCapSpecial;
   `endif
   // Memory interfaces
   s.readMem  <- mkBypassFIFOF;

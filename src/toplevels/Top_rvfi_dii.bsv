@@ -129,9 +129,10 @@ module mkRVBS_rvfi_dii (Empty);
       action s.pc <= 'h80000000; endaction, action s.pc.commit; endaction,
       `ifdef RVXCHERI
       action RawCap c0 = nullCap; s.wCR(0, Data(pack(c0))); endaction,
+      s.regFile.commit,
       writeReg(cnt, 1),
       rWhile(cnt < 32, rFastSeq(rBlock(
-        s.wCR(truncate(cnt), Cap(almightyCap)),
+        action RawCap c0 = nullCap; s.wCR(truncate(cnt), Data(pack(c0))); endaction,
         action
           s.regFile.commit;
           cnt <= cnt + 1;

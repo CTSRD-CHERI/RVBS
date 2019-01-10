@@ -348,8 +348,14 @@ function Action instrXCHERI_CMove(RVState s, Bit#(5) cs, Bit#(5) cd) = action
 endaction;
 
 function Action instrXCHERI_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(5) cd) = action
-  //TODO
-  notImplemented("cspecialrw");
+  case (s.getCSpecial(idx)) matches
+    tagged Valid .cspecial: begin
+      s.wCR(cd, cspecial);
+      cspecial <= s.rCR(cs);
+    end
+    default: notImplemented("cspecialrw"); // TODO IllegalInst
+  endcase
+  //XXX logInst(s.pc, fmtInstXCHERI("cspecialrw", idx, cs, cd));
 endaction;
 
 // Control-Flow instructions

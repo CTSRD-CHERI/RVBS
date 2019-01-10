@@ -127,7 +127,18 @@ typedef struct {
   `endif
   CSRs csrs;
   `ifdef RVXCHERI
+  ArchReg#(CapType) pcc;
   ArchReg#(CapType) ddc;
+  ArchReg#(CapType) utcc;
+  ArchReg#(CapType) uscratchc;
+  ArchReg#(CapType) uepcc;
+  ArchReg#(CapType) stcc;
+  ArchReg#(CapType) sscratchc;
+  ArchReg#(CapType) sepcc;
+  ArchReg#(CapType) mtcc;
+  ArchReg#(CapType) mscratchc;
+  ArchReg#(CapType) mepcc;
+  function Maybe#(ArchReg#(CapType)) f(Bit#(5) idx) getCSpecial;
   FIFOF#(Tuple5#(MemAccessHandle, Bit#(5), BitPO#(4), Bool, Bool)) readMem;
   FIFOF#(Tuple4#(MemAccessHandle, BitPO#(4), Bit#(128), Bool)) writeMem;
   `else
