@@ -230,6 +230,19 @@ instance State#(RVState);
     // do the stateful commits
     s.pc.commit;
     s.regFile.commit;
+    `ifdef RVXCHERI
+    s.pcc.commit;
+    s.ddc.commit;
+    s.utcc.commit;
+    s.uscratchc.commit;
+    s.uepcc.commit;
+    s.stcc.commit;
+    s.sscratchc.commit;
+    s.sepcc.commit;
+    s.mtcc.commit;
+    s.mscratchc.commit;
+    s.mepcc.commit;
+    `endif
   endaction;
 
 endinstance
