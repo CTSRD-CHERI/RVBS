@@ -127,6 +127,9 @@ typedef enum {
   StrAMOAddrAlign = 6, StrAMOAccessFault = 7,
   ECallFromU = 8, ECallFromS = 9, ECallFromM = 11,
   InstPgFault = 12, LoadPgFault = 13, StrAMOPgFault = 15
+  `ifdef RVXCHERI
+  , CHERIFault = 16 // XXX temp value. Need to pick one in the spec...
+  `endif
 } ExcCode deriving (Bits, Eq, FShow);
 `ifdef RVXCHERI
 // RVXCHERI exception codes

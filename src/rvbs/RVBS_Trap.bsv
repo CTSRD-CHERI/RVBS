@@ -130,11 +130,14 @@ endinstance
 typeclass CapTrap#(type a); a capTrap; endtypeclass
 
 instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(6) idx));
-  function capTrap(s, exc, idx) = noAction; // TODO
+  function capTrap(s, exc, idx) = action
+    // TODO set cheri cause etc...
+    trap(s, CHERIFault);
+  endaction;
 endinstance
 
 instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(5) idx));
-  function capTrap(s, exc, idx) = noAction; // TODO & zeroExtend
+  function capTrap(s, exc, idx) = capTrap(s, exc, {1'b0, idx});
 endinstance
 
 instance CapTrap#(function Recipe capTrap (a x, b y, c z)) provisos (CapTrap#(function Action capTrap (a x, b y, c z)));
