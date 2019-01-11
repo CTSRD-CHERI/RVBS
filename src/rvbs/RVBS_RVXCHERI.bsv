@@ -350,8 +350,8 @@ endaction;
 function Action instrXCHERI_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(5) cd) = action
   case (s.getCSpecial(idx)) matches
     tagged Valid .cspecial: begin
-      s.wCR(cd, cspecial);
-      cspecial <= s.rCR(cs);
+      if (cd != 0) s.wCR(cd, cspecial);
+      if (cs != 0) cspecial <= s.rCR(cs);
     end
     default: notImplemented("cspecialrw"); // TODO IllegalInst
   endcase
