@@ -30,6 +30,7 @@ import Printf :: *;
 import List :: *;
 
 import BID :: *;
+import Recipe :: *;
 import BlueUtils :: *;
 import BitPat :: *;
 
@@ -74,7 +75,7 @@ endaction;
 
 // funct3 = C.LWSP = 010
 // op = C2 = 10
-function List#(Action) instrC_LWSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(3) imm4_2, Bit#(2) imm7_6) =
+function Recipe instrC_LWSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(3) imm4_2, Bit#(2) imm7_6) =
   load(s, LoadArgs{name: "lw",  numBytes: 4, sgnExt: True}, zeroExtend({imm7_6, imm5, imm4_2, 2'b00}), 2, rd);
 
 //TODO C.LQSP
@@ -93,7 +94,7 @@ function List#(Action) instrC_LWSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(3)
 
 // funct3 = C.SWSP = 110
 // op = C2 = 10
-function List#(Action) instrC_SWSP (RVState s, Bit#(4) imm5_2, Bit#(2) imm7_6, Bit#(5) rs2) =
+function Recipe instrC_SWSP (RVState s, Bit#(4) imm5_2, Bit#(2) imm7_6, Bit#(5) rs2) =
   store(s, StrArgs{name: "sw", numBytes: 4}, zeroExtend({imm7_6,imm5_2[3]}), rs2, 2, {imm5_2[2:0], 2'b00});
 
 //TODO C.SQSP
@@ -116,7 +117,7 @@ function List#(Action) instrC_SWSP (RVState s, Bit#(4) imm5_2, Bit#(2) imm7_6, B
 
 // funct3 = C.LW = 010
 // op = C0 = 00
-function List#(Action) instrC_LW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1) o2, Bit#(1) o6, Bit#(3) rd_) =
+function Recipe instrC_LW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1) o2, Bit#(1) o6, Bit#(3) rd_) =
   load(s, LoadArgs{name: "lw",  numBytes: 4, sgnExt: True}, zeroExtend({o6, o5_3, o2, 2'b00}), regID(rs1_), regID(rd_));
 
 //TODO C.LQ
@@ -135,7 +136,7 @@ function List#(Action) instrC_LW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1)
 
 // funct3 = C.SW = 110
 // op = C0 = 00
-function List#(Action) instrC_SW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1) o2, Bit#(1) o6, Bit#(3) rs2_) =
+function Recipe instrC_SW (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(1) o2, Bit#(1) o6, Bit#(3) rs2_) =
   store(s, StrArgs{name: "sw", numBytes: 4}, zeroExtend({o6, o5_3[2]}), regID(rs2_), regID(rs1_), {o5_3[1:0], o2, 2'b00});
 
 //TODO C.SQ
@@ -445,7 +446,7 @@ endmodule
 
 // funct3 = C.LDSP = 011
 // op = C2 = 10
-function List#(Action) instrC_LDSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(2) imm4_3, Bit#(3) imm8_6) =
+function Recipe instrC_LDSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(2) imm4_3, Bit#(3) imm8_6) =
   load(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}, zeroExtend({imm8_6, imm5, imm4_3, 3'b000}), 2, rd);
 
 /*
@@ -460,7 +461,7 @@ function List#(Action) instrC_LDSP (RVState s, Bit#(1) imm5, Bit#(5) rd, Bit#(2)
 
 // funct3 = C.SDSP = 111
 // op = C2 = 10
-function List#(Action) instrC_SDSP (RVState s, Bit#(3) imm5_3, Bit#(3) imm8_6, Bit#(5) rs2) =
+function Recipe instrC_SDSP (RVState s, Bit#(3) imm5_3, Bit#(3) imm8_6, Bit#(5) rs2) =
   store(s, StrArgs{name: "sd", numBytes: 8}, zeroExtend({imm8_6,imm5_3[2]}), rs2, 2, {imm5_3[1:0], 3'b000});
 
 /////////////////////////////////////
@@ -479,7 +480,7 @@ function List#(Action) instrC_SDSP (RVState s, Bit#(3) imm5_3, Bit#(3) imm8_6, B
 
 // funct3 = C.LD = 011
 // op = C0 = 00
-function List#(Action) instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rd_) =
+function Recipe instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rd_) =
   load(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}, zeroExtend({o7_6, o5_3, 3'b000}), regID(rs1_), regID(rd_));
 
 /*
@@ -494,7 +495,7 @@ function List#(Action) instrC_LD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2)
 
 // funct3 = C.SD = 111
 // op = C0 = 00
-function List#(Action) instrC_SD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rs2_) =
+function Recipe instrC_SD (RVState s, Bit#(3) o5_3, Bit#(3) rs1_, Bit#(2) o7_6, Bit#(3) rs2_) =
   store(s, StrArgs{name: "sd", numBytes: 8}, zeroExtend({o7_6, o5_3[2]}), regID(rs2_), regID(rs1_), {o5_3[1:0], 3'b000});
 
 ///////////////////////////////////////////

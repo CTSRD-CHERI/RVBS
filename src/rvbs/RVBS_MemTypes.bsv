@@ -57,17 +57,17 @@ typedef struct { String name; Integer numBytes; } StrArgs;
 typedef struct
 {
   addr_t addr;
-  BitPO#(TLog#(XLEN)) numBytes;
+  BitPO#(4) numBytes;
   RVMemReqType reqType;
   Maybe#(ExcCode) mExc;
 } AddrReq#(type addr_t) deriving (Bits, FShow);
 instance NeedRsp#(AddrReq#(addr_t)); function needRsp(req) = True; endinstance
-function AddrReq#(addr_t) aReqRead(addr_t a, Integer n, Maybe#(ExcCode) mE) =
-  AddrReq {addr: a, numBytes: fromInteger(n), reqType: READ, mExc: mE};
-function AddrReq#(addr_t) aReqWrite(addr_t a, Integer n, Maybe#(ExcCode) mE) =
-  AddrReq {addr: a, numBytes: fromInteger(n), reqType: WRITE, mExc: mE};
-function AddrReq#(addr_t) aReqIFetch(addr_t a, Integer n, Maybe#(ExcCode) mE) =
-  AddrReq {addr: a, numBytes: fromInteger(n), reqType: IFETCH, mExc: mE};
+function AddrReq#(addr_t) aReqRead(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: n, reqType: READ, mExc: mE};
+function AddrReq#(addr_t) aReqWrite(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: n, reqType: WRITE, mExc: mE};
+function AddrReq#(addr_t) aReqIFetch(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) =
+  AddrReq {addr: a, numBytes: n, reqType: IFETCH, mExc: mE};
 typedef struct {
   addr_t addr;
   Maybe#(ExcCode) mExc;

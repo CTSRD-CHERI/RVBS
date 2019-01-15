@@ -202,7 +202,7 @@ function Recipe doWriteMem(
       s.mem_addr[0] <= vaddr;
     `endif
     `ifdef SUPERVISOR_MODE
-      let req = aReqWrite(vaddr, readBitPO(numBytes), Invalid);
+      let req = aReqWrite(vaddr, numBytes, Invalid);
       s.dvm.sink.put(req);
       itrace(s, fshow(req));
     endaction, action
@@ -214,9 +214,9 @@ function Recipe doWriteMem(
     `endif
     `ifdef PMP
     `ifdef SUPERVISOR_MODE
-      let req = aReqWrite(paddr, readBitPO(numBytes), rsp.mExc);
+      let req = aReqWrite(paddr, numBytes, rsp.mExc);
     `else
-      let req = aReqWrite(paddr, readBitPO(numBytes), Invalid);
+      let req = aReqWrite(paddr, numBytes, Invalid);
     `endif
       s.dpmp.sink.put(req);
       itrace(s, fshow(req));
