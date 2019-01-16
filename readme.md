@@ -97,5 +97,5 @@ The generated verilog can be found in the `output/rvbs-rv32ic-vdir/` folder. Spe
 ## References
 
 - [l3riscv](https://github.com/SRI-CSL/l3riscv)
-- [RISC-V in Sail](https://github.com/rems-project/sail/tree/sail2/riscv)
+- [sail-riscv](https://github.com/rems-project/sail-riscv)
 - [Nikhil's initial RISC-V spec in Bluespec](https://github.com/rsnikhil/RISCV_ISA_Formal_Spec_in_BSV)
