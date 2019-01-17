@@ -163,6 +163,7 @@ module mkRVMemShim (RVMemShim);
   // 2 memory interfaces
   RVMem m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
+    let readReqFF <- mkFIFOF;
     // which response ?
     let expectWriteRsp <- mkFIFOF;
     let rspFF <- mkBypassFIFOF;
@@ -175,7 +176,10 @@ module mkRVMemShim (RVMemShim);
     endrule
     rule drainRChannel (!expectWriteRsp.first);
       let tmp <- shim[i].slave.r.get;
+      Bit#(128) shiftAmnt = zeroExtend(readReqFF.first) << 3;
+      tmp.rdata = tmp.rdata >> shiftAmnt;
       rspFF.enq(fromAXIRLiteFlit(tmp));
+      readReqFF.deq;
       expectWriteRsp.deq;
     endrule
     // convert requests/responses
@@ -185,12 +189,22 @@ module mkRVMemShim (RVMemShim);
         method put (req) = action
           case (req) matches
             tagged RVReadReq .r: begin
+              readReqFF.enq(r.addr[3:0]);
               shim[i].slave.ar.put(toAXIARLiteFlit(req));
               expectWriteRsp.enq(False);
             end
             tagged RVWriteReq .w: begin
               shim[i].slave.aw.put(toAXIAWLiteFlit(req));
-              shim[i].slave.w.put(toAXIWLiteFlit(req));
+              Bit#(128) shiftAmnt = zeroExtend(w.addr[3:0]) << 3;
+              shim[i].slave.w.put(WLiteFlit{
+                wdata: pack(w.data) << shiftAmnt,
+                wstrb: w.byteEnable << w.addr[3:0],
+                `ifdef RVXCHERI
+                wuser: w.captag
+                `else
+                wuser: 0
+                `endif
+              });
               expectWriteRsp.enq(True);
             end
           endcase
