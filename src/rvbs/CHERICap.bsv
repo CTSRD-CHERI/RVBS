@@ -90,4 +90,14 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t det
   `undef BigBit
 endtypeclass
 
+function Fmt showCHERICap(t cap) provisos (CHERICap#(t, ot, n));
+  return $format( "UPerms: 0x%0x", getUPerms(cap)) +
+         $format(" Perms: 0x%0x", getPerms(cap)) +
+         $format(" Sealed: ", fshow(getSealed(cap))) +
+         $format(" Type: %0d", getType(cap)) +
+         $format(" Addr: 0x%0x", getAddr(cap)) +
+         $format(" Base: 0x%0x", getBase(cap)) +
+         $format(" Length: 0x%0x", getLength(cap));
+endfunction
+
 endpackage

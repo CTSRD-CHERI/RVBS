@@ -96,17 +96,26 @@ module [Module] mkState#(
   s.regFile <- mkRegFileInitZ(Data(pack(nCap)), Data(pack(nCap)));
   function readGPR(i); return truncate(s.regFile.r[i].Data); endfunction
   s.rGPR = readGPR;
-  function writeGPR(i, x) = action s.regFile.r[i] <= Data(zeroExtend(x)); endaction;
+  function writeGPR(i, x) = action
+    s.regFile.r[i] <= Data(zeroExtend(x));
+    printTLogPlusArgs("itrace", $format(rName(i)," <= 0x%0x", x));
+  endaction;
   s.wGPR = writeGPR;
   function readCR(i); return s.regFile.r[i]; endfunction
   s.rCR = readCR;
-  function writeCR(i, x) = action s.regFile.r[i] <= x; endaction;
+  function writeCR(i, x) = action
+    s.regFile.r[i] <= x;
+    printTLogPlusArgs("itrace", $format("c%0d <= ", i, fshow(x)));
+  endaction;
   s.wCR = writeCR;
   `else
   s.regFile <- mkRegFileZ;
   function readGPR(i); return s.regFile.r[i]; endfunction
   s.rGPR = readGPR;
-  function writeGPR(i, x) = action s.regFile.r[i] <= x; endaction;
+  function writeGPR(i, x) = action
+    s.regFile.r[i] <= x;
+    printTLogPlusArgs("itrace", $format(rName(i), " <= 0x%0x", x));
+  endaction;
   s.wGPR = writeGPR;
   `endif
   s.csrs <- mkCSRs();

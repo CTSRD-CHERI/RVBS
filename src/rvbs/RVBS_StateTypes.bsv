@@ -75,6 +75,15 @@ typedef union tagged {
   RawCap Cap;
   Bit#(TAdd#(XLEN, XLEN)) Data;
 } CapType deriving (Bits);
+instance FShow#(CapType);
+  function fshow (ct) = case (ct) matches
+    tagged Cap  .cap:  return $format("Tag: True ",  showCHERICap(cap));
+    tagged Data .data: begin
+      RawCap tmp = unpack(pack(data));
+      return $format("Tag: False ", showCHERICap(tmp));
+    end
+  endcase;
+endinstance
 // Helper functions
 function Bool isCap(CapType cap) = case (cap) matches
   tagged Cap ._: return True;
