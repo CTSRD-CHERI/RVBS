@@ -156,6 +156,7 @@ interface RVMemShim;
   interface AXILiteMaster#(`AXI_PARAMS) instAXILiteMaster;
   interface AXILiteMaster#(`AXI_PARAMS) dataAXILiteMaster;
 endinterface
+typedef enum {READ, WRITE} RspType deriving (Bits, Eq);
 module mkRVMemShim (RVMemShim);
 
   // 2 AXI shims
@@ -163,52 +164,54 @@ module mkRVMemShim (RVMemShim);
   // 2 memory interfaces
   RVMem m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
-    let readReqFF <- mkFIFOF;
-    // which response ?
-    let expectWriteRsp <- mkFIFOF;
+    FIFOF#(RspType) nextRsp <- mkFIFOF;
+    let reqFF <- mkBypassFIFOF;
     let rspFF <- mkBypassFIFOF;
+    let pendingReadFF <- mkFIFOF;
     // drain responses
     (* mutually_exclusive = "drainBChannel, drainRChannel"*)
-    rule drainBChannel (expectWriteRsp.first);
+    rule drainBChannel (nextRsp.first == WRITE);
       let tmp <- shim[i].slave.b.get;
       rspFF.enq(fromAXIBLiteFlit(tmp));
-      expectWriteRsp.deq;
+      nextRsp.deq;
     endrule
-    rule drainRChannel (!expectWriteRsp.first);
+    rule drainRChannel (nextRsp.first == READ);
       let tmp <- shim[i].slave.r.get;
-      Bit#(128) shiftAmnt = zeroExtend(readReqFF.first) << 3;
+      Bit#(128) shiftAmnt = zeroExtend(pendingReadFF.first) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
       rspFF.enq(fromAXIRLiteFlit(tmp));
-      readReqFF.deq;
-      expectWriteRsp.deq;
+      pendingReadFF.deq;
+      nextRsp.deq;
+    endrule
+    rule handleReq;
+      case (reqFF.first) matches
+        tagged RVReadReq .r: begin
+          shim[i].slave.ar.put(toAXIARLiteFlit(reqFF.first));
+          pendingReadFF.enq(r.addr[3:0]);
+          nextRsp.enq(READ);
+        end
+        tagged RVWriteReq .w: begin
+          Bit#(128) shiftAmnt = zeroExtend(w.addr[3:0]) << 3;
+          shim[i].slave.aw.put(toAXIAWLiteFlit(reqFF.first));
+          shim[i].slave.w.put(WLiteFlit{
+            wdata: pack(w.data) << shiftAmnt,
+            wstrb: w.byteEnable << w.addr[3:0],
+            `ifdef RVXCHERI
+            wuser: w.captag
+            `else
+            wuser: 0
+            `endif
+          });
+          nextRsp.enq(WRITE);
+        end
+      endcase
+      reqFF.deq;
     endrule
     // convert requests/responses
     m[i] = interface RVMem;
       interface sink = interface Sink;
-        method canPut = expectWriteRsp.notFull;
-        method put (req) = action
-          case (req) matches
-            tagged RVReadReq .r: begin
-              readReqFF.enq(r.addr[3:0]);
-              shim[i].slave.ar.put(toAXIARLiteFlit(req));
-              expectWriteRsp.enq(False);
-            end
-            tagged RVWriteReq .w: begin
-              shim[i].slave.aw.put(toAXIAWLiteFlit(req));
-              Bit#(128) shiftAmnt = zeroExtend(w.addr[3:0]) << 3;
-              shim[i].slave.w.put(WLiteFlit{
-                wdata: pack(w.data) << shiftAmnt,
-                wstrb: w.byteEnable << w.addr[3:0],
-                `ifdef RVXCHERI
-                wuser: w.captag
-                `else
-                wuser: 0
-                `endif
-              });
-              expectWriteRsp.enq(True);
-            end
-          endcase
-        endaction;
+        method canPut = nextRsp.notFull;
+        method put (req) = reqFF.enq(req);
       endinterface;
       interface source = toSource(rspFF);
     endinterface;
