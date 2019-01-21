@@ -168,27 +168,25 @@ module mkRVMemShim (RVMemShim);
     let reqFF <- mkBypassFIFOF;
     let rspFF <- mkBypassFIFOF;
     let pendingReadFF <- mkFIFOF;
-    // drain responses
-    (* mutually_exclusive = "drainBChannel, drainRChannel"*)
-    rule drainBChannel (nextRsp.first == WRITE);
-      let tmp <- shim[i].slave.b.get;
-      rspFF.enq(fromAXIBLiteFlit(tmp));
-      nextRsp.deq;
-    endrule
-    rule drainRChannel (nextRsp.first == READ);
-      let tmp <- shim[i].slave.r.get;
-      Bit#(128) shiftAmnt = zeroExtend(pendingReadFF.first) << 3;
-      tmp.rdata = tmp.rdata >> shiftAmnt;
-      rspFF.enq(fromAXIRLiteFlit(tmp));
-      pendingReadFF.deq;
-      nextRsp.deq;
-    endrule
-    rule handleReq;
+    let readRspNext <- mkReg(Invalid);
+    let reqNext <- mkReg(False);
+    // forward requests to AXI
+    rule handleReq (!reqNext);
       case (reqFF.first) matches
         tagged RVReadReq .r: begin
-          shim[i].slave.ar.put(toAXIARLiteFlit(reqFF.first));
-          pendingReadFF.enq(r.addr[3:0]);
+          shim[i].slave.ar.put(ARLiteFlit{
+            araddr: pack(r.addr), arprot: 0, aruser: 0
+          });
           nextRsp.enq(READ);
+          // check for need of 2 requests
+          Bool needMore = False;
+          Bit#(6) lastIn = zeroExtend(r.addr[3:0]) + zeroExtend(readBitPO(r.numBytes));
+          if (lastIn > 16) begin
+            reqNext <= True;
+            needMore = True;
+          end
+          else reqFF.deq;
+          pendingReadFF.enq(tuple2(r.addr[3:0], needMore));
         end
         tagged RVWriteReq .w: begin
           Bit#(128) shiftAmnt = zeroExtend(w.addr[3:0]) << 3;
@@ -203,9 +201,50 @@ module mkRVMemShim (RVMemShim);
             `endif
           });
           nextRsp.enq(WRITE);
+          reqFF.deq;
         end
       endcase
+    endrule
+    rule handleNextReadReq (reqNext);
+      shim[i].slave.ar.put(ARLiteFlit{
+        araddr: pack(reqFF.first.RVReadReq.addr + 16), arprot: 0, aruser: 0
+      });
+      nextRsp.enq(READ);
       reqFF.deq;
+      reqNext <= False;
+    endrule
+    // drain responses
+    (* mutually_exclusive = "drainBChannel, drainRChannel"*)
+    (* mutually_exclusive = "drainBChannel, drainRChannelNext"*)
+    rule drainBChannel (nextRsp.first == WRITE);
+      let tmp <- shim[i].slave.b.get;
+      rspFF.enq(fromAXIBLiteFlit(tmp));
+      nextRsp.deq;
+    endrule
+    (* descending_urgency = "drainRChannelNext, drainRChannel"*)
+    rule drainRChannel (nextRsp.first == READ);
+      nextRsp.deq;
+      let tmp <- shim[i].slave.r.get;
+      match {.offset, .needMore} = pendingReadFF.first;
+      Bit#(128) shiftAmnt = zeroExtend(offset) << 3;
+      tmp.rdata = tmp.rdata >> shiftAmnt;
+      if (!needMore) begin
+        rspFF.enq(fromAXIRLiteFlit(tmp));
+        pendingReadFF.deq;
+      end else readRspNext <= Valid(tmp);
+    endrule
+    rule drainRChannelNext (nextRsp.first == READ && isValid(readRspNext));
+      nextRsp.deq;
+      pendingReadFF.deq;
+      readRspNext <= Invalid;
+      let tmp <- shim[i].slave.r.get;
+      let rsp = readRspNext.Valid;
+      match {.offset, .needMore} = pendingReadFF.first;
+      Bit#(128) shiftAmnt = (16 - zeroExtend(offset)) << 3;
+      if (tmp.rresp matches OKAY) begin
+        rsp.rdata = (rsp.rdata & ~(~0 << shiftAmnt)) | (tmp.rdata << shiftAmnt);
+        rspFF.enq(fromAXIRLiteFlit(rsp));
+      end else rspFF.enq(RVBusError);
     endrule
     // convert requests/responses
     m[i] = interface RVMem;
