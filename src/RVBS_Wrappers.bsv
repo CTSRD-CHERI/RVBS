@@ -167,66 +167,112 @@ module mkRVMemShim (RVMemShim);
     FIFOF#(RspType) nextRsp <- mkFIFOF;
     let reqFF <- mkBypassFIFOF;
     let rspFF <- mkBypassFIFOF;
-    let pendingReadFF <- mkFIFOF;
+    let readReqNext <- mkReg(False);
     let readRspNext <- mkReg(Invalid);
-    let reqNext <- mkReg(False);
+    let pendingReadFF <- mkFIFOF;
+    let writeReqNext <- mkReg(Invalid);
+    let writeRspNext <- mkReg(Invalid);
+    let pendingWriteFF <- mkFIFOF;
     // forward requests to AXI
-    rule handleReq (!reqNext);
+    rule handleReq (!(readReqNext || isValid(writeReqNext)));
       case (reqFF.first) matches
+        // Handle read requests
         tagged RVReadReq .r: begin
+          // check for need of 2 AXI Lite requests
+          Bool needMore = False;
+          Bit#(6) firstOut = zeroExtend(r.addr[3:0]) + zeroExtend(readBitPO(r.numBytes));
+          if (firstOut > 16) begin
+            readReqNext <= True;
+            needMore = True;
+          end
+          else reqFF.deq;
+          // send first AXI Lite request
           shim[i].slave.ar.put(ARLiteFlit{
             araddr: pack(r.addr), arprot: 0, aruser: 0
           });
           nextRsp.enq(READ);
-          // check for need of 2 requests
-          Bool needMore = False;
-          Bit#(6) lastIn = zeroExtend(r.addr[3:0]) + zeroExtend(readBitPO(r.numBytes));
-          if (lastIn > 16) begin
-            reqNext <= True;
-            needMore = True;
-          end
-          else reqFF.deq;
           pendingReadFF.enq(tuple2(r.addr[3:0], needMore));
         end
+        // Handle write requests
         tagged RVWriteReq .w: begin
-          Bit#(128) shiftAmnt = zeroExtend(w.addr[3:0]) << 3;
+          // check for need of 2 AXI Lite requests
+          Bit#(6) firstIn  = zeroExtend(w.addr[3:0]) + zeroExtend(pack(countZerosLSB(w.byteEnable)));
+          Bit#(6) firstOut = zeroExtend(w.addr[3:0]) + (16 - zeroExtend(pack(countZerosMSB(w.byteEnable))));
+          Bool needMore = (firstIn < 16 && firstOut > 16);
+          // initialise values to write
+          Bit#(8) dataShift = zeroExtend(w.addr[3:0]) << 3;
+          Bit#(5)   beShift = zeroExtend(w.addr[3:0]);
+          Bit#(128)   wData = pack(w.data) << dataShift;
+          Bit#(16)    wStrb = w.byteEnable << beShift;
+          if (firstIn > 16) begin
+            dataShift = (16 - zeroExtend(w.addr[3:0])) << 3;
+            beShift = (16 - zeroExtend(w.addr[3:0]));
+            wData = pack(w.data) >> dataShift;
+            wStrb = w.byteEnable >> beShift;
+          end
+          // send AXI Lite request
           shim[i].slave.aw.put(toAXIAWLiteFlit(reqFF.first));
           shim[i].slave.w.put(WLiteFlit{
-            wdata: pack(w.data) << shiftAmnt,
-            wstrb: w.byteEnable << w.addr[3:0],
+            wdata: wData,
+            wstrb: wStrb,
             `ifdef RVXCHERI
-            wuser: w.captag
+            wuser: (needMore) ? 0 : w.captag;
             `else
             wuser: 0
             `endif
           });
           nextRsp.enq(WRITE);
-          reqFF.deq;
+          pendingWriteFF.enq(needMore);
+          if (needMore) writeReqNext <= Valid(16 - zeroExtend(w.addr[3:0]));
+          else reqFF.deq;
         end
       endcase
     endrule
-    rule handleNextReadReq (reqNext);
+    rule handleNextReadReq (readReqNext && !isValid(writeReqNext));
       shim[i].slave.ar.put(ARLiteFlit{
         araddr: pack(reqFF.first.RVReadReq.addr + 16), arprot: 0, aruser: 0
       });
       nextRsp.enq(READ);
       reqFF.deq;
-      reqNext <= False;
+      readReqNext <= False;
     endrule
-    // drain responses
-    (* mutually_exclusive = "drainBChannel, drainRChannel"*)
-    (* mutually_exclusive = "drainBChannel, drainRChannelNext"*)
-    rule drainBChannel (nextRsp.first == WRITE);
+    rule handleNextWriteReq (isValid(writeReqNext) && !readReqNext);
+      Bit#(5) beShift = writeReqNext.Valid;
+      Bit#(8) dataShift = zeroExtend(beShift) << 3;
+      shim[i].slave.aw.put(toAXIAWLiteFlit(reqFF.first));
+      shim[i].slave.w.put(WLiteFlit{
+        wdata: reqFF.first.RVWriteReq.data >> dataShift,
+        wstrb: reqFF.first.RVWriteReq.byteEnable >> beShift,
+        wuser: 0
+      });
+      nextRsp.enq(WRITE);
+      reqFF.deq;
+      writeReqNext <= Invalid;
+    endrule
+    // drain write responses
+    rule drainBChannel (nextRsp.first == WRITE && !isValid(writeRspNext));
       let tmp <- shim[i].slave.b.get;
-      rspFF.enq(fromAXIBLiteFlit(tmp));
       nextRsp.deq;
+      if (!pendingWriteFF.first) begin
+        rspFF.enq(fromAXIBLiteFlit(tmp));
+        pendingWriteFF.deq;
+      end else writeRspNext <= Valid(tmp);
     endrule
-    (* descending_urgency = "drainRChannelNext, drainRChannel"*)
-    rule drainRChannel (nextRsp.first == READ);
+    rule drainBChannelNext (nextRsp.first == WRITE && isValid(writeRspNext));
+      nextRsp.deq;
+      pendingWriteFF.deq;
+      writeRspNext <= Invalid;
+      let tmp <- shim[i].slave.b.get;
+      let rsp = writeRspNext.Valid;
+      if (tmp.bresp matches OKAY) rspFF.enq(fromAXIBLiteFlit(rsp));
+      else rspFF.enq(RVBusError);
+    endrule
+    // drain read responses
+    rule drainRChannel (nextRsp.first == READ && !isValid(readRspNext));
       nextRsp.deq;
       let tmp <- shim[i].slave.r.get;
       match {.offset, .needMore} = pendingReadFF.first;
-      Bit#(128) shiftAmnt = zeroExtend(offset) << 3;
+      Bit#(7) shiftAmnt = zeroExtend(offset) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
       if (!needMore) begin
         rspFF.enq(fromAXIRLiteFlit(tmp));
@@ -240,7 +286,7 @@ module mkRVMemShim (RVMemShim);
       let tmp <- shim[i].slave.r.get;
       let rsp = readRspNext.Valid;
       match {.offset, .needMore} = pendingReadFF.first;
-      Bit#(128) shiftAmnt = (16 - zeroExtend(offset)) << 3;
+      Bit#(7) shiftAmnt = (16 - zeroExtend(offset)) << 3;
       if (tmp.rresp matches OKAY) begin
         rsp.rdata = (rsp.rdata & ~(~0 << shiftAmnt)) | (tmp.rdata << shiftAmnt);
         rspFF.enq(fromAXIRLiteFlit(rsp));
