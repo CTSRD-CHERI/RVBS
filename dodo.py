@@ -181,20 +181,23 @@ test64c_re = re.compile("rv64uc-(p|uo|rvbs)-[^.]+$")
 #vtest64m_re = re.compile("rv64um-vrvbs-[^.]+$")
 #vtest64c_re = re.compile("rv64uc-vrvbs-[^.]+$")
 
-tests = {
-  'rv32i': [f for f in os.listdir(tests_dir) if re.match(test32i_re,f)],
-  'rv32m': [f for f in os.listdir(tests_dir) if re.match(test32m_re,f)],
-  'rv32c': [f for f in os.listdir(tests_dir) if re.match(test32c_re,f)],
-  'rv64i': [f for f in os.listdir(tests_dir) if re.match(test64i_re,f)],
-  'rv64m': [f for f in os.listdir(tests_dir) if re.match(test64m_re,f)],
-  'rv64c': [f for f in os.listdir(tests_dir) if re.match(test64c_re,f)]
-  #'vrv32i': [f for f in os.listdir(tests_dir) if re.match(vtest32i_re,f)],
-  #'vrv32m': [f for f in os.listdir(tests_dir) if re.match(vtest32m_re,f)],
-  #'vrv32c': [f for f in os.listdir(tests_dir) if re.match(vtest32c_re,f)],
-  #'vrv64i': [f for f in os.listdir(tests_dir) if re.match(vtest64i_re,f)],
-  #'vrv64m': [f for f in os.listdir(tests_dir) if re.match(vtest64m_re,f)],
-  #'vrv64c': [f for f in os.listdir(tests_dir) if re.match(vtest64c_re,f)]
-}
+if op.isdir(tests_dir):
+  tests = {
+    'rv32i': [f for f in os.listdir(tests_dir) if re.match(test32i_re,f)],
+    'rv32m': [f for f in os.listdir(tests_dir) if re.match(test32m_re,f)],
+    'rv32c': [f for f in os.listdir(tests_dir) if re.match(test32c_re,f)],
+    'rv64i': [f for f in os.listdir(tests_dir) if re.match(test64i_re,f)],
+    'rv64m': [f for f in os.listdir(tests_dir) if re.match(test64m_re,f)],
+    'rv64c': [f for f in os.listdir(tests_dir) if re.match(test64c_re,f)]
+    #'vrv32i': [f for f in os.listdir(tests_dir) if re.match(vtest32i_re,f)],
+    #'vrv32m': [f for f in os.listdir(tests_dir) if re.match(vtest32m_re,f)],
+    #'vrv32c': [f for f in os.listdir(tests_dir) if re.match(vtest32c_re,f)],
+    #'vrv64i': [f for f in os.listdir(tests_dir) if re.match(vtest64i_re,f)],
+    #'vrv64m': [f for f in os.listdir(tests_dir) if re.match(vtest64m_re,f)],
+    #'vrv64c': [f for f in os.listdir(tests_dir) if re.match(vtest64c_re,f)]
+  }
+else:
+  tests = None
 nb_exts = 3
 # test pass
 test_pass_re = re.compile("TEST SUCCESS")
@@ -260,14 +263,18 @@ def task_list_tests () :
   """Lists detected tests"""
 
   def dump_tests_list():
-    for (family, test_names) in tests.items():
-      print("--- {:s} ---".format(family))
-      dump = ""
-      for (i, v) in enumerate(test_names):
-        dump += "{:20s}".format(v)
-        if (i > 0 and i % 6 == 0 and i < len(test_names)-1):
-          dump += "\n"
-      print(dump)
+    if tests:
+      for (family, test_names) in tests.items():
+        print("--- {:s} ---".format(family))
+        dump = ""
+        for (i, v) in enumerate(test_names):
+          dump += "{:20s}".format(v)
+          if (i > 0 and i % 6 == 0 and i < len(test_names)-1):
+            dump += "\n"
+        print(dump)
+    else:
+      print("No tests found")
+      print("Must be elf files named rv{32,64}{mi,ui}-{p,uo,rvbs}-[^.]+$ in "+str(tests_dir))
 
   return {
     'actions' : [dump_tests_list],
@@ -367,15 +374,16 @@ def task_test_elf_to_hex () :
   def get_tests(s, vm=False):
     #return [tests[("v" if vm else "")+fullname(*(s,)+exts+(False,))] for exts in all_one_hot(nb_exts)]
     return [tests[fullname(*(s,)+exts+(False,))] for exts in all_one_hot(nb_exts)]
-  for t, m in [(x, y) for y in [32,64] for x in flatten(get_tests(y))]:
-    yield {
-      'name'    : test_name(t, m),
-      'actions' : [(elf_to_hex,[op.join(tests_dir,t), m])],
-      'file_dep': [op.join(tests_dir,t)],
-      'clean'   : [clean_targets],
-      'targets' : [op.join(tests_dir, test_name(t, m)+".hex")],
-      'verbosity':2
-    }
+  if tests:
+    for t, m in [(x, y) for y in [32,64] for x in flatten(get_tests(y))]:
+      yield {
+        'name'    : test_name(t, m),
+        'actions' : [(elf_to_hex,[op.join(tests_dir,t), m])],
+        'file_dep': [op.join(tests_dir,t)],
+        'clean'   : [clean_targets],
+        'targets' : [op.join(tests_dir, test_name(t, m)+".hex")],
+        'verbosity':2
+      }
 
 #############
 # Run tests #
@@ -409,17 +417,18 @@ def task_run_test () :
             trace_file.seek(0,2) # get to the end of the file
             trace_file.write("\nTIMEOUT\n")
 
-  for rvbs in rvbss:
-    for t in flatten(tests[x] for x in rvbs.rv_tests()):
-      tname = test_name(t, rvbs.mem_width)
-      yield {
-        'name'    : "-".join([rvbs.name(),tname]),
-        'actions' : [(run_test,[rvbs, tname])],
-        'file_dep': [op.join(tests_dir, tname+".hex"), in_output_dir(rvbs.name()+".so")],
-        'clean'   : [clean_targets],
-        'targets' : [op.join(tracedir, "-".join([rvbs.name(), tname]))],
-        'verbosity':2
-      }
+  if tests:
+    for rvbs in rvbss:
+      for t in flatten(tests[x] for x in rvbs.rv_tests()):
+        tname = test_name(t, rvbs.mem_width)
+        yield {
+          'name'    : "-".join([rvbs.name(),tname]),
+          'actions' : [(run_test,[rvbs, tname])],
+          'file_dep': [op.join(tests_dir, tname+".hex"), in_output_dir(rvbs.name()+".so")],
+          'clean'   : [clean_targets],
+          'targets' : [op.join(tracedir, "-".join([rvbs.name(), tname]))],
+          'verbosity':2
+        }
 
 def task_check_tests ():
   "verify a test's status"
@@ -455,18 +464,19 @@ def task_check_tests ():
       else:
         log(rpt, "{:s} tests: {:s}".format(name, failures_str))
 
-  for rvbs in rvbss:
-    runtests = flatten(tests[x] for x in rvbs.rv_tests())
-    test_traces = [op.join(tracedir,"-".join([rvbs.name(), test_name(t, rvbs.mem_width)])) for t in runtests]
-    yield {
-      'name'    : rvbs.name(),
-      'actions' : [(check_tests,[rvbs, test_traces])],
-      'file_dep': test_traces,
-      'targets' : ["tests-report-{:s}.txt".format(rvbs.name())],
-      'clean'   : [clean_targets],
-      'uptodate': [False],
-      'verbosity':2
-    }
+  if tests:
+    for rvbs in rvbss:
+      runtests = flatten(tests[x] for x in rvbs.rv_tests())
+      test_traces = [op.join(tracedir,"-".join([rvbs.name(), test_name(t, rvbs.mem_width)])) for t in runtests]
+      yield {
+        'name'    : rvbs.name(),
+        'actions' : [(check_tests,[rvbs, test_traces])],
+        'file_dep': test_traces,
+        'targets' : ["tests-report-{:s}.txt".format(rvbs.name())],
+        'clean'   : [clean_targets],
+        'uptodate': [False],
+        'verbosity':2
+      }
 
 def task_render_markdown ():
   "renders markdown documents"
