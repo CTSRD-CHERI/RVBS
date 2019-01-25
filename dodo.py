@@ -166,13 +166,13 @@ md_docs = [x for x in os.listdir(root_dir) if x[-3:] == ".md"]
 # test paths
 tests_dir = op.join(root_dir,"rv-tests")
 #test32i_re = re.compile("rv32(mi|si|ui)-(uo|rvbs)-[^.]+$")
-test32i_re = re.compile("rv32(mi|ui)-(uo|rvbs)-[^.]+$")
-test32m_re = re.compile("rv32um-(uo|rvbs)-[^.]+$")
-test32c_re = re.compile("rv32uc-(uo|rvbs)-[^.]+$")
+test32i_re = re.compile("rv32(mi|ui)-(p|uo|rvbs)-[^.]+$")
+test32m_re = re.compile("rv32um-(p|uo|rvbs)-[^.]+$")
+test32c_re = re.compile("rv32uc-(p|uo|rvbs)-[^.]+$")
 #test64i_re = re.compile("rv64(mi|si|ui)-(uo|rvbs)-[^.]+$")
-test64i_re = re.compile("rv64(mi|ui)-(uo|rvbs)-[^.]+$")
-test64m_re = re.compile("rv64um-(uo|rvbs)-[^.]+$")
-test64c_re = re.compile("rv64uc-(uo|rvbs)-[^.]+$")
+test64i_re = re.compile("rv64(mi|ui)-(p|uo|rvbs)-[^.]+$")
+test64m_re = re.compile("rv64um-(p|uo|rvbs)-[^.]+$")
+test64c_re = re.compile("rv64uc-(p|uo|rvbs)-[^.]+$")
 
 #vtest32i_re = re.compile("rv32ui-vrvbs-[^.]+$")
 #vtest32m_re = re.compile("rv32um-vrvbs-[^.]+$")
@@ -213,15 +213,17 @@ bluebasicsdir=op.join(bluestuffdir, "BlueBasics")
 socketpacketdir=op.join(bluestuffdir, "SocketPacketUtils")
 axidir=op.join(bluestuffdir, "AXI")
 rvbssrcdir=in_root_dir("src")
-bsvpath=":".join(["+",rvbssrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir])
+rvbscoresrcdir=op.join(rvbssrcdir, "rvbs")
+rvbstoplvlsrcdir=op.join(rvbssrcdir, "toplevels")
+bsvpath=":".join(["+",rvbssrcdir,rvbscoresrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir])
 bsv_re = re.compile(".*\.bsv")
 bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]
 bsc_flags+=["-show-schedule"]
 #bsc_flags+=["-show-rule-rel", "*", "*"]
 bsc = sub.run(["which","bsc"],stdout=sub.PIPE).stdout.decode("utf-8").strip()
-topmod = "top"
-topfile = "TopSim.bsv"
+topmod = "mkRVBS_isa_test"
+topfile = op.join(rvbstoplvlsrcdir, "Top_isa_test.bsv")
 cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"MemSim.c"),op.join(socketpacketdir,"socket_packet_utils.c")]
 #gcc
 cc="gcc-4.8"
@@ -250,6 +252,27 @@ def silentremove(filename):
   except OSError as e:
     if e.errno != errno.ENOENT:
       raise
+
+########################
+# check detected tests #
+################################################################################
+def task_list_tests () :
+  """Lists detected tests"""
+
+  def dump_tests_list():
+    for (family, test_names) in tests.items():
+      print("--- {:s} ---".format(family))
+      dump = ""
+      for (i, v) in enumerate(test_names):
+        dump += "{:20s}".format(v)
+        if (i > 0 and i % 6 == 0 and i < len(test_names)-1):
+          dump += "\n"
+      print(dump)
+
+  return {
+    'actions' : [dump_tests_list],
+    'verbosity':2
+  }
 
 ##########################
 # make bluesim simulator #
@@ -371,7 +394,7 @@ def task_run_test () :
       bluespecdir = os.environ.get('BLUESPECDIR')
       bluesim = op.join(bluespecdir,"tcllib/bluespec/bluesim.tcl")
       #cmd = [bluesim, "{:s}.so".format(rvbs.name()), "rvbs", "--script_name", rvbs.name()]
-      cmd = [bluesim, "{:s}.so".format(rvbs.name()), "top"]
+      cmd = [bluesim, "{:s}.so".format(rvbs.name()), topmod]
       if debug:
           #cmd += ["+itrace","+CSRs","+BID_Core","+BID_Utils"]
           #cmd += ["+itrace","+CSRs","+BID_Utils"]
