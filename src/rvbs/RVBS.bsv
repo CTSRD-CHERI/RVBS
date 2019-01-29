@@ -33,12 +33,14 @@ import RVBS_State :: *;
 import RVBS_Trap :: *;
 import RVBS_RVI :: *;
 import RVBS_RVCommon :: *;
+import RVBS_MemAccess :: *;
 
 export RVBS_Types :: *;
 export RVBS_State :: *;
 export RVBS_Trap :: *;
 export RVBS_RVI :: *;
 export RVBS_RVCommon :: *;
+export RVBS_MemAccess :: *;
 
 `ifdef RVM
 import RVBS_RVM :: *;

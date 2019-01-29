@@ -28,6 +28,7 @@
 
 import FIFOF :: *;
 
+import BID :: *;
 import Recipe :: *;
 import BlueUtils :: *;
 import BlueBasics :: *;
@@ -37,6 +38,91 @@ import CHERICap :: *;
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
+
+`ifdef RVFI_DII
+import RVFI_DII_Bridge :: *;
+import FIFO :: *;
+import ClientServer :: *;
+import GetPut :: *;
+`endif
+
+// Instruction fetch
+////////////////////////////////////////////////////////////////////////////////
+module [ISADefModule] mkRVIFetch#(RVState s) ();
+  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
+  rPipe(rBlock(
+      rFastSeq(rBlock(
+      action
+        VAddr vaddr = s.pc.late;
+      `ifdef SUPERVISOR_MODE
+        let req = aReqIFetch(vaddr, 4, Invalid);
+        s.ivm.sink.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction, action
+        let rsp <- s.ivm.source.get;
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+        PAddr paddr = rsp.addr;
+      `else
+        PAddr paddr = toPAddr(vaddr);
+      `endif
+      `ifdef PMP
+      `ifdef SUPERVISOR_MODE
+        let req = aReqIFetch(paddr, 4, rsp.mExc);
+      `else
+        let req = aReqIFetch(paddr, 4, Invalid);
+      `endif
+        s.ipmp.sink.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction, action
+        let rsp <- s.ipmp.source.get;
+        RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: 4};
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
+      `else
+        RVMemReq req = RVReadReq {addr: paddr, numBytes: 4};
+      `endif
+        s.imem.sink.put(req);
+        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
+      endaction)),
+      action
+        let rsp <- s.imem.source.get;
+        case (rsp) matches
+          tagged RVReadRsp .val: begin
+            `ifdef RVXCHERI
+            match {.captag, .data} = val;
+            `else
+            let data = val;
+            `endif
+            let newInstSz = (data[1:0] == 2'b11) ? 4 : 2;
+            asIfc(s.pc.early) <= s.pc + newInstSz;
+            s.instByteSz <= newInstSz;
+            snk.put(truncate(data));
+          end
+          default: snk.put(?);
+        endcase
+      endaction
+  ));
+  // instruction fetching definition
+  defineFetchInstEntry(instFetch(s));
+endmodule
+
+`ifdef RVFI_DII
+// RVFI-DII Instruction fetch
+////////////////////////////////////////////////////////////////////////////////
+module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
+  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
+  rPipe(rBlock(action
+      let inst <- s.rvfi_dii_bridge.inst.request.get;
+      s.iFF.enq(inst);
+    endaction, action
+      asIfc(s.pc.early) <= s.pc + 4;
+      s.instByteSz <= 4;
+      snk.put(s.iFF.first);
+    endaction
+  ));
+  // instruction fetching definition
+  defineFetchInstEntry(instFetch(s));
+endmodule
+`endif
 
 // Read access
 ////////////////////////////////////////////////////////////////////////////////
