@@ -216,7 +216,7 @@ module mkRVMemShim (RVMemShim);
             wdata: wData,
             wstrb: wStrb,
             `ifdef RVXCHERI
-            wuser: (needMore) ? 0 : w.captag;
+            wuser: (needMore) ? 0 : w.captag
             `else
             wuser: 0
             `endif

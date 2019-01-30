@@ -93,9 +93,10 @@ endcase;
 typedef union tagged {
   Tuple2#(Bit#(5), CapType) CapAccessHandle;
   VAddr DDCAccessHandle;
+  VAddr PCCAccessHandle;
 } MemAccessHandle deriving (Bits);
 
-function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, MemAccessHandle h);
+function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, CapType pcc, MemAccessHandle h);
   Bit#(6) idx = ?;
   CapType cap = ?;
   VAddr vaddr = ?;
@@ -108,6 +109,11 @@ function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, MemAccessHan
     tagged DDCAccessHandle .h_addr: begin
       idx = 6'b100001; // this is DDC
       cap = ddc;
+      vaddr = truncate(getBase(cap.Cap)) + h_addr;
+    end
+    tagged PCCAccessHandle .h_addr: begin
+      idx = 6'b100000; // this is PCC
+      cap = pcc;
       vaddr = truncate(getBase(cap.Cap)) + h_addr;
     end
   endcase

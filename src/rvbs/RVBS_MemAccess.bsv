@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -28,196 +28,140 @@
 
 import FIFOF :: *;
 
-import BID :: *;
 import Recipe :: *;
 import BlueUtils :: *;
 import BlueBasics :: *;
-
-import CHERICap :: *;
 
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
 
-`ifdef RVFI_DII
-import RVFI_DII_Bridge :: *;
-import FIFO :: *;
-import ClientServer :: *;
-import GetPut :: *;
+`ifdef RVXCHERI
+import CHERICap :: *;
 `endif
 
-// Instruction fetch
-////////////////////////////////////////////////////////////////////////////////
-module [ISADefModule] mkRVIFetch#(RVState s) ();
-  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
-  rPipe(rBlock(
-      rFastSeq(rBlock(
-      action
-        VAddr vaddr = s.pc.late;
-      `ifdef SUPERVISOR_MODE
-        let req = aReqIFetch(vaddr, 4, Invalid);
-        s.ivm.sink.put(req);
-        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-      endaction, action
-        let rsp <- s.ivm.source.get;
-        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
-        PAddr paddr = rsp.addr;
-      `else
-        PAddr paddr = toPAddr(vaddr);
-      `endif
-      `ifdef PMP
-      `ifdef SUPERVISOR_MODE
-        let req = aReqIFetch(paddr, 4, rsp.mExc);
-      `else
-        let req = aReqIFetch(paddr, 4, Invalid);
-      `endif
-        s.ipmp.sink.put(req);
-        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-      endaction, action
-        let rsp <- s.ipmp.source.get;
-        RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: 4};
-        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(rsp)));
-      `else
-        RVMemReq req = RVReadReq {addr: paddr, numBytes: 4};
-      `endif
-        s.imem.sink.put(req);
-        printTLogPlusArgs("ifetch", $format("IFETCH ", fshow(req)));
-      endaction)),
-      action
-        let rsp <- s.imem.source.get;
-        case (rsp) matches
-          tagged RVReadRsp .val: begin
-            `ifdef RVXCHERI
-            match {.captag, .data} = val;
-            `else
-            let data = val;
-            `endif
-            let newInstSz = (data[1:0] == 2'b11) ? 4 : 2;
-            asIfc(s.pc.early) <= s.pc + newInstSz;
-            s.instByteSz <= newInstSz;
-            snk.put(truncate(data));
-          end
-          default: snk.put(?);
-        endcase
-      endaction
-  ));
-  // instruction fetching definition
-  defineFetchInstEntry(instFetch(s));
-endmodule
-
-`ifdef RVFI_DII
-// RVFI-DII Instruction fetch
-////////////////////////////////////////////////////////////////////////////////
-module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
-  function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
-  rPipe(rBlock(action
-      let inst <- s.rvfi_dii_bridge.inst.request.get;
-      s.iFF.enq(inst);
-    endaction, action
-      asIfc(s.pc.early) <= s.pc + 4;
-      s.instByteSz <= 4;
-      snk.put(s.iFF.first);
-    endaction
-  ));
-  // instruction fetching definition
-  defineFetchInstEntry(instFetch(s));
-endmodule
+`ifdef RVXCHERI
+function Recipe capChecks(
+  RVMemReqType reqType,
+  Bit#(6) capIdx,
+  CapType cap,
+  VAddr vaddr,
+  BitPO#(4) numBytes,
+  Bool capAccess,
+  RVState s,
+  Recipe innerRecipe);
+  return rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
+         rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
+         rIfElse (reqType == IFETCH && !getPerms(cap.Cap).permitExecute, capTrap(s, CapExcPermExe, capIdx),
+         rIfElse (reqType == READ   && !getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
+         rIfElse (reqType == WRITE  && !getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
+         rIfElse (reqType == READ   && capAccess && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
+         rIfElse (reqType == WRITE  && capAccess && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
+         rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
+         rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+           innerRecipe
+         )))))))));
+endfunction
 `endif
 
 // Read access
 ////////////////////////////////////////////////////////////////////////////////
 
-function Recipe doReadMem(
+function Recipe doReadMemCore(
+  RVMemReqType reqType,
+  function Recipe rWrap(Recipe r, Action a),
+  function Action rspCallBack (RVMemRsp rsp),
+  `ifdef SUPERVISOR_MODE
+  VMLookup vm,
+  `endif
+  `ifdef PMP
+  PMPLookup pmp,
+  `endif
+  RVMem mem,
   RVState s,
-  `ifndef RVXCHERI
   VAddr vaddr,
-  `else
-  MemAccessHandle handle,
-  `endif
-  Bit#(5) dest,
-  BitPO#(4) numBytes,
-  Bool sgnExt
-  `ifdef RVXCHERI
-  , Bool capRead
-  `endif
-);
-  `ifdef RVXCHERI
-  match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, handle);
-  return rFastSeq(rBlock(
-  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
-  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
-  rIfElse (!getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
-  rIfElse (capRead && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
-  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
-  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-    rFastSeq(rBlock(
-  `else
-  return rFastSeq(rBlock(
-  `endif
-    action
+  BitPO#(4) numBytes
+) = rWrap(rFastSeq(rBlock(action
     `ifdef RVFI_DII
-      s.mem_addr[0] <= vaddr;
+    s.mem_addr[0] <= vaddr;
     `endif
     `ifdef SUPERVISOR_MODE
-      let req = aReqRead(vaddr, numBytes, Invalid);
-      s.dvm.sink.put(req);
-      itrace(s, fshow(req));
-    endaction, action
-      let rsp <- s.dvm.source.get();
-      itrace(s, fshow(rsp));
-      PAddr paddr = rsp.addr;
+    let req = aReq(reqType, vaddr, numBytes, Invalid);
+    vm.sink.put(req);
+    itrace(s, fshow(req));
+  endaction, action
+    let rsp <- vm.source.get();
+    itrace(s, fshow(rsp));
+    PAddr paddr = rsp.addr;
     `else
-      PAddr paddr = toPAddr(vaddr);
+    PAddr paddr = toPAddr(vaddr);
     `endif
     `ifdef PMP
     `ifdef SUPERVISOR_MODE
-      let req = aReqRead(paddr, numBytes, rsp.mExc);
+    let req = aReq(reqType, paddr, numBytes, rsp.mExc);
     `else
-      let req = aReqRead(paddr, numBytes, Invalid);
+    let req = aReq(reqType, paddr, numBytes, Invalid);
     `endif
-      s.dpmp.sink.put(req);
-      itrace(s, fshow(req));
-    endaction, action
-      let rsp <- s.dpmp.source.get();
-      itrace(s, fshow(rsp));
-      RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: numBytes};
+    pmp.sink.put(req);
+    itrace(s, fshow(req));
+  endaction, action
+    let rsp <- pmp.source.get();
+    itrace(s, fshow(rsp));
+    RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: numBytes};
     `else
-      RVMemReq req = RVReadReq {addr: paddr, numBytes: numBytes};
+    RVMemReq req = RVReadReq {addr: paddr, numBytes: numBytes};
     `endif
-      s.dmem.sink.put(req);
-      itrace(s, fshow(req));
-    endaction, action
-      let rsp <- s.dmem.source.get();
-      case (rsp) matches
-        tagged RVReadRsp .r: begin
-          `ifdef RVXCHERI
-          match {.captag, .data} = r;
-          RawCap newCap = unpack(truncate(data));
-          `else
-          let data = r;
-          `endif
-          let topIdx = {readBitPO(numBytes), 3'b000};
-          Bool isNeg = unpack(data[topIdx-1]);
-          Bit#(XLEN) mask = (~0) << topIdx;
-          `ifdef RVXCHERI
-          let newData = Data(pack(newCap));
-          if (captag == 1) newData = Cap(newCap);
-          if (capRead) s.wCR(dest, newData);
-          else
-          `endif
-          s.wGPR(dest, (sgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
-        end
-        tagged RVBusError: action trap(s, LoadAccessFault); endaction
-      endcase
-      itrace(s, fshow(rsp));
-    endaction
-  `ifdef RVXCHERI
-  ))))))))));
-  `else
-  ));
-  `endif
-endfunction
+    mem.sink.put(req);
+    itrace(s, fshow(req));
+  endaction)), action
+    let rsp <- mem.source.get();
+    rspCallBack(rsp);
+    itrace(s, fshow(rsp));
+  endaction
+);
 // TODO deal with exceptions
+function Recipe wrapPipe(Recipe r, Action a) = rPipe(rBlock(r, rAct(a)));
+function Recipe wrapFastSeq(Recipe r, Action a) = rFastSeq(rBlock(r, rAct(a)));
+
+function Recipe doIFetchMem(
+  function Action rspCallBack (RVMemRsp rsp),
+  RVState s,
+  VAddr vaddr,
+  BitPO#(4) numBytes
+) = doReadMemCore(
+      IFETCH,
+      wrapPipe,
+      rspCallBack,
+      `ifdef SUPERVISOR_MODE
+      s.ivm,
+      `endif
+      `ifdef PMP
+      s.ipmp,
+      `endif
+      s.imem,
+      s,
+      vaddr,
+      numBytes);
+
+function Recipe doReadMem(
+  function Action rspCallBack (RVMemRsp rsp),
+  RVState s,
+  VAddr vaddr,
+  BitPO#(4) numBytes
+) = doReadMemCore(
+      READ,
+      wrapFastSeq,
+      rspCallBack,
+      `ifdef SUPERVISOR_MODE
+      s.dvm,
+      `endif
+      `ifdef PMP
+      s.dpmp,
+      `endif
+      s.dmem,
+      s,
+      vaddr,
+      numBytes);
 
 function Recipe readData(
   RVState s,
@@ -271,7 +215,7 @@ function Recipe doWriteMem(
   `endif
 );
   `ifdef RVXCHERI
-  match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, handle);
+  match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, s.pcc, handle);
   return rFastSeq(rBlock(
   rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
   rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
