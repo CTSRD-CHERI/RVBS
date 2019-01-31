@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -85,8 +85,8 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   // AXI write request handling
   rule writeReq;
     // get request
-    let awflit <- shim.master.aw.get;
-    let  wflit <- shim.master.w.get;
+    let awflit <- get(shim.master.aw);
+    let  wflit <- get(shim.master.w);
     // handle request
     BLiteFlit#(0) bflit = defaultValue;
     case (awflit.awaddr[15:0])
@@ -118,7 +118,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   // AXI read request handling
   rule readReq;
     // get request
-    let arflit <- shim.master.ar.get;
+    let arflit <- get(shim.master.ar);
     // handle request
     RLiteFlit#(data_sz, 0) rflit = defaultValue;
     case (arflit.araddr[15:0])

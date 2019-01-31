@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -251,7 +251,7 @@ module mkRVMemShim (RVMemShim);
     endrule
     // drain write responses
     rule drainBChannel (nextRsp.first == WRITE && !isValid(writeRspNext));
-      let tmp <- shim[i].slave.b.get;
+      let tmp <- get(shim[i].slave.b);
       nextRsp.deq;
       if (!pendingWriteFF.first) begin
         rspFF.enq(fromAXIBLiteFlit(tmp));
@@ -262,7 +262,7 @@ module mkRVMemShim (RVMemShim);
       nextRsp.deq;
       pendingWriteFF.deq;
       writeRspNext <= Invalid;
-      let tmp <- shim[i].slave.b.get;
+      let tmp <- get(shim[i].slave.b);
       let rsp = writeRspNext.Valid;
       if (tmp.bresp matches OKAY) rspFF.enq(fromAXIBLiteFlit(rsp));
       else rspFF.enq(RVBusError);
@@ -270,7 +270,7 @@ module mkRVMemShim (RVMemShim);
     // drain read responses
     rule drainRChannel (nextRsp.first == READ && !isValid(readRspNext));
       nextRsp.deq;
-      let tmp <- shim[i].slave.r.get;
+      let tmp <- get(shim[i].slave.r);
       match {.offset, .needMore} = pendingReadFF.first;
       Bit#(7) shiftAmnt = zeroExtend(offset) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
@@ -283,7 +283,7 @@ module mkRVMemShim (RVMemShim);
       nextRsp.deq;
       pendingReadFF.deq;
       readRspNext <= Invalid;
-      let tmp <- shim[i].slave.r.get;
+      let tmp <- get(shim[i].slave.r);
       let rsp = readRspNext.Valid;
       match {.offset, .needMore} = pendingReadFF.first;
       Bit#(7) shiftAmnt = (16 - zeroExtend(offset)) << 3;
@@ -382,10 +382,10 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
   let clintWriteRspFF <- mkFIFOF;
   let  clintReadRspFF <- mkFIFOF;
 
-  rule connectWriteReq (rvbs.dataAXILiteMaster.aw.canGet &&
-                     rvbs.dataAXILiteMaster.w.canGet);
-    let awflit <- rvbs.dataAXILiteMaster.aw.get;
-    let  wflit <- rvbs.dataAXILiteMaster.w.get;
+  rule connectWriteReq (rvbs.dataAXILiteMaster.aw.canPeek &&
+                     rvbs.dataAXILiteMaster.w.canPeek);
+    let awflit <- get(rvbs.dataAXILiteMaster.aw);
+    let  wflit <- get(rvbs.dataAXILiteMaster.w);
     if (awflit.awaddr >= 'h02000000 && awflit.awaddr < 'h02001000) begin
       clintSlave.aw.put(awflit);
       clintSlave.w.put(wflit);
@@ -397,20 +397,20 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
     end
   endrule
 
-  rule connectClintB (clintSlave.b.canGet && clintWriteRspFF.first);
-    let bflit <- clintSlave.b.get;
+  rule connectClintB (clintSlave.b.canPeek && clintWriteRspFF.first);
+    let bflit <- get(clintSlave.b);
     rvbs.dataAXILiteMaster.b.put(bflit);
     clintWriteRspFF.deq;
   endrule
 
-  rule connectShimB (shim.slave.b.canGet && !clintWriteRspFF.first);
-    let bflit <- shim.slave.b.get;
+  rule connectShimB (shim.slave.b.canPeek && !clintWriteRspFF.first);
+    let bflit <- get(shim.slave.b);
     rvbs.dataAXILiteMaster.b.put(bflit);
     clintWriteRspFF.deq;
   endrule
 
-  rule connectAR (rvbs.dataAXILiteMaster.ar.canGet);
-    let arflit <- rvbs.dataAXILiteMaster.ar.get;
+  rule connectAR (rvbs.dataAXILiteMaster.ar.canPeek);
+    let arflit <- get(rvbs.dataAXILiteMaster.ar);
     if (arflit.araddr >= 'h02000000 && arflit.araddr < 'h02001000) begin
       clintSlave.ar.put(arflit);
       clintReadRspFF.enq(True);
@@ -420,14 +420,14 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
     end
   endrule
 
-  rule connectClintR (clintSlave.r.canGet && clintReadRspFF.first);
-    let rflit <- clintSlave.r.get;
+  rule connectClintR (clintSlave.r.canPeek && clintReadRspFF.first);
+    let rflit <- get(clintSlave.r);
     rvbs.dataAXILiteMaster.r.put(rflit);
     clintReadRspFF.deq;
   endrule
 
-  rule connectShimR (shim.slave.r.canGet && !clintReadRspFF.first);
-    let rflit <- shim.slave.r.get;
+  rule connectShimR (shim.slave.r.canPeek && !clintReadRspFF.first);
+    let rflit <- get(shim.slave.r);
     rvbs.dataAXILiteMaster.r.put(rflit);
     clintReadRspFF.deq;
   endrule

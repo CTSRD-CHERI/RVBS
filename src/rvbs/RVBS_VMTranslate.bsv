@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -108,7 +108,7 @@ module [Module] mkSv32PageWalker#(
         mExc: Invalid
       });
     endaction, action
-      let r <- pmp.source.get();
+      let r <- get(pmp.source);
       if (isValid(r.mExc)) rsp.enq(r); // terminate early on PMP exception
       else begin
         RVMemReq req = RVReadReq {addr: r.addr, numBytes: `PTESIZE};
@@ -143,7 +143,7 @@ module [Module] mkSv32PageWalker#(
         activeLookup[1] <= False;
         rsp.enq(x);
       endaction;
-      let tmp <- mem.source.get();
+      let tmp <- get(mem.source);
       case (tmp) matches
         `ifndef RVXCHERI
         tagged RVReadRsp .r: begin

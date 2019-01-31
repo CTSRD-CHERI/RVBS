@@ -90,7 +90,7 @@ function Recipe doReadMemCore(
     vm.sink.put(req);
     itrace(s, fshow(req));
   endaction, action
-    let rsp <- vm.source.get();
+    let rsp <- get(vm.source);
     itrace(s, fshow(rsp));
     PAddr paddr = rsp.addr;
     `else
@@ -105,7 +105,7 @@ function Recipe doReadMemCore(
     pmp.sink.put(req);
     itrace(s, fshow(req));
   endaction, action
-    let rsp <- pmp.source.get();
+    let rsp <- get(pmp.source);
     itrace(s, fshow(rsp));
     RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: numBytes};
     `else
@@ -114,7 +114,7 @@ function Recipe doReadMemCore(
     mem.sink.put(req);
     itrace(s, fshow(req));
   endaction)), action
-    let rsp <- mem.source.get();
+    let rsp <- get(mem.source);
     rspCallBack(rsp);
     itrace(s, fshow(rsp));
   endaction
@@ -236,7 +236,7 @@ function Recipe doWriteMem(
       s.dvm.sink.put(req);
       itrace(s, fshow(req));
     endaction, action
-      let rsp <- s.dvm.source.get();
+      let rsp <- get(s.dvm.source);
       itrace(s, fshow(rsp));
       PAddr paddr = rsp.addr;
     `else
@@ -251,7 +251,7 @@ function Recipe doWriteMem(
       s.dpmp.sink.put(req);
       itrace(s, fshow(req));
     endaction, action
-      let rsp <- s.dpmp.source.get();
+      let rsp <- get(s.dpmp.source);
       itrace(s, fshow(rsp));
       RVMemReq req = RVWriteReq {
         addr: rsp.addr,
@@ -278,7 +278,7 @@ function Recipe doWriteMem(
     `endif
       itrace(s, fshow(req));
     endaction, action
-      let rsp <- s.dmem.source.get();
+      let rsp <- get(s.dmem.source);
       case (rsp) matches
         tagged RVWriteRsp .w: noAction;
         tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
