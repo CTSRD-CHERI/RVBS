@@ -68,14 +68,14 @@ module mkTestSOC (SOC_NO_CLINT);
   module mkAXILiteTester (AXILiteSlave#(`AXI_PARAMS));
     let shim <- mkAXILiteShim;
     rule doWrite;
-      let awflit <- shim.master.aw.get;
-      let wflit  <- shim.master.w.get;
+      let awflit <- get(shim.master.aw);
+      let wflit  <- get(shim.master.w);
       if (wflit.wstrb[0] == 1 && wflit.wdata[0] == 1) $display("TEST SUCCESS");
       else $display("TEST FAILURE");
       $finish(0);
     endrule
     rule doRead;
-      let arflit <- shim.master.ar.get;
+      let arflit <- get(shim.master.ar);
       $display("tester should not be read");
       $finish(0);
     endrule

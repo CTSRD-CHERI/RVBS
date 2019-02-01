@@ -81,24 +81,24 @@ function ActionValue#(PrivLvl) popStatusStack(CSR_Ifc#(Status) status, PrivLvl f
   return to;
 endactionvalue;
 
-function Action general_trap(PrivLvl toLvl, Cause cause, VAddr epc, RVState s) = action
+function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVState s) = action
   // Global Interrupt-Enable Stack and latch current privilege level
   pushStatusStack(s.csrs.mstatus, s.currentPrivLvl, toLvl);
   // others
   case (toLvl)
     M: begin
-      s.csrs.mcause <= cause;
+      s.csrs.mcause <= trapCode;
       s.csrs.mepc.addr <= truncateLSB(epc);
     end
     `ifdef SUPERVISOR_MODE
     S: begin
-      s.csrs.scause <= cause;
+      s.csrs.scause <= trapCode;
       s.csrs.sepc.addr <= truncateLSB(epc);
     end
     `endif
     `ifdef RVN
     U: begin
-      // TODO s.csrs.ucause <= cause;
+      // TODO s.csrs.ucause <= trapCode;
       // TODO s.csrs.uepc.addr <= truncateLSB(epc);
     end
     `endif
@@ -106,7 +106,7 @@ function Action general_trap(PrivLvl toLvl, Cause cause, VAddr epc, RVState s) =
   endcase
   s.isTrap[0] <= True;
   s.currentPrivLvl <= M;
-  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(cause), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
+  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
 
 typeclass Trap#(type a); a trap; endtypeclass

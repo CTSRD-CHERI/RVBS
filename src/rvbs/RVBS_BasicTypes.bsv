@@ -131,6 +131,42 @@ typedef enum {
   , CHERIFault = 16 // XXX temp value. Need to pick one in the spec...
   `endif
 } ExcCode deriving (Bits, Eq, FShow);
+typedef union tagged {
+  IntCode Interrupt;
+  ExcCode Exception;
+} TrapCode deriving (Eq);
+instance Bits#(TrapCode, XLEN);
+  function Bit#(XLEN) pack (TrapCode c) = case (c) matches // n must be at least 4 + 1
+    tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
+    tagged Exception .e: {1'b0, zeroExtend(pack(e))};
+  endcase;
+  function TrapCode unpack (Bit#(XLEN) c) = (c[valueOf(XLEN)-1] == 1'b1) ?
+    tagged Interrupt unpack(truncate(c)) :
+    tagged Exception unpack(truncate(c));
+endinstance
+instance FShow#(TrapCode);
+  function Fmt fshow(TrapCode cause) = case (cause) matches
+    tagged Interrupt .i: $format(fshow(i) + $format(" (interrupt %0d)", pack(i)));
+    tagged Exception .e: $format(fshow(e) + $format(" (exception %0d)", pack(e)));
+  endcase;
+endinstance
+//function Bool isValidTrapCode(TrapCode c) = case (c) matches
+function Bool isValidTrapCode(Bit#(XLEN) c) = case (unpack(c)) matches
+  tagged Interrupt .i: case (i)
+    USoftInt, SSoftInt, MSoftInt,
+    UTimerInt, STimerInt, MTimerInt,
+    UExtInt, SExtInt, MExtInt: True;
+    default: False;
+  endcase
+  tagged Exception .e: case (e)
+    InstAddrAlign, InstAccessFault, IllegalInst,
+    Breakpoint, LoadAddrAlign, LoadAccessFault,
+    StrAMOAddrAlign, StrAMOAccessFault,
+    ECallFromU, ECallFromS, ECallFromM,
+    InstPgFault, LoadPgFault, StrAMOPgFault: True;
+    default: False;
+  endcase
+endcase;
 `ifdef RVXCHERI
 // RVXCHERI exception codes
 typedef enum {

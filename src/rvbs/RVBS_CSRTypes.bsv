@@ -97,7 +97,7 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   CSR_Ifc#(Bit#(XLEN)) mscratch;
   CSR_Ifc#(EPC)        mepc;
-  CSR_Ifc#(Cause)      mcause;
+  CSR_Ifc#(TrapCode)   mcause;
   CSR_Ifc#(Bit#(XLEN)) mtval;
   CSR_Ifc#(IP)         mip;
 
@@ -128,7 +128,7 @@ typedef struct {
   //////////////////////////////////////////////////////////////////////////////
   CSR_Ifc#(Bit#(XLEN)) sscratch;
   CSR_Ifc#(EPC)        sepc;
-  CSR_Ifc#(Cause)      scause;
+  CSR_Ifc#(TrapCode)   scause;
   CSR_Ifc#(Bit#(XLEN)) stval;
   // sip -- S-view of mip
 
@@ -796,46 +796,6 @@ instance LegalizeWrite#(EPC);
     return newval;
   endfunction
 endinstance
-
-///////////
-// Cause //
-///////////
-typedef union tagged {
-  IntCode Interrupt;
-  ExcCode Exception;
-} Cause deriving (Eq);
-instance Bits#(Cause, XLEN);
-  function Bit#(XLEN) pack (Cause c) = case (c) matches // n must be at leas 4 + 1
-    tagged Interrupt .i: {1'b1, zeroExtend(pack(i))};
-    tagged Exception .e: {1'b0, zeroExtend(pack(e))};
-  endcase;
-  function Cause unpack (Bit#(XLEN) c) = (c[valueOf(XLEN)-1] == 1'b1) ?
-    tagged Interrupt unpack(truncate(c)) :
-    tagged Exception unpack(truncate(c));
-endinstance
-instance FShow#(Cause);
-  function Fmt fshow(Cause cause) = case (cause) matches
-    tagged Interrupt .i: $format(fshow(i) + $format(" (interrupt %0d)", pack(i)));
-    tagged Exception .e: $format(fshow(e) + $format(" (exception %0d)", pack(e)));
-  endcase;
-endinstance
-//function Bool isValidCause(Cause c) = case (c) matches
-function Bool isValidCause(Bit#(XLEN) c) = case (unpack(c)) matches
-  tagged Interrupt .i: case (i)
-    USoftInt, SSoftInt, MSoftInt,
-    UTimerInt, STimerInt, MTimerInt,
-    UExtInt, SExtInt, MExtInt: True;
-    default: False;
-  endcase
-  tagged Exception .e: case (e)
-    InstAddrAlign, InstAccessFault, IllegalInst,
-    Breakpoint, LoadAddrAlign, LoadAccessFault,
-    StrAMOAddrAlign, StrAMOAccessFault,
-    ECallFromU, ECallFromS, ECallFromM,
-    InstPgFault, LoadPgFault, StrAMOPgFault: True;
-    default: False;
-  endcase
-endcase;
 
 //////////////
 // VendorID //
