@@ -149,7 +149,7 @@ endmodule
 module [ISADefModule] mkRVIFetch_RVFI_DII#(RVState s) ();
   function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk) =
   rPipe(rBlock(action
-      let inst <- s.rvfi_dii_bridge.inst.request.get;
+              let inst <- s.rvfi_dii_bridge.client.getInst(0);
       s.iFF.enq(inst);
     endaction, action
       asIfc(s.pc.early) <= s.pc + 4;
