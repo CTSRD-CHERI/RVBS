@@ -59,9 +59,9 @@ module mkRVBS_rvfi_dii (Empty);
       let errorFF <- mkFIFOF;
       // get responses
       rule drainMemRsp(!errorFF.first);
-        let rsp <- mem[i].source.get;
+        let rsp <- get(mem[i].source);
         `ifdef RVXCHERI
-        let tag <- mem_tag[i].source.get;
+        let tag <- get(mem_tag[i].source);
         `endif
         case (rsp) matches
           tagged ReadRsp .data: rspFF.enq(RVReadRsp(
