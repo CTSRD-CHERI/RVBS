@@ -36,8 +36,8 @@ import SourceSink :: *;
 // CLINT interface
 ////////////////////////////////////////////////////////////////////////////////
 
-interface AXILiteCLINT#(numeric type addr_sz, numeric type data_sz);
-  interface AXILiteSlave#(addr_sz, data_sz, 0, 0, 0, 0, 0) axiLiteSlave;
+interface AXI4LiteCLINT#(numeric type addr_sz, numeric type data_sz);
+  interface AXI4Lite_Slave#(addr_sz, data_sz, 0, 0, 0, 0, 0) axiLiteSlave;
   method Bool peekMSIP;
   method Bool peekMTIP;
 endinterface
@@ -57,7 +57,7 @@ endfunction
 // CLINT implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
+module mkAXI4LiteCLINT (AXI4LiteCLINT#(addr_sz, data_sz))
   provisos (
     //
     Add#(a__, 64, data_sz),
@@ -69,7 +69,7 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     Add#(e__, 1, data_sz)
   );
   // local state
-  AXILiteShim#(addr_sz, data_sz, 0, 0, 0, 0, 0) shim <- mkAXILiteShim;
+  AXI4Lite_Shim#(addr_sz, data_sz, 0, 0, 0, 0, 0) shim <- mkAXI4LiteShim;
   Reg#(Bit#(64)) r_mtime <- mkReg(0); // XXX mkRegU
   Reg#(Bit#(64)) r_mtimecmp <- mkRegU;
   `ifndef XLEN64 // 32-bit only
@@ -82,13 +82,13 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
   // timer rules
   rule count_time; r_mtime <= r_mtime + 1; endrule
   rule compare; r_mtip[0] <= r_mtime >= r_mtimecmp; endrule
-  // AXI write request handling
+  // AXI4 write request handling
   rule writeReq;
     // get request
     let awflit <- get(shim.master.aw);
     let  wflit <- get(shim.master.w);
     // handle request
-    BLiteFlit#(0) bflit = defaultValue;
+    AXI4Lite_BFlit#(0) bflit = defaultValue;
     case (awflit.awaddr[15:0])
       16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
       16'h4000: begin
@@ -115,12 +115,12 @@ module mkAXILiteCLINT (AXILiteCLINT#(addr_sz, data_sz))
     shim.master.b.put(wRsp.first);
     wRsp.deq;
   endrule
-  // AXI read request handling
+  // AXI4 read request handling
   rule readReq;
     // get request
     let arflit <- get(shim.master.ar);
     // handle request
-    RLiteFlit#(data_sz, 0) rflit = defaultValue;
+    AXI4Lite_RFlit#(data_sz, 0) rflit = defaultValue;
     case (arflit.araddr[15:0])
       16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
       16'h4000: rflit.rdata = zeroExtend(r_mtimecmp);

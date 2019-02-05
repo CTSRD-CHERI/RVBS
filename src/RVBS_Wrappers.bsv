@@ -53,9 +53,9 @@ export mkRVBS_CLINT;
 export mkRVBS_CLINT_synth;
 
 `ifdef RVXCHERI
-`define AXI_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
+`define AXI4_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
 `else
-`define AXI_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
+`define AXI4_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
 `endif
 ////////////////
 // Interfaces //
@@ -70,22 +70,22 @@ interface RVBS;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMaster#(`AXI_PARAMS) instAXILiteMaster;
-  interface AXILiteMaster#(`AXI_PARAMS) dataAXILiteMaster;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) instAXI4Lite_Master;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) dataAXI4Lite_Master;
 endinterface
 
 (* always_ready, always_enabled *)
 interface SOC;
-  interface AXILiteSlave#(`AXI_PARAMS) instAXILiteSlave;
-  interface AXILiteSlave#(`AXI_PARAMS) dataAXILiteSlave;
+  interface AXI4Lite_Slave#(`AXI4_PARAMS) instAXI4Lite_Slave;
+  interface AXI4Lite_Slave#(`AXI4_PARAMS) dataAXI4Lite_Slave;
   method Bool peekMEIP;
   method Bool peekMTIP;
   method Bool peekMSIP;
 endinterface
 instance Connectable#(RVBS, SOC);
   module mkConnection#(RVBS rvbs, SOC soc) (Empty);
-    mkConnection(rvbs.instAXILiteMaster, soc.instAXILiteSlave);
-    mkConnection(rvbs.dataAXILiteMaster, soc.dataAXILiteSlave);
+    mkConnection(rvbs.instAXI4Lite_Master, soc.instAXI4Lite_Slave);
+    mkConnection(rvbs.dataAXI4Lite_Master, soc.dataAXI4Lite_Slave);
     rule connect_interrupts;
       rvbs.setMEIP(soc.peekMEIP);
       rvbs.setMTIP(soc.peekMTIP);
@@ -104,8 +104,8 @@ interface RVBS_synth;
   method Action setMSIP(Bool irq);
   method Action setMTIP(Bool irq);
   method Action setMEIP(Bool irq);
-  interface AXILiteMasterSynth#(`AXI_PARAMS) instAXILiteMaster;
-  interface AXILiteMasterSynth#(`AXI_PARAMS) dataAXILiteMaster;
+  interface AXI4Lite_Master_Synth#(`AXI4_PARAMS) instAXI4Lite_Master;
+  interface AXI4Lite_Master_Synth#(`AXI4_PARAMS) dataAXI4Lite_Master;
 endinterface
 
 interface RVBS_CLINT;
@@ -115,20 +115,20 @@ interface RVBS_CLINT;
   interface BIDProbes probes;
   // riscv interfaces
   method Action setMEIP(Bool irq);
-  interface AXILiteMaster#(`AXI_PARAMS) instAXILiteMaster;
-  interface AXILiteMaster#(`AXI_PARAMS) dataAXILiteMaster;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) instAXI4Lite_Master;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) dataAXI4Lite_Master;
 endinterface
 
 (* always_ready, always_enabled *)
 interface SOC_NO_CLINT;
-  interface AXILiteSlave#(`AXI_PARAMS) instAXILiteSlave;
-  interface AXILiteSlave#(`AXI_PARAMS) dataAXILiteSlave;
+  interface AXI4Lite_Slave#(`AXI4_PARAMS) instAXI4Lite_Slave;
+  interface AXI4Lite_Slave#(`AXI4_PARAMS) dataAXI4Lite_Slave;
   method Bool peekMEIP;
 endinterface
 instance Connectable#(RVBS_CLINT, SOC_NO_CLINT);
   module mkConnection#(RVBS_CLINT rvbs, SOC_NO_CLINT soc) (Empty);
-    mkConnection(rvbs.instAXILiteMaster, soc.instAXILiteSlave);
-    mkConnection(rvbs.dataAXILiteMaster, soc.dataAXILiteSlave);
+    mkConnection(rvbs.instAXI4Lite_Master, soc.instAXI4Lite_Slave);
+    mkConnection(rvbs.dataAXI4Lite_Master, soc.dataAXI4Lite_Slave);
     rule connect_interrupts;
       rvbs.setMEIP(soc.peekMEIP);
     endrule
@@ -143,24 +143,24 @@ interface RVBS_CLINT_synth;
   interface BIDProbes probes;
   // riscv interfaces
   method Action setMEIP(Bool irq);
-  interface AXILiteMasterSynth#(`AXI_PARAMS) instAXILiteMaster;
-  interface AXILiteMasterSynth#(`AXI_PARAMS) dataAXILiteMaster;
+  interface AXI4Lite_Master_Synth#(`AXI4_PARAMS) instAXI4Lite_Master;
+  interface AXI4Lite_Master_Synth#(`AXI4_PARAMS) dataAXI4Lite_Master;
 endinterface
 
-/////////////////////////////////
-// Internal memory to AXI shim //
+//////////////////////////////////
+// Internal memory to AXI4 shim //
 ////////////////////////////////////////////////////////////////////////////////
 
 interface RVMemShim;
   interface Array#(RVMem) internalMem;
-  interface AXILiteMaster#(`AXI_PARAMS) instAXILiteMaster;
-  interface AXILiteMaster#(`AXI_PARAMS) dataAXILiteMaster;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) instAXI4Lite_Master;
+  interface AXI4Lite_Master#(`AXI4_PARAMS) dataAXI4Lite_Master;
 endinterface
 typedef enum {READ, WRITE} RspType deriving (Bits, Eq);
 module mkRVMemShim (RVMemShim);
 
-  // 2 AXI shims
-  List#(AXILiteShim#(`AXI_PARAMS)) shim <- replicateM(2, mkAXILiteShim);
+  // 2 AXI4 shims
+  List#(AXI4Lite_Shim#(`AXI4_PARAMS)) shim <- replicateM(2, mkAXI4LiteShim);
   // 2 memory interfaces
   RVMem m[2];
   for (Integer i = 0; i < 2; i = i + 1) begin
@@ -178,7 +178,7 @@ module mkRVMemShim (RVMemShim);
       case (reqFF.first) matches
         // Handle read requests
         tagged RVReadReq .r: begin
-          // check for need of 2 AXI Lite requests
+          // check for need of 2 AXI4Lite requests
           Bool needMore = False;
           Bit#(6) firstOut = zeroExtend(r.addr[3:0]) + zeroExtend(readBitPO(r.numBytes));
           if (firstOut > 16) begin
@@ -186,8 +186,8 @@ module mkRVMemShim (RVMemShim);
             needMore = True;
           end
           else reqFF.deq;
-          // send first AXI Lite request
-          shim[i].slave.ar.put(ARLiteFlit{
+          // send first AXI4Lite request
+          shim[i].slave.ar.put(AXI4Lite_ARFlit{
             araddr: pack(r.addr), arprot: 0, aruser: 0
           });
           nextRsp.enq(READ);
@@ -195,7 +195,7 @@ module mkRVMemShim (RVMemShim);
         end
         // Handle write requests
         tagged RVWriteReq .w: begin
-          // check for need of 2 AXI Lite requests
+          // check for need of 2 AXI4Lite requests
           Bit#(6) firstIn  = zeroExtend(w.addr[3:0]) + zeroExtend(pack(countZerosLSB(w.byteEnable)));
           Bit#(6) firstOut = zeroExtend(w.addr[3:0]) + (16 - zeroExtend(pack(countZerosMSB(w.byteEnable))));
           Bool needMore = (firstIn < 16 && firstOut > 16);
@@ -210,9 +210,9 @@ module mkRVMemShim (RVMemShim);
             wData = pack(w.data) >> dataShift;
             wStrb = w.byteEnable >> beShift;
           end
-          // send AXI Lite request
-          shim[i].slave.aw.put(toAXIAWLiteFlit(reqFF.first));
-          shim[i].slave.w.put(WLiteFlit{
+          // send AXI4Lite request
+          shim[i].slave.aw.put(toAXI4Lite_AWFlit(reqFF.first));
+          shim[i].slave.w.put(AXI4Lite_WFlit{
             wdata: wData,
             wstrb: wStrb,
             `ifdef RVXCHERI
@@ -229,7 +229,7 @@ module mkRVMemShim (RVMemShim);
       endcase
     endrule
     rule handleNextReadReq (readReqNext && !isValid(writeReqNext));
-      shim[i].slave.ar.put(ARLiteFlit{
+      shim[i].slave.ar.put(AXI4Lite_ARFlit{
         araddr: pack(reqFF.first.RVReadReq.addr + 16), arprot: 0, aruser: 0
       });
       nextRsp.enq(READ);
@@ -239,8 +239,8 @@ module mkRVMemShim (RVMemShim);
     rule handleNextWriteReq (isValid(writeReqNext) && !readReqNext);
       Bit#(5) beShift = writeReqNext.Valid;
       Bit#(8) dataShift = zeroExtend(beShift) << 3;
-      shim[i].slave.aw.put(toAXIAWLiteFlit(reqFF.first));
-      shim[i].slave.w.put(WLiteFlit{
+      shim[i].slave.aw.put(toAXI4Lite_AWFlit(reqFF.first));
+      shim[i].slave.w.put(AXI4Lite_WFlit{
         wdata: reqFF.first.RVWriteReq.data >> dataShift,
         wstrb: reqFF.first.RVWriteReq.byteEnable >> beShift,
         wuser: 0
@@ -254,7 +254,7 @@ module mkRVMemShim (RVMemShim);
       let tmp <- get(shim[i].slave.b);
       nextRsp.deq;
       if (!pendingWriteFF.first) begin
-        rspFF.enq(fromAXIBLiteFlit(tmp));
+        rspFF.enq(fromAXI4Lite_BFlit(tmp));
         pendingWriteFF.deq;
       end else writeRspNext <= Valid(tmp);
     endrule
@@ -264,7 +264,7 @@ module mkRVMemShim (RVMemShim);
       writeRspNext <= Invalid;
       let tmp <- get(shim[i].slave.b);
       let rsp = writeRspNext.Valid;
-      if (tmp.bresp matches OKAY) rspFF.enq(fromAXIBLiteFlit(rsp));
+      if (tmp.bresp matches OKAY) rspFF.enq(fromAXI4Lite_BFlit(rsp));
       else rspFF.enq(RVBusError);
     endrule
     // drain read responses
@@ -275,7 +275,7 @@ module mkRVMemShim (RVMemShim);
       Bit#(7) shiftAmnt = zeroExtend(offset) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
       if (!needMore) begin
-        rspFF.enq(fromAXIRLiteFlit(tmp));
+        rspFF.enq(fromAXI4Lite_RFlit(tmp));
         pendingReadFF.deq;
       end else readRspNext <= Valid(tmp);
     endrule
@@ -289,7 +289,7 @@ module mkRVMemShim (RVMemShim);
       Bit#(7) shiftAmnt = (16 - zeroExtend(offset)) << 3;
       if (tmp.rresp matches OKAY) begin
         rsp.rdata = (rsp.rdata & ~(~0 << shiftAmnt)) | (tmp.rdata << shiftAmnt);
-        rspFF.enq(fromAXIRLiteFlit(rsp));
+        rspFF.enq(fromAXI4Lite_RFlit(rsp));
       end else rspFF.enq(RVBusError);
     endrule
     // convert requests/responses
@@ -303,8 +303,8 @@ module mkRVMemShim (RVMemShim);
   end
   // wire up interfaces
   interface internalMem = m;
-  interface instAXILiteMaster = shim[0].master;
-  interface dataAXILiteMaster = shim[1].master;
+  interface instAXI4Lite_Master = shim[0].master;
+  interface dataAXI4Lite_Master = shim[1].master;
 
 endmodule
 
@@ -342,24 +342,24 @@ module mkRVBS#(parameter VAddr reset_pc) (RVBS);
   method     setMSIP = s.csrs.setMSIP;
   method     setMTIP = s.csrs.setMTIP;
   method     setMEIP = s.csrs.setMEIP;
-  interface instAXILiteMaster = mem.instAXILiteMaster;
-  interface dataAXILiteMaster = mem.dataAXILiteMaster;
+  interface instAXI4Lite_Master = mem.instAXI4Lite_Master;
+  interface dataAXI4Lite_Master = mem.dataAXI4Lite_Master;
 
 endmodule
 
 (* synthesize *)
 module mkRVBS_synth#(parameter VAddr reset_pc) (RVBS_synth);
   let ifc <- mkRVBS(reset_pc);
-  let m0 <- toAXILiteMasterSynth(ifc.instAXILiteMaster);
-  let m1 <- toAXILiteMasterSynth(ifc.dataAXILiteMaster);
+  let m0 <- toAXI4Lite_Master_Synth(ifc.instAXI4Lite_Master);
+  let m1 <- toAXI4Lite_Master_Synth(ifc.dataAXI4Lite_Master);
   method      peekPC = ifc.peekPC;
   method peekCtrlCSR = ifc.peekCtrlCSR;
   interface   probes = ifc.probes;
   method     setMSIP = ifc.setMSIP;
   method     setMTIP = ifc.setMTIP;
   method     setMEIP = ifc.setMEIP;
-  interface instAXILiteMaster = m0;
-  interface dataAXILiteMaster = m1;
+  interface instAXI4Lite_Master = m0;
+  interface dataAXI4Lite_Master = m1;
 endmodule
 
 /////////////////////////////
@@ -372,20 +372,20 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
 
   let  rvbs <- mkRVBS(reset_pc);
-  let clint <- mkAXILiteCLINT;
+  let clint <- mkAXI4LiteCLINT;
   `ifndef RVXCHERI
-  AXILiteSlave#(`AXI_PARAMS) clintSlave = clint.axiLiteSlave;
+  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = clint.axiLiteSlave;
   `else
-  AXILiteSlave#(`AXI_PARAMS) clintSlave = dropUserFields(clint.axiLiteSlave);
+  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = dropUserFields(clint.axiLiteSlave);
   `endif
-  let  shim <- mkAXILiteShim;
+  let  shim <- mkAXI4LiteShim;
   let clintWriteRspFF <- mkFIFOF;
   let  clintReadRspFF <- mkFIFOF;
 
-  rule connectWriteReq (rvbs.dataAXILiteMaster.aw.canPeek &&
-                     rvbs.dataAXILiteMaster.w.canPeek);
-    let awflit <- get(rvbs.dataAXILiteMaster.aw);
-    let  wflit <- get(rvbs.dataAXILiteMaster.w);
+  rule connectWriteReq (rvbs.dataAXI4Lite_Master.aw.canPeek &&
+                     rvbs.dataAXI4Lite_Master.w.canPeek);
+    let awflit <- get(rvbs.dataAXI4Lite_Master.aw);
+    let  wflit <- get(rvbs.dataAXI4Lite_Master.w);
     if (awflit.awaddr >= 'h02000000 && awflit.awaddr < 'h02001000) begin
       clintSlave.aw.put(awflit);
       clintSlave.w.put(wflit);
@@ -399,18 +399,18 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
   rule connectClintB (clintSlave.b.canPeek && clintWriteRspFF.first);
     let bflit <- get(clintSlave.b);
-    rvbs.dataAXILiteMaster.b.put(bflit);
+    rvbs.dataAXI4Lite_Master.b.put(bflit);
     clintWriteRspFF.deq;
   endrule
 
   rule connectShimB (shim.slave.b.canPeek && !clintWriteRspFF.first);
     let bflit <- get(shim.slave.b);
-    rvbs.dataAXILiteMaster.b.put(bflit);
+    rvbs.dataAXI4Lite_Master.b.put(bflit);
     clintWriteRspFF.deq;
   endrule
 
-  rule connectAR (rvbs.dataAXILiteMaster.ar.canPeek);
-    let arflit <- get(rvbs.dataAXILiteMaster.ar);
+  rule connectAR (rvbs.dataAXI4Lite_Master.ar.canPeek);
+    let arflit <- get(rvbs.dataAXI4Lite_Master.ar);
     if (arflit.araddr >= 'h02000000 && arflit.araddr < 'h02001000) begin
       clintSlave.ar.put(arflit);
       clintReadRspFF.enq(True);
@@ -422,13 +422,13 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
   rule connectClintR (clintSlave.r.canPeek && clintReadRspFF.first);
     let rflit <- get(clintSlave.r);
-    rvbs.dataAXILiteMaster.r.put(rflit);
+    rvbs.dataAXI4Lite_Master.r.put(rflit);
     clintReadRspFF.deq;
   endrule
 
   rule connectShimR (shim.slave.r.canPeek && !clintReadRspFF.first);
     let rflit <- get(shim.slave.r);
-    rvbs.dataAXILiteMaster.r.put(rflit);
+    rvbs.dataAXI4Lite_Master.r.put(rflit);
     clintReadRspFF.deq;
   endrule
 
@@ -439,22 +439,22 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
   method peekCtrlCSR = rvbs.peekCtrlCSR;
   interface   probes = rvbs.probes;
   method     setMEIP = rvbs.setMEIP;
-  interface instAXILiteMaster = rvbs.instAXILiteMaster;
-  interface dataAXILiteMaster = shim.master;
+  interface instAXI4Lite_Master = rvbs.instAXI4Lite_Master;
+  interface dataAXI4Lite_Master = shim.master;
 
 endmodule
 
 (* synthesize *)
 module mkRVBS_CLINT_synth#(parameter VAddr reset_pc) (RVBS_CLINT_synth);
   let ifc <- mkRVBS_CLINT(reset_pc);
-  let m0 <- toAXILiteMasterSynth(ifc.instAXILiteMaster);
-  let m1 <- toAXILiteMasterSynth(ifc.dataAXILiteMaster);
+  let m0 <- toAXI4Lite_Master_Synth(ifc.instAXI4Lite_Master);
+  let m1 <- toAXI4Lite_Master_Synth(ifc.dataAXI4Lite_Master);
   method      peekPC = ifc.peekPC;
   method peekCtrlCSR = ifc.peekCtrlCSR;
   interface   probes = ifc.probes;
   method     setMEIP = ifc.setMEIP;
-  interface instAXILiteMaster = m0;
-  interface dataAXILiteMaster = m1;
+  interface instAXI4Lite_Master = m0;
+  interface dataAXI4Lite_Master = m1;
 endmodule
 
-`undef AXI_PARAMS
+`undef AXI4_PARAMS

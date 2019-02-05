@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -45,10 +45,10 @@ typedef          0 BUSER_sz;
 typedef          0 ARUSER_sz;
 typedef          0 RUSER_sz;
 
-`define AXI_PARAMS ADDR_sz, DATA_sz,\
+`define AXI4_PARAMS ADDR_sz, DATA_sz,\
                    AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
-`define MASTER_T   AXILiteMaster#(`AXI_PARAMS)
-`define SLAVE_T    AXILiteSlave#(`AXI_PARAMS)
+`define MASTER_T   AXI4Lite_Master#(`AXI4_PARAMS)
+`define SLAVE_T    AXI4Lite_Slave#(`AXI4_PARAMS)
 
 // memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,18 +57,18 @@ module mkSimSOC (SOC);
   `define NMASTERS 1
   `define NSLAVES 4
   // input shim
-  AXILiteShim#(`AXI_PARAMS) shimData <- mkAXILiteShim;
+  AXI4Lite_Shim#(`AXI4_PARAMS) shimData <- mkAXI4LiteShim;
   // DTB
   `ifdef DTB_IMG
   String dtbimg = `DTB_IMG;
   `else
   String dtbimg = "dtb.hex";
   `endif
-  AXILiteSlave#(`AXI_PARAMS) dtb <- mkAXILiteMem('h2000, Valid(dtbimg));
+  AXI4Lite_Slave#(`AXI4_PARAMS) dtb <- mkAXI4LiteMem('h2000, Valid(dtbimg));
   // CharIO
-  AXILiteSlave#(`AXI_PARAMS) charIO <- mkAXILiteSocketCharIO("CHAR_IO", 6000);
+  AXI4Lite_Slave#(`AXI4_PARAMS) charIO <- mkAXI4LiteSocketCharIO("CHAR_IO", 6000);
   // clint
-  AXILiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXILiteCLINT;
+  AXI4LiteCLINT#(ADDR_sz, DATA_sz) clint <- mkAXI4LiteCLINT;
   // memory module
   `ifdef MEM_IMG
   String memimg = `MEM_IMG;
@@ -80,7 +80,7 @@ module mkSimSOC (SOC);
   `else
   Integer memsize = 'h10000000;
   `endif
-  AXILiteSlave#(`AXI_PARAMS) mem[2] <- mkAXILiteSharedMem2(memsize, Valid(memimg));
+  AXI4Lite_Slave#(`AXI4_PARAMS) mem[2] <- mkAXI4LiteSharedMem2(memsize, Valid(memimg));
   // interconnect
   Vector#(`NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;
@@ -94,10 +94,10 @@ module mkSimSOC (SOC);
   maptab[1] = Range{base: 'h10000000, size: 'h01000};
   maptab[2] = Range{base: 'h02000000, size: 'h10000};
   maptab[3] = Range{base: 'h80000000, size: fromInteger(memsize)};
-  mkAXILiteBus(maptab, ms, ss);
+  mkAXI4LiteBus(maptab, ms, ss);
   // interfaces
-  interface instAXILiteSlave = offsetSlave(mem[0], 'h80000000);
-  interface dataAXILiteSlave = shimData.slave;
+  interface instAXI4Lite_Slave = offsetSlave(mem[0], 'h80000000);
+  interface dataAXI4Lite_Slave = shimData.slave;
   method Bool peekMEIP = False;
   method Bool peekMTIP = clint.peekMTIP;
   method Bool peekMSIP = clint.peekMSIP;
@@ -118,6 +118,6 @@ module mkRVBS_sim (Empty);
   mkConnection(rvbs, memoryMap);
 endmodule
 
-`undef AXI_PARAMS
+`undef AXI4_PARAMS
 `undef MASTER_T
 `undef SLAVE_T

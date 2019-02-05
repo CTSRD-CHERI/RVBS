@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -95,21 +95,21 @@ instance NeedRsp#(RVMemReq);
   function needRsp(r) = True;
 endinstance
 
-instance ToAXIAWLiteFlit#(RVMemReq, PAddrWidth, user_sz);
-  function toAXIAWLiteFlit(x);
+instance ToAXI4Lite_AWFlit#(RVMemReq, PAddrWidth, user_sz);
+  function toAXI4Lite_AWFlit(x);
     let w = x.RVWriteReq;
-    return AWLiteFlit {awaddr: pack(w.addr), awprot: 0, awuser: 0};
+    return AXI4Lite_AWFlit {awaddr: pack(w.addr), awprot: 0, awuser: 0};
   endfunction
 endinstance
 
-instance ToAXIWLiteFlit#(RVMemReq, 128, user_sz)
+instance ToAXI4Lite_WFlit#(RVMemReq, 128, user_sz)
   `ifdef RVXCHERI
   provisos (Add#(0, user_sz, 1))
   `endif
   ;
-  function toAXIWLiteFlit(x);
+  function toAXI4Lite_WFlit(x);
     let w = x.RVWriteReq;
-    return WLiteFlit {
+    return AXI4Lite_WFlit {
       wdata: pack(w.data), wstrb: w.byteEnable,
       `ifdef RVXCHERI
       wuser: w.captag
@@ -120,10 +120,10 @@ instance ToAXIWLiteFlit#(RVMemReq, 128, user_sz)
   endfunction
 endinstance
 
-instance ToAXIARLiteFlit#(RVMemReq, PAddrWidth, user_sz);
-  function toAXIARLiteFlit(x);
+instance ToAXI4Lite_ARFlit#(RVMemReq, PAddrWidth, user_sz);
+  function toAXI4Lite_ARFlit(x);
     let r = x.RVReadReq;
-    return ARLiteFlit {araddr: pack(r.addr), arprot: 0, aruser: 0};
+    return AXI4Lite_ARFlit {araddr: pack(r.addr), arprot: 0, aruser: 0};
   endfunction
 endinstance
 
@@ -137,12 +137,12 @@ typedef union tagged {
   void RVBusError;
 } RVMemRsp deriving (Bits, FShow);
 
-instance FromAXIRLiteFlit#(RVMemRsp, 128, user_sz)
+instance FromAXI4Lite_RFlit#(RVMemRsp, 128, user_sz)
   `ifdef RVXCHERI
   provisos (Add#(0, user_sz, 1))
   `endif
   ;
-  function fromAXIRLiteFlit(x) = case (x.rresp)
+  function fromAXI4Lite_RFlit(x) = case (x.rresp)
     OKAY:
       `ifdef RVXCHERI
       RVReadRsp(tuple2(x.ruser, unpack(x.rdata)));
@@ -153,8 +153,8 @@ instance FromAXIRLiteFlit#(RVMemRsp, 128, user_sz)
   endcase;
 endinstance
 
-instance FromAXIBLiteFlit#(RVMemRsp, user_sz);
-  function fromAXIBLiteFlit(x) = case (x.bresp)
+instance FromAXI4Lite_BFlit#(RVMemRsp, user_sz);
+  function fromAXI4Lite_BFlit(x) = case (x.bresp)
     OKAY: RVWriteRsp;
     default: RVBusError;
   endcase;
