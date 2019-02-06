@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -109,20 +109,20 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
 
-typeclass Trap#(type a); a trap; endtypeclass
+typeclass RaiseException#(type a); a raiseException; endtypeclass
 
-instance Trap#(function Action f(RVState s, ExcCode code));
-  function Action trap(RVState s, ExcCode code) = action
+instance RaiseException#(function Action f(RVState s, ExcCode code));
+  function Action raiseException(RVState s, ExcCode code) = action
     general_trap(M, Exception(code), s.pc, s);
     if (s.csrs.mtvec.mode >= 2) terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     else s.pc <= {s.csrs.mtvec.base, 2'b00};
   endaction;
 endinstance
 
-instance Trap#(function Action f(RVState s, ExcCode code, Action side_effect));
-  function Action trap(RVState s, ExcCode code, Action side_effect) = action
-    side_effect;
-    trap(s, code);
+instance RaiseException#(function Action f(RVState s, ExcCode code, Bit#(XLEN) tval));
+  function Action raiseException(RVState s, ExcCode code, Bit#(XLEN) tval) = action
+    s.csrs.mtval <= tval;
+    raiseException(s, code);
   endaction;
 endinstance
 
@@ -132,7 +132,7 @@ typeclass CapTrap#(type a); a capTrap; endtypeclass
 instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(6) idx));
   function capTrap(s, exc, idx) = action
     // TODO set cheri cause etc...
-    trap(s, CHERIFault);
+    raiseException(s, CHERIFault);
   endaction;
 endinstance
 
@@ -188,7 +188,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   // opcode = SYSTEM = 1110011
   function Action instrMRET () = action
     if (s.currentPrivLvl < M) begin
-      trap(s, IllegalInst);
+      raiseException(s, IllegalInst);
       logInst(s, $format("mret"));
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, M);
@@ -207,7 +207,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   // opcode = SYSTEM = 1110011
   function Action instrSRET () = action
     if (s.currentPrivLvl < S || (s.currentPrivLvl == S && s.csrs.mstatus.tsr)) begin
-      trap(s, IllegalInst);
+      raiseException(s, IllegalInst);
       logInst(s, $format("sret"));
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, S);
@@ -227,7 +227,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   // rd = 00000
   // opcode = SYSTEM = 1110011
   function Action instrURET () = action
-    if (s.currentPrivLvl < U || !static_HAS_N_EXT) trap(s, IllegalInst);
+    if (s.currentPrivLvl < U || !static_HAS_N_EXT) raiseException(s, IllegalInst);
     else assignM(s.currentPrivLvl, popStatusStack(s.csrs.mstatus, U));
     // trace
     logInst(s, $format("uret"));
@@ -243,8 +243,8 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   function Action instrWFI () = action
     Bool limit_reached = True;
     case (s.currentPrivLvl) matches
-      U &&& (!static_HAS_N_EXT): action trap(s, IllegalInst); endaction
-      S &&& (s.csrs.mstatus.tw && limit_reached): action trap(s, IllegalInst); endaction
+      U &&& (!static_HAS_N_EXT): action raiseException(s, IllegalInst); endaction
+      S &&& (s.csrs.mstatus.tw && limit_reached): action raiseException(s, IllegalInst); endaction
       default: noAction;
     endcase
     logInst(s, $format("wfi"), $format("IMPLEMENTED AS NOP"));

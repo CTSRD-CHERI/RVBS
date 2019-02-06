@@ -281,7 +281,7 @@ function Recipe doWriteMem(
       let rsp <- get(s.dmem.source);
       case (rsp) matches
         tagged RVWriteRsp .w: noAction;
-        tagged RVBusError: action trap(s, StrAMOAccessFault); endaction
+        tagged RVBusError: action raiseException(s, StrAMOAccessFault); endaction
       endcase
       itrace(s, fshow(rsp));
     endaction

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -46,13 +46,9 @@ import RVBS_MemAccess :: *;
 // Unknown Instruction //
 ////////////////////////////////////////////////////////////////////////////////
 
-function Action mtvalWrite(RVState s, Bit#(XLEN) val) = action
-  s.csrs.mtval <= val;
-endaction;
-
 function Action unknownInst(RVState s, Bit#(32) inst) = action
   Bit#(XLEN) mask = ~((~0) << (s.instByteSz<<3));
-  trap(s, IllegalInst, mtvalWrite(s, mask & zeroExtend(inst)));
+  raiseException(s, IllegalInst, mask & zeroExtend(inst));
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- UNKNOWN INSTRUCTION 0x%0x", s.pc, inst));
 endaction;
 
@@ -289,7 +285,7 @@ function Action instrJAL(RVState s, Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm
   if (isInstAligned(tgt)) begin
     s.pc <= tgt;
     s.wGPR(rd, s.pc + s.instByteSz);
-  end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
+  end else raiseException(s, InstAddrAlign, tgt);
   logInst(s, fmtInstJ("jal", rd, imm));
 endaction;
 
@@ -310,7 +306,7 @@ function Action instrJALR (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   if (isInstAligned(tgt)) begin
     s.pc <= tgt;
     s.wGPR(rd, s.pc + s.instByteSz);
-  end else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
+  end else raiseException(s, InstAddrAlign, tgt);
   logInst(s, fmtInstI("jalr", rd, rs1, imm));
 endaction;
 
@@ -332,7 +328,7 @@ endaction;
 // to BLT, BLTU, BGE, and BGEU, respectivelly.
 
 function Action branchCommon(RVState s, Bit#(XLEN) tgt) = action
-  if (isInstAligned(tgt)) s.pc <= tgt; else trap(s, InstAddrAlign, mtvalWrite(s, tgt));
+  if (isInstAligned(tgt)) s.pc <= tgt; else raiseException(s, InstAddrAlign, tgt);
 endaction;
 
 // funct3 = BEQ = 000
@@ -434,7 +430,7 @@ endaction;
 // funct3 = PRIV = 000
 // opcode = SYSTEM = 1110011
 function Action instrSFENCE_VMA(RVState s, Bit#(5) rs2, Bit#(5) rs1) = action
-  if (s.currentPrivLvl == S && s.csrs.mstatus.tvm) trap(s, IllegalInst);
+  if (s.currentPrivLvl == S && s.csrs.mstatus.tvm) raiseException(s, IllegalInst);
   //TODO
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- sfence.vma %0d, %0d", s.pc, rs1, rs2));
 endaction;
@@ -458,7 +454,7 @@ endaction;
   shouldTrap = s.currentPrivLvl < toPrivLvl(r.idx[9:8]); // privilege level access\
   shouldTrap = shouldTrap || (r.rEffects != NOWRITE && r.idx[11:10] == 2'b11); // writes to read-only registers\
   shouldTrap = shouldTrap || (r.idx == 12'h180 && s.currentPrivLvl == S && s.csrs.mstatus.tvm); // satp register accessed with TVM = 1\
-  if (shouldTrap) trap(s, IllegalInst);\
+  if (shouldTrap) raiseException(s, IllegalInst);\
   else begin\
     // XXX for some reason, bluespec doesn't like this way to write it:\
     // s.rGPR(rd) <- s.csrs.req(r);\
@@ -557,13 +553,13 @@ function Action instrECALL(RVState s) = action
     S: ECallFromS;
     M: ECallFromM;
   endcase;
-  trap(s, code);
+  raiseException(s, code);
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ecall", s.pc));
 endaction;
 
 // EBREAK
 function Action instrEBREAK(RVState s) = action
-  trap(s, Breakpoint);
+  raiseException(s, Breakpoint);
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- ebreak", s.pc));
 endaction;
 

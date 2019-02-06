@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -52,7 +52,7 @@ function Bool nzimm (Bit#(16) x) = x[12] != 0 || x[6:2] != 0;
 
 function Action instrC_Illegal(RVState s) = action
   printTLogPlusArgs("itrace", $format("pc: 0x%0x -- c.illegal", s.pc));
-  trap(s, IllegalInst, action s.csrs.mtval <= 0; endaction);
+  raiseException(s, IllegalInst, action s.csrs.mtval <= 0; endaction);
 endaction;
 
 /////////////////////////////////
