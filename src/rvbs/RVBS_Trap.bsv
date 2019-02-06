@@ -104,7 +104,7 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
     `endif
     default: terminateSim(s, $format("TRAP INTO UNKNOWN PRIVILEGE MODE ", fshow(s.currentPrivLvl)));
   endcase
-  s.isTrap[0] <= True;
+  s.pendingException[0] <= Valid(?);
   s.currentPrivLvl <= M;
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;

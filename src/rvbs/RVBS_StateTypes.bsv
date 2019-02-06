@@ -128,7 +128,7 @@ typedef struct {
 
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
-  Array#(Reg#(Bool)) isTrap;
+  Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
   `ifdef RVXCHERI
   ArchRegFile#(32, CapType) regFile;
   `else
@@ -213,7 +213,7 @@ instance State#(RVState);
     // TODO Update to new BSV-RVFI-DII bridge and parameterize the struct on XLEN
     s.rvfi_dii_bridge.client.report.put(RVFI_DII_Execution{
       rvfi_order: s.count,
-      rvfi_trap:  s.isTrap[1],
+      rvfi_trap:  isValid(s.pendingException[1]),
       rvfi_halt:  ?,
       rvfi_intr:  ?,
       rvfi_insn:  s.iFF.first,
@@ -241,7 +241,7 @@ instance State#(RVState);
     s.mem_wmask[1] <= 0;
     `endif
     // reset transient state
-    s.isTrap[1] <= False;
+    s.pendingException[1] <= Invalid;
     // do the stateful commits
     s.pc.commit;
     s.regFile.commit;

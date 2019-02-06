@@ -87,7 +87,7 @@ module [Module] mkState#(
   // basic state
   s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
-  s.isTrap <- mkCReg(2, False);
+  s.pendingException <- mkCReg(2, Invalid);
   `ifdef RVXCHERI
   RawCap nCap = nullCap;
   RawCap yCap = almightyCap;
