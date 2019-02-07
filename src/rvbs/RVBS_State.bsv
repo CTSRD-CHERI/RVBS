@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -88,6 +88,7 @@ module [Module] mkState#(
   s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
   s.pendingException <- mkCReg(2, Invalid);
+  s.pendingMemException <- mkCReg(2, Invalid);
   `ifdef RVXCHERI
   RawCap nCap = nullCap;
   RawCap yCap = almightyCap;

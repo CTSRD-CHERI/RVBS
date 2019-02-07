@@ -104,7 +104,6 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
     `endif
     default: terminateSim(s, $format("TRAP INTO UNKNOWN PRIVILEGE MODE ", fshow(s.currentPrivLvl)));
   endcase
-  s.pendingException[0] <= Valid(?);
   s.currentPrivLvl <= M;
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
@@ -113,18 +112,19 @@ typeclass RaiseException#(type a); a raiseException; endtypeclass
 
 instance RaiseException#(function Action f(RVState s, ExcCode code));
   function Action raiseException(RVState s, ExcCode code) = action
-    general_trap(M, Exception(code), s.pc, s);
-    if (s.csrs.mtvec.mode >= 2) terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
-    else s.pc <= {s.csrs.mtvec.base, 2'b00};
+    s.pendingException[0] <= Valid(tuple2(code, Invalid));
   endaction;
 endinstance
 
 instance RaiseException#(function Action f(RVState s, ExcCode code, Bit#(XLEN) tval));
   function Action raiseException(RVState s, ExcCode code, Bit#(XLEN) tval) = action
-    s.csrs.mtval <= tval;
-    raiseException(s, code);
+    s.pendingException[0] <= Valid(tuple2(code, Valid(tval)));
   endaction;
 endinstance
+
+function Action raiseMemException(RVState s, ExcCode code) = action
+  s.pendingMemException[0] <= Valid(code);
+endaction;
 
 `ifdef RVXCHERI
 typeclass CapTrap#(type a); a capTrap; endtypeclass
@@ -253,16 +253,33 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
 
   // general functionalities
   //////////////////////////////////////////////////////////////////////////////
-  // handle interrupts as a BID interlude
-  Maybe#(IntCode) code = checkIRQ(s);
-  defineInterEntry(Guarded { guard: isValid(code), val: action
-    general_trap(M, Interrupt(code.Valid), s.pc, s);
+  Maybe#(IntCode) irqCode = checkIRQ(s);
+  Bool isTrap = isValid(s.pendingException[1]) || isValid(s.pendingMemException[1]) || isValid(irqCode);
+  defineInterEntry(Guarded { guard: isTrap, val: action
+    // general info
+    let isStdException = isValid(s.pendingException[0]);
+    let isMemException = isValid(s.pendingMemException[0]);
+    let isException = isStdException || isMemException;
+    match {.exc, .maybe_tval} = s.pendingException[0].Valid;
+    match {.memexc} = s.pendingMemException[0].Valid;
+    TrapCode code = Interrupt(irqCode.Valid);
+    if (isStdException) code = Exception(exc);
+    else if (isMemException) code = Exception(memexc);
+    // handle general trap behaviour
+    general_trap(M, code, s.pc, s);
+    // potential tval latching
+    if (isStdException && isValid(maybe_tval)) s.csrs.mtval <= maybe_tval.Valid;
+    // handle pc update
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
-    case (s.csrs.mtvec.mode)
+    case (s.csrs.mtvec.mode) matches
       Direct: s.pc <= tgt;
-      Vectored: s.pc <= tgt + zeroExtend({pack(code.Valid),2'b00});
+      Vectored &&& isException: s.pc <= tgt;
+      Vectored &&& (!isException): s.pc <= tgt + zeroExtend({pack(irqCode.Valid),2'b00});
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
+    // reset transient state
+    s.pendingException[0] <= Invalid;
+    s.pendingMemException[0] <= Invalid;
   endaction});
 
 endmodule

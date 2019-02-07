@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -129,6 +129,7 @@ typedef struct {
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
+  Array#(Reg#(Maybe#(ExcCode))) pendingMemException;
   `ifdef RVXCHERI
   ArchRegFile#(32, CapType) regFile;
   `else
@@ -206,6 +207,7 @@ instance State#(RVState);
     return str;
   endfunction
   function commit (s) = action
+    let isException = isValid(s.pendingException[1]) || isValid(s.pendingMemException[1]);
     `ifdef RVFI_DII
     // first do the  RVFI_DII reporting
     s.iFF.deq;
@@ -213,7 +215,7 @@ instance State#(RVState);
     // TODO Update to new BSV-RVFI-DII bridge and parameterize the struct on XLEN
     s.rvfi_dii_bridge.client.report.put(RVFI_DII_Execution{
       rvfi_order: s.count,
-      rvfi_trap:  isValid(s.pendingException[1]),
+      rvfi_trap:  isException,
       rvfi_halt:  ?,
       rvfi_intr:  ?,
       rvfi_insn:  s.iFF.first,
@@ -240,24 +242,24 @@ instance State#(RVState);
     s.mem_wdata[1] <= 0;
     s.mem_wmask[1] <= 0;
     `endif
-    // reset transient state
-    s.pendingException[1] <= Invalid;
     // do the stateful commits
-    s.pc.commit;
-    s.regFile.commit;
-    `ifdef RVXCHERI
-    s.pcc.commit;
-    s.ddc.commit;
-    s.utcc.commit;
-    s.uscratchc.commit;
-    s.uepcc.commit;
-    s.stcc.commit;
-    s.sscratchc.commit;
-    s.sepcc.commit;
-    s.mtcc.commit;
-    s.mscratchc.commit;
-    s.mepcc.commit;
-    `endif
+    if (!isException) begin
+      s.pc.commit;
+      s.regFile.commit;
+      `ifdef RVXCHERI
+      s.pcc.commit;
+      s.ddc.commit;
+      s.utcc.commit;
+      s.uscratchc.commit;
+      s.uepcc.commit;
+      s.stcc.commit;
+      s.sscratchc.commit;
+      s.sepcc.commit;
+      s.mtcc.commit;
+      s.mscratchc.commit;
+      s.mepcc.commit;
+      `endif
+    end
   endaction;
 
 endinstance

@@ -77,7 +77,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
         `endif
         s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
       end
-      tagged RVBusError: action raiseException(s, LoadAccessFault); endaction
+      tagged RVBusError: action raiseMemException(s, LoadAccessFault); endaction
     endcase
   endaction;
   // handle mem requests on epilogue
