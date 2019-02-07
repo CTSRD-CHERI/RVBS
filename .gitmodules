@@ -4,9 +4,6 @@
 [submodule "BSV-RVFI-DII"]
 	path = BSV-RVFI-DII
 	url = https://github.com/CTSRD-CHERI/BSV-RVFI-DII.git
-[submodule "TagController"]
-	path = TagController
-	url = git@github.com:CTSRD-CHERI/TagController.git
 [submodule "src/toplevels/CHERISOC"]
 	path = src/toplevels/CHERISOC
 	url = https://github.com/CTSRD-CHERI/CHERISOC.git
