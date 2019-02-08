@@ -126,7 +126,10 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
           s.instByteSz <= newInstSz;
           snk.put(truncate(data));
         end
-        default: snk.put(?);
+        default: begin
+          snk.put(?);
+          raiseIFetchException(s, InstAccessFault);
+        end
       endcase
     endaction;
     return

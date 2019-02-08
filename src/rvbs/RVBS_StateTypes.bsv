@@ -128,6 +128,7 @@ typedef struct {
 
   ArchReg#(VAddr) pc;
   Reg#(VAddr) instByteSz;
+  Array#(Reg#(Maybe#(ExcCode))) pendingIFetchException;
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
   Array#(Reg#(Maybe#(ExcCode))) pendingMemException;
   `ifdef RVXCHERI
@@ -207,7 +208,9 @@ instance State#(RVState);
     return str;
   endfunction
   function commit (s) = action
-    let isException = isValid(s.pendingException[1]) || isValid(s.pendingMemException[1]);
+    let isException = isValid(s.pendingIFetchException[1]) ||
+                      isValid(s.pendingException[1]) ||
+                      isValid(s.pendingMemException[1]);
     `ifdef RVFI_DII
     // first do the  RVFI_DII reporting
     s.iFF.deq;

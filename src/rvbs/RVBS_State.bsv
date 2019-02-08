@@ -87,6 +87,7 @@ module [Module] mkState#(
   // basic state
   s.pc <- mkArchReg(reset_pc);
   s.instByteSz <- mkBypassRegU;
+  s.pendingIFetchException <- mkCReg(3, Invalid);
   s.pendingException <- mkCReg(2, Invalid);
   s.pendingMemException <- mkCReg(2, Invalid);
   `ifdef RVXCHERI

@@ -108,6 +108,10 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
   printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
 
+function Action raiseIFetchException(RVState s, ExcCode code) = action
+  s.pendingIFetchException[0] <= Valid(code);
+endaction;
+
 typeclass RaiseException#(type a); a raiseException; endtypeclass
 
 instance RaiseException#(function Action f(RVState s, ExcCode code));
@@ -254,16 +258,22 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
   // general functionalities
   //////////////////////////////////////////////////////////////////////////////
   Maybe#(IntCode) irqCode = checkIRQ(s);
-  Bool isTrap = isValid(s.pendingException[1]) || isValid(s.pendingMemException[1]) || isValid(irqCode);
+  Bool isTrap = isValid(s.pendingIFetchException[2]) ||
+                isValid(s.pendingException[1]) ||
+                isValid(s.pendingMemException[1]) ||
+                isValid(irqCode);
   defineInterEntry(Guarded { guard: isTrap, val: action
     // general info
+    let isIFetchException = isValid(s.pendingIFetchException[1]);
     let isStdException = isValid(s.pendingException[0]);
     let isMemException = isValid(s.pendingMemException[0]);
     let isException = isStdException || isMemException;
+    let ifetchexc = s.pendingIFetchException[1].Valid;
     match {.exc, .maybe_tval} = s.pendingException[0].Valid;
-    match {.memexc} = s.pendingMemException[0].Valid;
+    let memexc = s.pendingMemException[0].Valid;
     TrapCode code = Interrupt(irqCode.Valid);
-    if (isStdException) code = Exception(exc);
+    if (isIFetchException) code = Exception(ifetchexc);
+    else if (isStdException) code = Exception(exc);
     else if (isMemException) code = Exception(memexc);
     // handle general trap behaviour
     general_trap(M, code, s.pc, s);
@@ -278,6 +288,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
     // reset transient state
+    s.pendingIFetchException[1] <= Invalid;
     s.pendingException[0] <= Invalid;
     s.pendingMemException[0] <= Invalid;
   endaction});
