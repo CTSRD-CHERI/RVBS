@@ -59,20 +59,23 @@ typedef struct
   addr_t addr;
   BitPO#(4) numBytes;
   RVMemReqType reqType;
-  Maybe#(ExcCode) mExc;
 } AddrReq#(type addr_t) deriving (Bits, FShow);
 instance NeedRsp#(AddrReq#(addr_t)); function needRsp(req) = True; endinstance
-function AddrReq#(addr_t) aReq(RVMemReqType rt, addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) =
-  AddrReq {addr: a, numBytes: n, reqType: rt, mExc: mE};
-function AddrReq#(addr_t) aReqRead(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) = aReq(READ, a, n, mE);
-function AddrReq#(addr_t) aReqWrite(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) = aReq(WRITE, a, n, mE);
-function AddrReq#(addr_t) aReqIFetch(addr_t a, BitPO#(4) n, Maybe#(ExcCode) mE) = aReq(IFETCH, a, n, mE);
-typedef struct {
-  addr_t addr;
-  Maybe#(ExcCode) mExc;
-} AddrRsp#(type addr_t) deriving (Bits, FShow);
+function AddrReq#(addr_t) aReq(RVMemReqType rt, addr_t a, BitPO#(4) n) =
+  AddrReq {addr: a, numBytes: n, reqType: rt};
+function AddrReq#(addr_t) aReqRead(addr_t a, BitPO#(4) n) = aReq(READ, a, n);
+function AddrReq#(addr_t) aReqWrite(addr_t a, BitPO#(4) n) = aReq(WRITE, a, n);
+function AddrReq#(addr_t) aReqIFetch(addr_t a, BitPO#(4) n) = aReq(IFETCH, a, n);
+function Either#(ExcToken, AddrReq#(addr_t)) craftAReq (RVMemReqType rt, 
+                                                        Either#(ExcToken, addr_t) e_a,
+                                                        BitPO#(4) n) =
+  case (e_a) matches
+    tagged Left .excTok: Left(excTok);
+    tagged Right .addr: Right(aReq(rt, addr, n));
+  endcase;
 
-typedef Slave#(AddrReq#(addr_req), AddrRsp#(addr_rsp))  AddrLookup#(type addr_req, type addr_rsp);
+typedef Slave#(Either#(ExcToken, AddrReq#(addr_req)),
+               Either#(ExcToken, addr_t)) AddrLookup#(type addr_req, type addr_t);
 
 // Memory interface
 // supports data of 128 bits (16 bytes)
@@ -160,4 +163,5 @@ instance FromAXI4Lite_BFlit#(RVMemRsp, user_sz);
   endcase;
 endinstance
 
-typedef Slave#(RVMemReq, RVMemRsp) RVMem;
+typedef Slave#(Either#(ExcToken, RVMemReq),
+               Either#(ExcToken, RVMemRsp)) RVMem;

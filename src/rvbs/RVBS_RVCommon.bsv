@@ -57,49 +57,66 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
   match {.wVaddr, .wNumBytes, .wData} = s.writeMem.first;
   `endif
   // call back for read responses
-  function Action readCallBack(RVMemRsp rsp) = action
+  function readCallBack(rsp) = action 
     case (rsp) matches
-      tagged RVReadRsp .r: begin
-        `ifdef RVXCHERI
-        match {.captag, .data} = r;
-        RawCap newCap = unpack(truncate(data));
-        `else
-        let data = r;
-        `endif
-        let topIdx = {readBitPO(rNumBytes), 3'b000};
-        Bool isNeg = unpack(data[topIdx-1]);
-        Bit#(XLEN) mask = (~0) << topIdx;
-        `ifdef RVXCHERI
-        let newData = Data(pack(newCap));
-        if (captag == 1) newData = Cap(newCap);
-        if (rCapAccess) s.wCR(rDest, newData);
-        else
-        `endif
-        s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
-      end
-      tagged RVBusError: action raiseMemException(s, LoadAccessFault); endaction
+      tagged Left .excTok: raiseMemTokException(s, excTok);
+      tagged Right .memRsp: case (memRsp) matches
+        tagged RVReadRsp .r: begin
+          `ifdef RVXCHERI
+          match {.captag, .data} = r;
+          RawCap newCap = unpack(truncate(data));
+          `else
+          let data = r;
+          `endif
+          let topIdx = {readBitPO(rNumBytes), 3'b000};
+          Bool isNeg = unpack(data[topIdx-1]);
+          Bit#(XLEN) mask = (~0) << topIdx;
+          `ifdef RVXCHERI
+          let newData = Data(pack(newCap));
+          if (captag == 1) newData = Cap(newCap);
+          if (rCapAccess) s.wCR(rDest, newData);
+          else
+          `endif
+          s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
+        end
+        tagged RVBusError: action raiseMemException(s, LoadAccessFault); endaction
+      endcase
     endcase
   endaction;
+  // check for potential capability exceptions
+  let rExcTok = Invalid;
+  let wExcTok = Invalid;
+  `ifdef RVXCHERI
+  // XXX TODO
+  /*
+  let m_rCapExc = memCapChecks(READ, rCap, rVaddr, rNumBytes, rCapAccess);
+  if (isValid(m_rCapExc)) rExcTok = Valid(ExcToken{
+    excCode: CHERIFault,
+    capExcCode: m_rCapExc.Valid,
+    capIdx: rCapIdx
+  });
+  let m_wCapExc = memCapChecks(WRITE, wCap, wVaddr, wNumBytes, wCapAccess);
+  if (isValid(m_wCapExc)) wExcTok = Valid(ExcToken{
+    excCode: CHERIFault,
+    capExcCode: m_wCapExc.Valid,
+    capIdx: wCapIdx
+  });
+  */
+  `endif
   // handle mem requests on epilogue
   defineEpiEntry(rOneMatch(list(s.readMem.notEmpty, s.writeMem.notEmpty),
                            list(
                              // handle reads
                              rFastSeq(rBlock(
-                               `ifdef RVXCHERI
-                               capChecks(READ, rCapIdx, rCap, rVaddr, rNumBytes, rCapAccess, s,
-                               `endif
-                               doReadMem(readCallBack, s, rVaddr, rNumBytes)
-                               `ifdef RVXCHERI
-                               )
-                               `endif
-                               , s.readMem.deq
+                               doReadMem(rExcTok, readCallBack, s, rVaddr, rNumBytes),
+                               s.readMem.deq
                              )),
                              // handle writes
                              rFastSeq(rBlock(
                                `ifdef RVXCHERI
-                               doWriteMem(s, wHandle, wNumBytes, wData, wCapAccess),
+                               doWriteMem(wExcTok, s, wHandle, wNumBytes, wData, wCapAccess),
                                `else
-                               doWriteMem(s, wVaddr, wNumBytes, wData),
+                               doWriteMem(wExcTok, s, wVaddr, wNumBytes, wData),
                                `endif
                                s.writeMem.deq
                              ))
@@ -111,36 +128,44 @@ endmodule
 // Instruction fetch
 ////////////////////////////////////////////////////////////////////////////////
 module [ISADefModule] mkRVIFetch#(RVState s) ();
+  let excTok = Invalid;
+  `ifdef RVXCHERI
+  // XXX TODO
+  /*
+  let m_ifetchCapExc = ifetchCapChecks(s.pcc, s.pc, 4, False);
+  if (isValid(m_ifetchCapExc)) excTok = Valid(ExcToken{
+    excCode: CHERIFault,
+    capExcCode: m_ifetchCapExc.Valid,
+    capIdx: 6'b100000 // this is PCC
+  });
+  */
+  `endif
   function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk);
     // call back for ifetch responses
-    function Action ifetchCallBack(RVMemRsp rsp) = action
+    function ifetchCallBack(rsp) = action
+      let newInst = ?;
       case (rsp) matches
-        tagged RVReadRsp .val: begin
-          `ifdef RVXCHERI
-          match {.captag, .data} = val;
-          `else
-          let data = val;
-          `endif
-          let newInstSz = (data[1:0] == 2'b11) ? 4 : 2;
-          asIfc(s.pc.early) <= s.pc + newInstSz;
-          s.instByteSz <= newInstSz;
-          snk.put(truncate(data));
-        end
-        default: begin
-          snk.put(?);
-          raiseIFetchException(s, InstAccessFault);
-        end
+        tagged Left .excTok: raiseIFetchTokException(s, excTok);
+        tagged Right .memRsp: case (memRsp) matches
+          tagged RVReadRsp .val: begin
+            `ifdef RVXCHERI
+            match {.captag, .data} = val;
+            `else
+            let data = val;
+            `endif
+            let newInstSz = (data[1:0] == 2'b11) ? 4 : 2;
+            asIfc(s.pc.early) <= s.pc + newInstSz;
+            s.instByteSz <= newInstSz;
+            newInst = truncate(data);
+          end
+          default: begin
+            raiseIFetchException(s, InstAccessFault);
+          end
+        endcase
       endcase
+      snk.put(newInst);
     endaction;
-    return
-      `ifdef RVXCHERI
-      //XXX capChecks(IFETCH, 6'b100000, s.pcc, s.pc, 4, False, s,
-      `endif
-      doIFetchMem(ifetchCallBack, s, s.pc.late, 4)
-      `ifdef RVXCHERI
-      //XXX )
-      `endif
-    ;
+    return doIFetchMem(excTok, ifetchCallBack, s, s.pc.late, 4);
   endfunction
   // instruction fetching definition
   defineFetchInstEntry(instFetch(s));

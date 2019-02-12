@@ -79,7 +79,7 @@ typedef struct {
 } Sv32PTE deriving (Bits, FShow);
 
 module [Module] mkSv32PageWalker#(
-  FIFOF#(AddrRsp#(PAddr)) rsp
+  FIFOF#(Either#(ExcToken, PAddr)) rsp
   , SATP satp
   , RVMem mem
   `ifdef PMP
@@ -101,80 +101,79 @@ module [Module] mkSv32PageWalker#(
   RecipeFSM memReq <- mkRecipeFSM(rPar(rBlock(
     `ifdef PMP
     action
-      pmp.sink.put(AddrReq {
+      pmp.sink.put(Right(AddrReq{
         addr: pteAddr,
         numBytes: `PTESIZE,
-        reqType: rType[1],
-        mExc: Invalid
-      });
+        reqType: rType[1]
+      }));
     endaction, action
       let r <- get(pmp.source);
-      if (isValid(r.mExc)) rsp.enq(r); // terminate early on PMP exception
-      else begin
-        RVMemReq req = RVReadReq {addr: r.addr, numBytes: `PTESIZE};
+      let e_req = case (r) matches
+        tagged Left .excTok:
+          return Left(excTok);
+        tagged Right .checkedAddr:
+          return Right(RVReadReq{addr: checkedAddr, numBytes: `PTESIZE});
+      endcase;
     `else
     action
-      RVMemReq req = RVReadReq {addr: pteAddr, numBytes: `PTESIZE};
+      let e_req = Right(RVReadReq{addr: pteAddr, numBytes: `PTESIZE});
     `endif
       printTLogPlusArgs("debug", $format("DEBUG - a[1] = 0x%0x", a[1]));
       printTLogPlusArgs("debug", $format("DEBUG - i[1] = %0d", i[1]));
       printTLogPlusArgs("debug", $format("DEBUG - va[1].vpn1 = 0x%0x", va[1].vpn1));
       printTLogPlusArgs("debug", $format("DEBUG - va[1].vpn0 = 0x%0x", va[1].vpn0));
       printTLogPlusArgs("debug", $format("DEBUG - log2(PTESIZE) = %0d", log2(`PTESIZE)));
-      printTLogPlusArgs("vmem", $format("VMEM - Sv32 mem access, sending ", fshow(req)));
-      mem.sink.put(req);
-    `ifdef PMP
-    end
-    `endif
+      //printTLogPlusArgs("vmem", $format("VMEM - Sv32 mem access, sending ", fshow(e_req)));
+      mem.sink.put(e_req);
     endaction
-    )));
+  )));
 
     // rule observing the received pte
     let pgFault = case (rType[1])
-      READ: return Valid(LoadPgFault);
-      WRITE: return Valid(StrAMOPgFault);
-      IFETCH: return Valid(InstPgFault);
+      READ: return LoadPgFault;
+      WRITE: return StrAMOPgFault;
+      IFETCH: return InstPgFault;
     endcase;
-    let pgFaultRsp = AddrRsp {addr: ?, mExc: pgFault};
+    let pgFaultRsp = Left(craftExcToken(pgFault));
     rule checkPTE (activeLookup[1]);
       printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule"));
       function finishLookup(x) = action
-        printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - returning ", fshow(x)));
+        //printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - returning ", fshow(x)));
         activeLookup[1] <= False;
         rsp.enq(x);
       endaction;
       let tmp <- get(mem.source);
       case (tmp) matches
-        `ifndef RVXCHERI
-        tagged RVReadRsp .r: begin
-        `else
-        tagged RVReadRsp {._, .r}: begin
-        `endif
-          Sv32PTE pte = unpack(truncate(r));
-          printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - ", fshow(pte)));
-          // invalid pte
-          if (!pte.v || (!pte.r && pte.w)) finishLookup(pgFaultRsp);
-          // leaf pte
-          else if (pte.r || pte.x) begin
-            finishLookup(AddrRsp {
-              addr: {pte.ppn1, (i[1] > 0) ? va[1].vpn0 : pte.ppn0, va[1].pgoffset},
-              mExc: Invalid
-            });
-            // TODO more checks on pte and stuff
-            //if(exc) rsp.enq(exc);
-            //else rsp.enq(PAddr);
-          // non leaf pte
-          end else begin
-            if (i[0] == 0) finishLookup(pgFaultRsp);
-            else begin
-              i[0] <= i[0] - 1;
-              a[0] <= unpack(zeroExtend({pte.ppn1, pte.ppn0}) << log2(`PAGESIZE));
-              //startReq.send();
-              memReq.trigger;
+        tagged Left .excTok: begin $display("Received a non read response when fetching a PTE"); $finish(0); end
+        tagged Right .memRsp: case (memRsp) matches
+          `ifndef RVXCHERI
+          tagged RVReadRsp .r: begin
+          `else
+          tagged RVReadRsp {._, .r}: begin
+          `endif
+            Sv32PTE pte = unpack(truncate(r));
+            printTLogPlusArgs("vmem", $format("VMEM - Sv32 checkPTE rule - ", fshow(pte)));
+            // invalid pte
+            if (!pte.v || (!pte.r && pte.w)) finishLookup(pgFaultRsp);
+            // leaf pte
+            else if (pte.r || pte.x) begin
+              finishLookup(Right({pte.ppn1, (i[1] > 0) ? va[1].vpn0 : pte.ppn0, va[1].pgoffset}));
+              // TODO more checks on pte and stuff
+              //if(exc) rsp.enq(exc);
+              //else rsp.enq(PAddr);
+            // non leaf pte
+            end else begin
+              if (i[0] == 0) finishLookup(pgFaultRsp);
+              else begin
+                i[0] <= i[0] - 1;
+                a[0] <= unpack(zeroExtend({pte.ppn1, pte.ppn0}) << log2(`PAGESIZE));
+                //startReq.send();
+                memReq.trigger;
+              end
             end
           end
-        end
-        default: begin $display("Received a non read response when fetching a PTE"); $finish(0); end // XXX TODO add assertion
+          default: begin $display("Received a non read response when fetching a PTE"); $finish(0); end
+        endcase
       endcase
     endrule
 
@@ -205,7 +204,7 @@ module [Module] mkVMLookup#(CSRs csrs
   `endif
   ) (VMLookup);
   // local module instances
-  FIFOF#(AddrRsp#(PAddr)) rsp <- mkBypassFIFOF;
+  let rsp <- mkBypassFIFOF;
   `ifndef XLEN64 // MAX_XLEN = 32
   PageWalker sv32PageWalker <- mkSv32PageWalker(
     rsp
@@ -223,9 +222,8 @@ module [Module] mkVMLookup#(CSRs csrs
     printTLogPlusArgs("vmem", $format("VMEM - lookup ", fshow(csrs.satp)));
     case (csrs.satp.mode)
       BARE: begin
-        let r = AddrRsp {addr: toPAddr(req.addr), mExc: Invalid};
-        rsp.enq(r);
-        printTLogPlusArgs("vmem", $format("VMEM - BARE mode, returning ", fshow(r)));
+        rsp.enq(Right(toPAddr(req.addr)));
+        printTLogPlusArgs("vmem", $format("VMEM - BARE mode, returning ", fshow(toPAddr(req.addr))));
       end
       `ifdef XLEN64 // MAX_XLEN > 32
       `else // MAX_XLEN = 32
@@ -237,13 +235,14 @@ module [Module] mkVMLookup#(CSRs csrs
   // build the lookup interface
   interface sink = interface Sink;
     method canPut = rsp.notFull;
-    method put (req) = action
-      if (isValid(req.mExc)) begin
-        printTLogPlusArgs("vmem", $format("VMEM - incomming %s, pass it down", fshow(req.mExc)));
-        rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-      end else lookup(req);
+    method put (e_req) = case (e_req) matches
+      tagged Left .excTok: action
+        printTLogPlusArgs("vmem", $format("VMEM - incomming exception %s, pass it down", fshow(excTok)));
+        rsp.enq(Left(excTok)); // always pass down incomming exception without further side effects
+      endaction
+      tagged Right .req: lookup(req);
       //else rsp.enq(AddrRsp {addr: toPAddr(req.addr), mExc: Invalid});
-    endaction;
+    endcase;
   endinterface;
   interface source = toSource(rsp);
 

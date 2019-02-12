@@ -163,7 +163,11 @@ function Bool isValidTrapCode(Bit#(XLEN) c) = case (unpack(c)) matches
     Breakpoint, LoadAddrAlign, LoadAccessFault,
     StrAMOAddrAlign, StrAMOAccessFault,
     ECallFromU, ECallFromS, ECallFromM,
-    InstPgFault, LoadPgFault, StrAMOPgFault: True;
+    InstPgFault, LoadPgFault, StrAMOPgFault
+    `ifdef RVXCHERI
+    , CHERIFault
+    `endif
+    : True;
     default: False;
   endcase
 endcase;
@@ -194,4 +198,25 @@ typedef enum {
   CapExcPermCCallIDC      = 'h1a, // Premit_CCall IDC Violation
   CapExcPermUnseal        = 'h1c  // Premit_Unseal Violation
 } CapExcCode deriving (Bits, Eq, FShow);
+`endif
+typedef struct {
+  ExcCode excCode;
+  `ifdef RVXCHERI
+  CapExcCode capExcCode;
+  Bit#(6) capIdx;
+  `endif
+} ExcToken deriving (Bits, Eq, FShow);
+function ExcToken craftExcToken(ExcCode code) = ExcToken {
+  excCode: code
+  `ifdef RVXCHERI
+  , capExcCode: ?
+  , capIdx: ?
+  `endif
+};
+`ifdef RVXCHERI
+function ExcToken craftCapExcToken(CapExcCode code, Bit#(6) idx) = ExcToken {
+  excCode: CHERIFault,
+  capExcCode: code,
+  capIdx: idx
+};
 `endif

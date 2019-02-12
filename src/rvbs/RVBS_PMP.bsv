@@ -40,38 +40,35 @@ import RVBS_Types :: *;
 
 module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, PrivLvl plvl) (PMPLookup);
 
-  FIFOF#(AddrRsp#(PAddr)) rsp <- mkBypassFIFOF;
+  let rsp <- mkBypassFIFOF;
   // lookup method
   function lookup (req);
     // authorisation after match
-    Maybe#(ExcCode) excCode = case (req.reqType)
-      READ: return Valid(LoadAccessFault);
-      WRITE: return Valid(StrAMOAccessFault);
-      IFETCH: return Valid(InstAccessFault);
-      default: return Invalid; // XXX TODO should never happen, put an assertion
+    ExcCode excCode = case (req.reqType)
+      READ: return LoadAccessFault;
+      WRITE: return StrAMOAccessFault;
+      IFETCH: return InstAccessFault;
     endcase;
     // inner helper for zipwith
-    function Maybe#(AddrRsp#(PAddr)) doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
-      Maybe#(ExcCode) mExc = (!cfg1.l && plvl == M) ? Invalid :
-        (case (req.reqType) matches
-          READ &&& cfg1.r: return Invalid;
-          WRITE &&& cfg1.w: return Invalid;
-          IFETCH &&& cfg1.x: return Invalid;
-          default: excCode;
-        endcase);
-      // prepare match entry
-      let matchRsp = AddrRsp {addr: req.addr, mExc: mExc};
+    //function Maybe#(Either#(ExcToken, PAddr)) doLookup (PMPCfg cfg1, Bit#(SmallPAWidth) a1, Bit#(SmallPAWidth) a0);
+    function doLookup (cfg1, a1, a0);
+      // privilege level and R, W, X checks
+      let isExc =(!(!cfg1.l && plvl == M) &&
+                  ((req.reqType == READ   && !cfg1.r) ||
+                   (req.reqType == WRITE  && !cfg1.w) ||
+                   (req.reqType == IFETCH && !cfg1.x)));
       // matching
       PAddr mask = ((~0) << 3) << countZerosLSB(~a0); // 3 because bottom 2 bits + 1 terminating 0
       PAddr baseAddr = req.addr;
       PAddr topAddr = req.addr + zeroExtend(readBitPO(req.numBytes));
+      function checkCond(c) = c ? Valid(isExc ? Left(craftExcToken(excCode)) : Right(baseAddr)) : Invalid;
       case (cfg1.a)
         // Top Of Range mode
-        TOR: return ({a0,2'b00} <= baseAddr && topAddr <= {a1,2'b00}) ? Valid(matchRsp) : Invalid;
+        TOR: return checkCond({a0,2'b00} <= baseAddr && topAddr <= {a1,2'b00});
         // Naturally Aligned Power Of Two region (4-bytes region)
-        NA4: return (a0 == truncateLSB(baseAddr) && a0 == truncateLSB(topAddr)) ? Valid(matchRsp) : Invalid;
+        NA4: return checkCond(a0 == truncateLSB(baseAddr) && a0 == truncateLSB(topAddr));
         // Naturally Aligned Power Of Two region (>= 8-bytes region)
-        NAPOT: return (({a0,2'b00} & mask) == (baseAddr & mask) && ({a0,2'b00} & mask) == (topAddr & mask)) ? Valid(matchRsp) : Invalid;
+        NAPOT: return checkCond(({a0,2'b00} & mask) == (baseAddr & mask) && ({a0,2'b00} & mask) == (topAddr & mask));
         default: return Invalid; // OFF
       endcase
     endfunction
@@ -80,7 +77,7 @@ module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, 
     Vector#(16, Bit#(SmallPAWidth)) addrs = map(getAddr, pmpaddrs);
     let pmpMatches = zipWith3(doLookup, pmpcfgs, addrs, shiftInAt0(addrs,0));
     return fromMaybe(
-      AddrRsp {addr: req.addr, mExc: plvl == M ? Invalid : excCode},
+      (plvl != M ? Left(craftExcToken(excCode)) : Right(req.addr)),
       fromMaybe(Invalid, find(isValid, pmpMatches)) // flatten the Maybe#(Maybe#(AddrRsp))
     );
   endfunction
@@ -88,10 +85,10 @@ module mkPMPLookup#(Vector#(16, PMPCfg) pmpcfgs, Vector#(16, PMPAddr) pmpaddrs, 
   let lookupWrapper <- mkUniqueWrapper(lookup);
   interface sink = interface Sink;
     method canPut = rsp.notFull;
-    method put (req) = action
-      if (isValid(req.mExc)) rsp.enq(AddrRsp {addr: ?, mExc: req.mExc}); // always pass down incomming exception without further side effects
-      else composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
-    endaction;
+    method put (e_req) = case (e_req) matches
+      tagged Left .excTok: rsp.enq(Left(excTok)); // always pass down incomming exception without further side effects
+      tagged Right .req: composeM(lookupWrapper.func, rsp.enq)(req); // XXX The bluespec reference guide seams to have the arguments the wrong way around for composeM
+    endcase;
   endinterface;
   interface source = toSource(rsp);
 

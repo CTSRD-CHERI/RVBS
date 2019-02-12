@@ -167,6 +167,7 @@ module mkRVMemShim (RVMemShim);
     FIFOF#(RspType) nextRsp <- mkFIFOF;
     let reqFF <- mkBypassFIFOF;
     let rspFF <- mkBypassFIFOF;
+    let pendingExcFF <- mkFIFOF;
     let readReqNext <- mkReg(False);
     let readRspNext <- mkReg(Invalid);
     let pendingReadFF <- mkFIFOF;
@@ -250,36 +251,36 @@ module mkRVMemShim (RVMemShim);
       writeReqNext <= Invalid;
     endrule
     // drain write responses
-    rule drainBChannel (nextRsp.first == WRITE && !isValid(writeRspNext));
+    rule drainBChannel (!pendingExcFF.notEmpty && nextRsp.first == WRITE && !isValid(writeRspNext));
       let tmp <- get(shim[i].slave.b);
       nextRsp.deq;
       if (!pendingWriteFF.first) begin
-        rspFF.enq(fromAXI4Lite_BFlit(tmp));
+        rspFF.enq(Right(fromAXI4Lite_BFlit(tmp)));
         pendingWriteFF.deq;
       end else writeRspNext <= Valid(tmp);
     endrule
-    rule drainBChannelNext (nextRsp.first == WRITE && isValid(writeRspNext));
+    rule drainBChannelNext (!pendingExcFF.notEmpty && nextRsp.first == WRITE && isValid(writeRspNext));
       nextRsp.deq;
       pendingWriteFF.deq;
       writeRspNext <= Invalid;
       let tmp <- get(shim[i].slave.b);
       let rsp = writeRspNext.Valid;
-      if (tmp.bresp matches OKAY) rspFF.enq(fromAXI4Lite_BFlit(rsp));
-      else rspFF.enq(RVBusError);
+      if (tmp.bresp matches OKAY) rspFF.enq(Right(fromAXI4Lite_BFlit(rsp)));
+      else rspFF.enq(Right(RVBusError));
     endrule
     // drain read responses
-    rule drainRChannel (nextRsp.first == READ && !isValid(readRspNext));
+    rule drainRChannel (!pendingExcFF.notEmpty && nextRsp.first == READ && !isValid(readRspNext));
       nextRsp.deq;
       let tmp <- get(shim[i].slave.r);
       match {.offset, .needMore} = pendingReadFF.first;
       Bit#(7) shiftAmnt = zeroExtend(offset) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
       if (!needMore) begin
-        rspFF.enq(fromAXI4Lite_RFlit(tmp));
+        rspFF.enq(Right(fromAXI4Lite_RFlit(tmp)));
         pendingReadFF.deq;
       end else readRspNext <= Valid(tmp);
     endrule
-    rule drainRChannelNext (nextRsp.first == READ && isValid(readRspNext));
+    rule drainRChannelNext (!pendingExcFF.notEmpty && nextRsp.first == READ && isValid(readRspNext));
       nextRsp.deq;
       pendingReadFF.deq;
       readRspNext <= Invalid;
@@ -289,14 +290,23 @@ module mkRVMemShim (RVMemShim);
       Bit#(7) shiftAmnt = (16 - zeroExtend(offset)) << 3;
       if (tmp.rresp matches OKAY) begin
         rsp.rdata = (rsp.rdata & ~(~0 << shiftAmnt)) | (tmp.rdata << shiftAmnt);
-        rspFF.enq(fromAXI4Lite_RFlit(rsp));
-      end else rspFF.enq(RVBusError);
+        rspFF.enq(Right(fromAXI4Lite_RFlit(rsp)));
+      end else rspFF.enq(Right(RVBusError));
+    endrule
+    // drain exception FIFO
+    rule drainException (pendingExcFF.notEmpty);
+      pendingExcFF.deq;
+      let exc = pendingExcFF.first;
+      rspFF.enq(Left(exc));
     endrule
     // convert requests/responses
     m[i] = interface RVMem;
       interface sink = interface Sink;
         method canPut = nextRsp.notFull;
-        method put (req) = reqFF.enq(req);
+        method put (e_req) = case (e_req) matches
+          tagged Left .excTok: pendingExcFF.enq(excTok);
+          tagged Right .req: reqFF.enq(req);
+        endcase;
       endinterface;
       interface source = toSource(rspFF);
     endinterface;

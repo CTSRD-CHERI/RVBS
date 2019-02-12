@@ -149,6 +149,26 @@ instance CapTrap#(function Recipe capTrap (a x, b y, c z)) provisos (CapTrap#(fu
 endinstance
 `endif
 
+function Action raiseMemTokException(RVState s, ExcToken excToken) = action
+  `ifdef RVXCHERI
+  // XXX TODO
+  //if (excToken.excCode == CHERIFault)
+  //  raiseMemCapException(s, excToken.capExcCode, excToken.capIdx);
+  //else
+  `endif
+  raiseMemException(s, excToken.excCode);
+endaction;
+
+function Action raiseIFetchTokException(RVState s, ExcToken excToken) = action
+  `ifdef RVXCHERI
+  // XXX TODO
+  //if (excToken.excCode == CHERIFault)
+  //  raiseIFetchCapException(s, excToken.capExcCode);
+  //else
+  `endif
+  raiseIFetchException(s, excToken.excCode);
+endaction;
+
 function Maybe#(IntCode) checkIRQ (RVState s);
   Bool lvl_ie = case (s.currentPrivLvl)
     M: s.csrs.mstatus.mie;

@@ -67,10 +67,16 @@ endfunction
 // Read access
 ////////////////////////////////////////////////////////////////////////////////
 
+function Either#(ExcToken, a) excOrArg (Maybe#(ExcToken) m_tok, a x);
+  if (isValid(m_tok)) return Left(m_tok.Valid);
+  else return Right(x);
+endfunction
+
 function Recipe doReadMemCore(
+  Maybe#(ExcToken) m_excToken,
   RVMemReqType reqType,
   function Recipe rWrap(Recipe r, Action a),
-  function Action rspCallBack (RVMemRsp rsp),
+  function Action rspCallBack (Either#(ExcToken, RVMemRsp) rsp),
   `ifdef SUPERVISOR_MODE
   VMLookup vm,
   `endif
@@ -86,37 +92,34 @@ function Recipe doReadMemCore(
     s.mem_addr[0] <= vaddr;
     `endif
     `ifdef SUPERVISOR_MODE
-    let req = aReq(reqType, vaddr, numBytes, Invalid);
+    let req = excOrArg(m_excToken, aReq(reqType, vaddr, numBytes));
     vm.sink.put(req);
-    itrace(s, fshow(req));
+    //itrace(s, fshow(req));
   endaction, action
-    let rsp <- get(vm.source);
-    itrace(s, fshow(rsp));
-    PAddr paddr = rsp.addr;
+    let rAddr <- get(vm.source);
+    //itrace(s, fshow(rsp));
     `else
-    PAddr paddr = toPAddr(vaddr);
+    let rAddr = excOrArg(m_excToken, toPAddr(vaddr));
     `endif
     `ifdef PMP
-    `ifdef SUPERVISOR_MODE
-    let req = aReq(reqType, paddr, numBytes, rsp.mExc);
-    `else
-    let req = aReq(reqType, paddr, numBytes, Invalid);
-    `endif
+    let req = craftAReq(reqType, rAddr, numBytes);
     pmp.sink.put(req);
-    itrace(s, fshow(req));
+    //itrace(s, fshow(req));
   endaction, action
-    let rsp <- get(pmp.source);
-    itrace(s, fshow(rsp));
-    RVMemReq req = RVReadReq {addr: rsp.addr, numBytes: numBytes};
-    `else
-    RVMemReq req = RVReadReq {addr: paddr, numBytes: numBytes};
+    let rAddr <- get(pmp.source);
+    //itrace(s, fshow(rsp));
     `endif
+    let req = case (rAddr) matches
+      tagged Left .excTok: return Left(excTok);
+      tagged Right .checkedAddr:
+        return Right(RVReadReq {addr: checkedAddr, numBytes: numBytes});
+    endcase;
     mem.sink.put(req);
-    itrace(s, fshow(req));
+    //itrace(s, fshow(req));
   endaction)), action
     let rsp <- get(mem.source);
     rspCallBack(rsp);
-    itrace(s, fshow(rsp));
+    //itrace(s, fshow(rsp));
   endaction
 );
 // TODO deal with exceptions
@@ -124,11 +127,13 @@ function Recipe wrapPipe(Recipe r, Action a) = rPipe(rBlock(r, rAct(a)));
 function Recipe wrapFastSeq(Recipe r, Action a) = rFastSeq(rBlock(r, rAct(a)));
 
 function Recipe doIFetchMem(
-  function Action rspCallBack (RVMemRsp rsp),
+  Maybe#(ExcToken) m_excToken,
+  function Action rspCallBack (Either#(ExcToken, RVMemRsp) rsp),
   RVState s,
   VAddr vaddr,
   BitPO#(4) numBytes
 ) = doReadMemCore(
+      m_excToken,
       IFETCH,
       wrapPipe,
       rspCallBack,
@@ -144,11 +149,13 @@ function Recipe doIFetchMem(
       numBytes);
 
 function Recipe doReadMem(
-  function Action rspCallBack (RVMemRsp rsp),
+  Maybe#(ExcToken) m_excToken,
+  function Action rspCallBack (Either#(ExcToken, RVMemRsp) rsp),
   RVState s,
   VAddr vaddr,
   BitPO#(4) numBytes
 ) = doReadMemCore(
+      m_excToken,
       READ,
       wrapFastSeq,
       rspCallBack,
@@ -202,6 +209,7 @@ function Recipe capReadCap(
 ////////////////////////////////////////////////////////////////////////////////
 
 function Recipe doWriteMem(
+  Maybe#(ExcToken) m_excToken,
   RVState s,
   `ifndef RVXCHERI
   VAddr vaddr,
@@ -232,58 +240,51 @@ function Recipe doWriteMem(
       s.mem_addr[0] <= vaddr;
     `endif
     `ifdef SUPERVISOR_MODE
-      let req = aReqWrite(vaddr, numBytes, Invalid);
+      let req = excOrArg(m_excToken, aReqWrite(vaddr, numBytes));
       s.dvm.sink.put(req);
-      itrace(s, fshow(req));
+      //itrace(s, fshow(req));
     endaction, action
       let rsp <- get(s.dvm.source);
-      itrace(s, fshow(rsp));
-      PAddr paddr = rsp.addr;
+      //itrace(s, fshow(rsp));
     `else
-      PAddr paddr = toPAddr(vaddr);
+      let rsp = excOrArg(m_excToken, toPAddr(vaddr));
     `endif
     `ifdef PMP
-    `ifdef SUPERVISOR_MODE
-      let req = aReqWrite(paddr, numBytes, rsp.mExc);
-    `else
-      let req = aReqWrite(paddr, numBytes, Invalid);
-    `endif
+      let req = craftAReq(WRITE, rsp, numBytes);
       s.dpmp.sink.put(req);
-      itrace(s, fshow(req));
+      //itrace(s, fshow(req));
     endaction, action
       let rsp <- get(s.dpmp.source);
-      itrace(s, fshow(rsp));
-      RVMemReq req = RVWriteReq {
-        addr: rsp.addr,
-        byteEnable: ~((~0) << readBitPO(numBytes)),
-        data: wdata
-        `ifdef RVXCHERI
-        , captag: pack(capWrite)
-        `endif
-      };
-    `else
-      RVMemReq req = RVWriteReq {
-        addr: paddr,
-        byteEnable: ~((~0) << readBitPO(numBytes)),
-        data: wdata
-        `ifdef RVXCHERI
-        , captag: pack(capWrite)
-        `endif
-      };
+      //itrace(s, fshow(rsp));
     `endif
+      let req = case (rsp) matches
+        tagged Left .excTok: return Left(excTok);
+        tagged Right .checkedAddr:
+          return Right(RVWriteReq{
+            addr: checkedAddr,
+            byteEnable: ~((~0) << readBitPO(numBytes)),
+            data: wdata
+            `ifdef RVXCHERI
+            , captag: pack(capWrite)
+            `endif
+          });
+      endcase;
       s.dmem.sink.put(req);
     `ifdef RVFI_DII
       s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
       s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
     `endif
-      itrace(s, fshow(req));
+      //itrace(s, fshow(req));
     endaction, action
       let rsp <- get(s.dmem.source);
       case (rsp) matches
-        tagged RVWriteRsp .w: noAction;
-        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault); endaction
+        tagged Left .excTok: raiseMemTokException(s, excTok);
+        tagged Right .memRsp: case (memRsp) matches
+          tagged RVWriteRsp .w: noAction;
+          tagged RVBusError: action raiseMemException(s, StrAMOAccessFault); endaction
+        endcase
       endcase
-      itrace(s, fshow(rsp));
+      //itrace(s, fshow(rsp));
     endaction
   `ifdef RVXCHERI
   ))))))))));
