@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -66,14 +66,14 @@ endmodule
 
 module connectIFCs#(RVBS_CLINT rvbs, CHERISOC cheriSOC) (Empty);
   // interconnect
-  Vector#(NMASTERS, AXIMaster#(`AXI_MASTER_PARAMS)) ms;
-  ms[0] <- fromAXILiteMaster(rvbs.instAXILiteMaster);
-  ms[1] <- fromAXILiteMaster(rvbs.dataAXILiteMaster);
-  Vector#(1, AXISlave#(`AXI_SLAVE_PARAMS)) ss;
-  ss[0] = expandAXISlaveAddr(cheriSOC.slave);
+  Vector#(NMASTERS, AXI4_Master#(`AXI_MASTER_PARAMS)) ms;
+  ms[0] <- fromAXI4Lite_Master(rvbs.instAXI4Lite_Master);
+  ms[1] <- fromAXI4Lite_Master(rvbs.dataAXI4Lite_Master);
+  Vector#(1, AXI4_Slave#(`AXI_SLAVE_PARAMS)) ss;
+  ss[0] = expandAXI4_Slave_Addr(cheriSOC.slave);
   MappingTable#(1, ADDR_sz) maptab = newVector;
   maptab[0] = Range{base: 'h00000000, size: 'h100000000};
-  mkAXIBus(maptab, ms, ss);
+  mkAXI4Bus(maptab, ms, ss);
   rule connect_interrupts;
     rvbs.setMEIP(unpack(cheriSOC.peekIRQs[0]));
   endrule

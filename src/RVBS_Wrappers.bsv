@@ -383,10 +383,10 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
   let  rvbs <- mkRVBS(reset_pc);
   let clint <- mkAXI4LiteCLINT;
-  `ifndef RVXCHERI
-  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = clint.axiLiteSlave;
-  `else
+  `ifdef RVXCHERI
   AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = dropUserFields(clint.axiLiteSlave);
+  `else
+  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = clint.axiLiteSlave;
   `endif
   let  shim <- mkAXI4LiteShim;
   let clintWriteRspFF <- mkFIFOF;

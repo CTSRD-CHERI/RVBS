@@ -87,8 +87,6 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
   let rExcTok = Invalid;
   let wExcTok = Invalid;
   `ifdef RVXCHERI
-  // XXX TODO
-  /*
   let m_rCapExc = memCapChecks(READ, rCap, rVaddr, rNumBytes, rCapAccess);
   if (isValid(m_rCapExc)) rExcTok = Valid(ExcToken{
     excCode: CHERIFault,
@@ -101,7 +99,6 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
     capExcCode: m_wCapExc.Valid,
     capIdx: wCapIdx
   });
-  */
   `endif
   // handle mem requests on epilogue
   defineEpiEntry(rOneMatch(list(s.readMem.notEmpty, s.writeMem.notEmpty),
@@ -130,15 +127,12 @@ endmodule
 module [ISADefModule] mkRVIFetch#(RVState s) ();
   let excTok = Invalid;
   `ifdef RVXCHERI
-  // XXX TODO
-  /*
   let m_ifetchCapExc = ifetchCapChecks(s.pcc, s.pc, 4, False);
   if (isValid(m_ifetchCapExc)) excTok = Valid(ExcToken{
     excCode: CHERIFault,
     capExcCode: m_ifetchCapExc.Valid,
     capIdx: 6'b100000 // this is PCC
   });
-  */
   `endif
   function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk);
     // call back for ifetch responses

@@ -41,26 +41,33 @@ import CHERICap :: *;
 `endif
 
 `ifdef RVXCHERI
-function Recipe capChecks(
+function Maybe#(CapExcCode) memCapChecks(
   RVMemReqType reqType,
-  Bit#(6) capIdx,
   CapType cap,
   VAddr vaddr,
   BitPO#(4) numBytes,
-  Bool capAccess,
-  RVState s,
-  Recipe innerRecipe);
-  return rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
-         rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
-         rIfElse (reqType == IFETCH && !getPerms(cap.Cap).permitExecute, capTrap(s, CapExcPermExe, capIdx),
-         rIfElse (reqType == READ   && !getPerms(cap.Cap).permitLoad, capTrap(s, CapExcPermLoad, capIdx),
-         rIfElse (reqType == WRITE  && !getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
-         rIfElse (reqType == READ   && capAccess && !getPerms(cap.Cap).permitLoadCap, capTrap(s, CapExcPermLoadCap, capIdx),
-         rIfElse (reqType == WRITE  && capAccess && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
-         rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
-         rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
-           innerRecipe
-         )))))))));
+  Bool capAccess);
+  if (!isCap(cap)) return Valid(CapExcTag);
+  else if (getSealed(cap.Cap)) return Valid(CapExcSeal);
+  else if (reqType == READ   && !getPerms(cap.Cap).permitLoad) return Valid(CapExcPermLoad);
+  else if (reqType == WRITE  && !getPerms(cap.Cap).permitStore) return Valid(CapExcPermStore);
+  else if (reqType == READ   && capAccess && !getPerms(cap.Cap).permitLoadCap) return Valid(CapExcPermLoadCap);
+  else if (reqType == WRITE  && capAccess && !getPerms(cap.Cap).permitStoreCap) return Valid(CapExcPermStoreCap);
+  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
+  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
+  else return Invalid;
+endfunction
+function Maybe#(CapExcCode) ifetchCapChecks(
+  CapType cap,
+  VAddr vaddr,
+  BitPO#(4) numBytes,
+  Bool capAccess);
+  if (!isCap(cap)) return Valid(CapExcTag);
+  else if (getSealed(cap.Cap)) return Valid(CapExcSeal);
+  else if (!getPerms(cap.Cap).permitExecute) return Valid(CapExcPermExe);
+  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
+  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
+  else return Invalid;
 endfunction
 `endif
 
@@ -225,12 +232,12 @@ function Recipe doWriteMem(
   `ifdef RVXCHERI
   match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, s.pcc, handle);
   return rFastSeq(rBlock(
-  rIfElse (!isCap(cap), capTrap(s, CapExcTag, capIdx),
-  rIfElse (getSealed(cap.Cap), capTrap(s, CapExcSeal, capIdx),
-  rIfElse (!getPerms(cap.Cap).permitStore, capTrap(s, CapExcPermStore, capIdx),
-  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, capTrap(s, CapExcPermStoreCap, capIdx),
-  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), capTrap(s, CapExcLength, capIdx),
-  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), capTrap(s, CapExcLength, capIdx),
+  rIfElse (!isCap(cap), raiseMemCapException(s, CapExcTag, capIdx),
+  rIfElse (getSealed(cap.Cap), raiseMemCapException(s, CapExcSeal, capIdx),
+  rIfElse (!getPerms(cap.Cap).permitStore, raiseMemCapException(s, CapExcPermStore, capIdx),
+  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, raiseMemCapException(s, CapExcPermStoreCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
     rFastSeq(rBlock(
   `else
   return rFastSeq(rBlock(
@@ -271,8 +278,8 @@ function Recipe doWriteMem(
       endcase;
       s.dmem.sink.put(req);
     `ifdef RVFI_DII
-      s.mem_wdata[0] <= truncate(req.RVWriteReq.data);
-      s.mem_wmask[0] <= truncate(req.RVWriteReq.byteEnable);
+      s.mem_wdata[0] <= truncate(req.Right.RVWriteReq.data);
+      s.mem_wmask[0] <= truncate(req.Right.RVWriteReq.byteEnable);
     `endif
       //itrace(s, fshow(req));
     endaction, action

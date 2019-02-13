@@ -109,7 +109,7 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
 endaction;
 
 function Action raiseIFetchException(RVState s, ExcCode code) = action
-  s.pendingIFetchException[0] <= Valid(code);
+  s.pendingIFetchException[1] <= Valid(code);
 endaction;
 
 typeclass RaiseException#(type a); a raiseException; endtypeclass
@@ -131,40 +131,64 @@ function Action raiseMemException(RVState s, ExcCode code) = action
 endaction;
 
 `ifdef RVXCHERI
-typeclass CapTrap#(type a); a capTrap; endtypeclass
+typeclass RaiseCapException#(type a); a raiseCapException; endtypeclass
 
-instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(6) idx));
-  function capTrap(s, exc, idx) = action
+instance RaiseCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
+  function raiseCapException(s, exc, idx) = action
     // TODO set cheri cause etc...
     raiseException(s, CHERIFault);
   endaction;
 endinstance
 
-instance CapTrap#(function Action capTrap (RVState s, CapExcCode exc, Bit#(5) idx));
-  function capTrap(s, exc, idx) = capTrap(s, exc, {1'b0, idx});
+instance RaiseCapException#(function Action f(RVState s, CapExcCode exc, Bit#(5) idx));
+  function raiseCapException(s, exc, idx) = raiseCapException(s, exc, {1'b0, idx});
 endinstance
 
-instance CapTrap#(function Recipe capTrap (a x, b y, c z)) provisos (CapTrap#(function Action capTrap (a x, b y, c z)));
-  function capTrap(x, y, z) = rAct(capTrap(x, y, z));
+typeclass RaiseMemCapException#(type a); a raiseMemCapException; endtypeclass
+
+instance RaiseMemCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
+  function raiseMemCapException(s, exc, idx) = action
+    // TODO set cheri cause etc...
+    raiseMemException(s, CHERIFault);
+  endaction;
+endinstance
+
+instance RaiseMemCapException#(function Action f(RVState s, CapExcCode exc, Bit#(5) idx));
+  function raiseMemCapException(s, exc, idx) = raiseMemCapException(s, exc, {1'b0, idx});
+endinstance
+
+instance RaiseMemCapException#(function Recipe f(a x, b y, c z)) provisos (RaiseMemCapException#(function Action g(a x, b y, c z)));
+  function raiseMemCapException(x, y, z) = rAct(raiseMemCapException(x, y, z));
+endinstance
+
+typeclass RaiseIFetchCapException#(type a); a raiseIFetchCapException; endtypeclass
+
+instance RaiseIFetchCapException#(function Action f(RVState s, CapExcCode exc));
+  function raiseIFetchCapException(s, exc) = action
+    // TODO set cheri cause etc...
+    raiseIFetchException(s, CHERIFault);
+  endaction;
+endinstance
+
+instance RaiseIFetchCapException#(function Recipe f(a x, b y)) provisos (RaiseIFetchCapException#(function Action g(a x, b y)));
+  function raiseIFetchCapException(x, y) = rAct(raiseIFetchCapException(x, y));
 endinstance
 `endif
 
 function Action raiseMemTokException(RVState s, ExcToken excToken) = action
   `ifdef RVXCHERI
-  // XXX TODO
-  //if (excToken.excCode == CHERIFault)
-  //  raiseMemCapException(s, excToken.capExcCode, excToken.capIdx);
-  //else
+  if (excToken.excCode == CHERIFault)
+    raiseMemCapException(s, excToken.capExcCode, excToken.capIdx);
+  else
   `endif
   raiseMemException(s, excToken.excCode);
 endaction;
 
 function Action raiseIFetchTokException(RVState s, ExcToken excToken) = action
   `ifdef RVXCHERI
-  // XXX TODO
-  //if (excToken.excCode == CHERIFault)
-  //  raiseIFetchCapException(s, excToken.capExcCode);
-  //else
+  if (excToken.excCode == CHERIFault)
+    raiseIFetchCapException(s, excToken.capExcCode);
+  else
   `endif
   raiseIFetchException(s, excToken.excCode);
 endaction;
@@ -284,11 +308,11 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
                 isValid(irqCode);
   defineInterEntry(Guarded { guard: isTrap, val: action
     // general info
-    let isIFetchException = isValid(s.pendingIFetchException[1]);
+    let isIFetchException = isValid(s.pendingIFetchException[0]);
     let isStdException = isValid(s.pendingException[0]);
     let isMemException = isValid(s.pendingMemException[0]);
     let isException = isStdException || isMemException;
-    let ifetchexc = s.pendingIFetchException[1].Valid;
+    let ifetchexc = s.pendingIFetchException[0].Valid;
     match {.exc, .maybe_tval} = s.pendingException[0].Valid;
     let memexc = s.pendingMemException[0].Valid;
     TrapCode code = Interrupt(irqCode.Valid);
@@ -308,7 +332,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
     // reset transient state
-    s.pendingIFetchException[1] <= Invalid;
+    s.pendingIFetchException[0] <= Invalid;
     s.pendingException[0] <= Invalid;
     s.pendingMemException[0] <= Invalid;
   endaction});

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -57,53 +57,61 @@ module mkRVBS_rvfi_dii (Empty);
     for (Integer i = 0; i < 2; i = i + 1) begin
       let   rspFF <- mkBypassFIFOF;
       let errorFF <- mkFIFOF;
+      let excFF <- mkFIFOF;
       // get responses
-      rule drainMemRsp(!errorFF.first);
+      rule drainMemRsp(!excFF.notEmpty && !errorFF.first);
         let rsp <- get(mem[i].source);
         `ifdef RVXCHERI
         let tag <- get(mem_tag[i].source);
         `endif
         case (rsp) matches
-          tagged ReadRsp .data: rspFF.enq(RVReadRsp(
+          tagged ReadRsp .data: rspFF.enq(Right(RVReadRsp(
             `ifdef RVXCHERI
             tuple2(tag.ReadRsp, data)
             `else
             data
             `endif
-          ));
-          tagged WriteRsp: rspFF.enq(RVWriteRsp);
+          )));
+          tagged WriteRsp: rspFF.enq(Right(RVWriteRsp));
         endcase
         errorFF.deq;
       endrule
-      rule errorRsp(errorFF.first);
-        rspFF.enq(RVBusError);
+      rule errorRsp(!excFF.notEmpty && errorFF.first);
+        rspFF.enq(Right(RVBusError));
         errorFF.deq;
+      endrule
+      rule exceptionRsp(excFF.notEmpty);
+        rspFF.enq(Left(excFF.first));
+        excFF.deq;
       endrule
       // convert requests/responses
       m[i] = interface RVMem;
         interface sink = interface Sink;
           method canPut = errorFF.notFull;
-          method put (req) = action
-            case (req) matches
-              tagged RVReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
-                mem[i].sink.put(ReadReq{addr: r.addr, numBytes: r.numBytes});
-                `ifdef RVXCHERI
-                mem_tag[i].sink.put(ReadReq{addr: r.addr, numBytes: 1});
-                `endif
-                errorFF.enq(False);
-              end
-              tagged RVWriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
-                mem[i].sink.put(WriteReq{
-                  addr: w.addr, byteEnable: w.byteEnable, data: w.data
-                });
-                `ifdef RVXCHERI
-                mem_tag[i].sink.put(WriteReq{
-                  addr: w.addr, byteEnable: 1, data: w.captag
-                });
-                `endif
-                errorFF.enq(False);
-              end
-              default: errorFF.enq(True);
+          method put (e_req) = action
+            case (e_req) matches
+              tagged Left .excTok: excFF.enq(excTok);
+              tagged Right .req: case (req) matches
+                tagged RVReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
+                  mem[i].sink.put(ReadReq{addr: r.addr, numBytes: r.numBytes});
+                  `ifdef RVXCHERI
+                  mem_tag[i].sink.put(ReadReq{addr: r.addr, numBytes: 1});
+                  `endif
+                  errorFF.enq(False);
+                end
+                tagged RVWriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
+                  mem[i].sink.put(WriteReq{
+                    addr: w.addr, byteEnable: w.byteEnable, data: w.data
+                  });
+                  `ifdef RVXCHERI
+                  mem_tag[i].sink.put(WriteReq{
+                    addr: w.addr, byteEnable: 1, data: w.captag
+                  });
+                  `endif
+                  errorFF.enq(False);
+                end
+                default: errorFF.enq(True);
+              endcase
             endcase
           endaction;
         endinterface;

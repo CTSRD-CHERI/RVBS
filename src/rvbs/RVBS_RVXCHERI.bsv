@@ -98,14 +98,14 @@ function Action instrXCHERI_CSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd)
   let cap_ct = ct_reg.Cap;
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (!isCap(ct_reg)) capTrap(s, CapExcTag, ct);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (getSealed(cap_ct)) capTrap(s, CapExcSeal, ct);
-  else if (!getPerms(cap_ct).permitSeal) capTrap(s, CapExcPermSeal, ct);
-  else if (getOffset(cap_ct) >= getLength(cap_ct)) capTrap(s, CapExcLength, ct);
-  else if (getBase(cap_ct) + getOffset(cap_ct) > zeroExtend(otypeMax)) capTrap(s, CapExcLength, ct); //XXX large ineq in spec
-  else if (!canRepSealed(cap_cs, True)) capTrap(s, CapExcInexact, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (!isCap(ct_reg)) raiseCapException(s, CapExcTag, ct);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (getSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
+  else if (!getPerms(cap_ct).permitSeal) raiseCapException(s, CapExcPermSeal, ct);
+  else if (getOffset(cap_ct) >= getLength(cap_ct)) raiseCapException(s, CapExcLength, ct);
+  else if (getBase(cap_ct) + getOffset(cap_ct) > zeroExtend(otypeMax)) raiseCapException(s, CapExcLength, ct); //XXX large ineq in spec
+  else if (!canRepSealed(cap_cs, True)) raiseCapException(s, CapExcInexact, cs);
   else begin
     let new_cap = setSealed(cap_cs, True);
     new_cap = setType(new_cap, truncate(getBase(cap_ct) + getOffset(cap_ct)));
@@ -119,13 +119,13 @@ function Action instrXCHERI_CUnseal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) c
   let cap_ct = ct_reg.Cap;
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (!isCap(ct_reg)) capTrap(s, CapExcTag, ct);
-  else if (!getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (getSealed(cap_ct)) capTrap(s, CapExcSeal, ct);
-  else if (getBase(cap_ct) + getOffset(cap_ct) != zeroExtend(getType(cap_cs))) capTrap(s, CapExcType, ct);
-  else if (!getPerms(cap_ct).permitUnseal) capTrap(s, CapExcPermUnseal, ct);
-  else if (getOffset(cap_ct) >= getLength(cap_ct)) capTrap(s, CapExcLength, ct);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (!isCap(ct_reg)) raiseCapException(s, CapExcTag, ct);
+  else if (!getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (getSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
+  else if (getBase(cap_ct) + getOffset(cap_ct) != zeroExtend(getType(cap_cs))) raiseCapException(s, CapExcType, ct);
+  else if (!getPerms(cap_ct).permitUnseal) raiseCapException(s, CapExcPermUnseal, ct);
+  else if (getOffset(cap_ct) >= getLength(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else begin
     let new_cap = setSealed(cap_cs, False);
     new_cap  = setType(new_cap, 0);
@@ -140,8 +140,8 @@ endaction;
 function Action instrXCHERI_CAndPerm(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else begin
     let rt_val = s.rGPR(rt);
     Perms   newPerms = unpack(pack(getPerms(cap_cs)) & rt_val[valueOf(SizeOf#(Perms))-1:0]);
@@ -157,7 +157,7 @@ function Action instrXCHERI_CSetOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
   let rt_val = s.rGPR(rt);
-  if (isCap(cs_reg) && getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  if (isCap(cs_reg) && getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (!canRepOffset(cap_cs, zeroExtend(rt_val))) begin
     RawCap n_cap = nullCap;
     s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + zeroExtend(rt_val)))));
@@ -172,7 +172,23 @@ function Action instrXCHERI_CIncOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
   let rt_val = s.rGPR(rt);
-  if (isCap(cs_reg) && getSealed(cap_cs) /*XXX*/ && rt_val != 0 /*XXX real CMOVE inst?*/) capTrap(s, CapExcSeal, cs);
+  match {.success, .new_cap} = setOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val));
+  if (isCap(cs_reg) && getSealed(cap_cs) /*XXX*/ && rt_val != 0 /*XXX real CMOVE inst?*/) raiseCapException(s, CapExcSeal, cs);
+  else if (!canRepOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val))) begin
+    RawCap n_cap = nullCap;
+    s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + getOffset(cap_cs) + zeroExtend(rt_val)))));
+    //XXX logInst(s.pc, fmtInstXCHERI("cincoffset", ct, cs, cd));
+  end else begin
+    s.wCR(cd, Cap(setOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val))));
+    //XXX logInst(s.pc, fmtInstXCHERI("cincoffset", ct, cs, cd));
+  end
+endaction;
+
+function Action instrXCHERI_CIncOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
+  let cs_reg = s.rCR(cs);
+  let cap_cs = cs_reg.Cap;
+  let rt_val = s.rGPR(rt);
+  if (isCap(cs_reg) && getSealed(cap_cs) /*XXX*/ && rt_val != 0 /*XXX real CMOVE inst?*/) raiseCapException(s, CapExcSeal, cs);
   else if (!canRepOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val))) begin
     RawCap n_cap = nullCap;
     s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + getOffset(cap_cs) + zeroExtend(rt_val)))));
@@ -186,7 +202,7 @@ endaction;
 function Action instrXCHERI_CIncOffsetImmediate(RVState s, Bit#(12) inc, Bit#(5) cs, Bit#(5) cd) = action
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
-  if (isCap(cs_reg) && getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  if (isCap(cs_reg) && getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (!canRepOffset(cap_cs, getOffset(cap_cs) + signExtend(inc))) begin
     RawCap n_cap = nullCap;
     s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + getOffset(cap_cs) + signExtend(inc)))));
@@ -202,10 +218,10 @@ function Action instrXCHERI_CSetBounds(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   let cap_cs = cs_reg.Cap;
   let rt_val = s.rGPR(rt);
   let addr = getBase(cap_cs) + getOffset(cap_cs);
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (addr < getBase(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (addr + zeroExtend(rt_val) > getBase(cap_cs) + getLength(cap_cs)) capTrap(s, CapExcLength, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (addr < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (addr + zeroExtend(rt_val) > getBase(cap_cs) + getLength(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, Cap(setBounds(cap_cs, rt_val)));
     //XXX logInst(s.pc, fmtInstXCHERI("csetbounds", ct, cs, cd));
@@ -217,11 +233,11 @@ function Action instrXCHERI_CSetBoundsExact(RVState s, Bit#(5) rt, Bit#(5) cs, B
   let cap_cs = cs_reg.Cap;
   let rt_val = s.rGPR(rt);
   let addr = getBase(cap_cs) + getOffset(cap_cs);
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (addr < getBase(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (addr + zeroExtend(rt_val) > getBase(cap_cs) + getLength(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (!canRepBounds(cap_cs, rt_val)) capTrap(s, CapExcInexact, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (addr < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (addr + zeroExtend(rt_val) > getBase(cap_cs) + getLength(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (!canRepBounds(cap_cs, rt_val)) raiseCapException(s, CapExcInexact, cs);
   else begin
     s.wCR(cd, Cap(setBounds(cap_cs, rt_val)));
     //XXX logInst(s.pc, fmtInstXCHERI("csetboundsexact", ct, cs, cd));
@@ -232,10 +248,10 @@ function Action instrXCHERI_CSetBoundsImmediate(RVState s, Bit#(12) req_length, 
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
   let addr = getBase(cap_cs) + getOffset(cap_cs);
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (addr < getBase(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (addr + zeroExtend(req_length) > getBase(cap_cs) + getLength(cap_cs)) capTrap(s, CapExcLength, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (addr < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (addr + zeroExtend(req_length) > getBase(cap_cs) + getLength(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, Cap(setBounds(cap_cs, zeroExtend(req_length))));
     //XXX logInst(s.pc, fmtInstXCHERI("csetboundimmediate", ct, cs, cd));
@@ -251,13 +267,13 @@ function Action instrXCHERI_CBuildCap(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5)
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
   let cap_ct = s.rCR(ct).Cap;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (getBase(cap_ct) < getBase(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (getBase(cap_ct) + getLength(cap_ct) > getBase(cap_cs) + getLength(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (getLength(cap_ct) < 0) capTrap(s, CapExcLength, ct);
-  else if ((getPerms(cap_ct) & getPerms(cap_cs)) != getPerms(cap_ct)) capTrap(s, CapExcUser, cs);
-  else if ((getUPerms(cap_ct) & getUPerms(cap_cs)) != getUPerms(cap_ct)) capTrap(s, CapExcUser, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (getBase(cap_ct) < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (getBase(cap_ct) + getLength(cap_ct) > getBase(cap_cs) + getLength(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (getLength(cap_ct) < 0) raiseCapException(s, CapExcLength, ct);
+  else if ((getPerms(cap_ct) & getPerms(cap_cs)) != getPerms(cap_ct)) raiseCapException(s, CapExcUser, cs);
+  else if ((getUPerms(cap_ct) & getUPerms(cap_cs)) != getUPerms(cap_ct)) raiseCapException(s, CapExcUser, cs);
   else begin
     RawCap new_cap = setOffset(cap_cs, getBase(cap_ct) - getBase(cap_cs));
     new_cap = setBounds(new_cap, truncate(getLength(cap_ct)));
@@ -274,11 +290,11 @@ function Action instrXCHERI_CCopyType(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5)
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
   let cap_ct = s.rCR(ct).Cap;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (!getSealed(cap_ct)) s.wCR(cd, Cap(setOffset(nullCap, ~0)));
-  else if (zeroExtend(getType(cap_ct)) < getBase(cap_cs)) capTrap(s, CapExcLength, cs);
-  else if (zeroExtend(getType(cap_ct)) >= getBase(cap_cs) + getLength(cap_cs)) capTrap(s, CapExcLength, cs);
+  else if (zeroExtend(getType(cap_ct)) < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if (zeroExtend(getType(cap_ct)) >= getBase(cap_cs) + getLength(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, Cap(setOffset(cap_cs, zeroExtend(getType(cap_ct)) - getBase(cap_cs))));
     //XXX logInst(s.pc, fmtInstXCHERI("ccopytype", ct, cs, cd));
@@ -291,15 +307,15 @@ function Action instrXCHERI_CCSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd
   let ct_reg = s.rCR(ct);
   let cap_ct = ct_reg.Cap;
   Bit#(CC_ADDR) negOne = ~0;
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
   else if (!isCap(ct_reg)) s.wCR(cd, Cap(cap_cs));
   else if (truncate(getBase(cap_ct) + getOffset(cap_ct)) == negOne) s.wCR(cd, Cap(cap_cs));
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (getSealed(cap_ct)) capTrap(s, CapExcSeal, ct);
-  else if (!getPerms(cap_ct).permitSeal) capTrap(s, CapExcPermSeal, ct);
-  else if (getOffset(cap_ct) >= getLength(cap_ct)) capTrap(s, CapExcLength, ct);
-  else if (getBase(cap_ct) + getOffset(cap_ct) > zeroExtend(otypeMax)) capTrap(s, CapExcLength, ct); //XXX large ineq in spec
-  else if (!canRepSealed(cap_cs, True)) capTrap(s, CapExcInexact, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (getSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
+  else if (!getPerms(cap_ct).permitSeal) raiseCapException(s, CapExcPermSeal, ct);
+  else if (getOffset(cap_ct) >= getLength(cap_ct)) raiseCapException(s, CapExcLength, ct);
+  else if (getBase(cap_ct) + getOffset(cap_ct) > zeroExtend(otypeMax)) raiseCapException(s, CapExcLength, ct); //XXX large ineq in spec
+  else if (!canRepSealed(cap_cs, True)) raiseCapException(s, CapExcInexact, cs);
   else begin
     let new_cap = setSealed(cap_cs, True);
     new_cap = setType(new_cap, truncate(getBase(cap_ct) + getOffset(cap_ct)));
@@ -316,9 +332,9 @@ function Action instrXCHERI_CToPtr(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd
   let cap_cs = cs_reg.Cap;
   let ct_reg = s.rCR(ct);
   let cap_ct = ct_reg.Cap;
-  if (!isCap(ct_reg)) capTrap(s, CapExcTag, ct);
+  if (!isCap(ct_reg)) raiseCapException(s, CapExcTag, ct);
   else if (!isCap(cs_reg)) s.wGPR(rd, 0);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else begin
     s.wGPR(rd, truncate(getBase(cap_cs) + getOffset(cap_cs) - getBase(cap_ct)));
     //XXX logInst(s.pc, fmtInstXCHERI("ctoptr", ct, cs, cd));
@@ -331,8 +347,8 @@ function Action instrXCHERI_CFromPtr(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) 
   let rt_val = s.rGPR(rt);
   RawCap n_cap = nullCap;
   if (rt_val == 0) s.wCR(cd, Data(pack(n_cap)));
-  else if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
+  else if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (!canRepOffset(cap_cs, zeroExtend(rt_val))) begin
     s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + zeroExtend(rt_val)))));
     //XXX logInst(s.pc, fmtInstXCHERI("cfromptr", ct, cs, cd));
@@ -381,10 +397,10 @@ function Action instrXCHERI_CCheckPerm(RVState s, Bit#(5) rt, Bit#(5) cs) = acti
   Perms   rt_perms = unpack(truncate(rt_val));
   UPerms rt_uperms = rt_val[valueOf(TAdd#(SizeOf#(UPerms), SizeOf#(Perms)))-1:valueOf(SizeOf#(Perms))];
   Bit#(TSub#(XLEN, TAdd#(SizeOf#(UPerms), SizeOf#(Perms)))) rt_remain = truncateLSB(rt_val);
-  if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if ((getPerms(cap_cs) & rt_perms) != rt_perms) capTrap(s, CapExcUser, cs);
-  else if ((getUPerms(cap_cs) & rt_uperms) != rt_uperms) capTrap(s, CapExcUser, cs);
-  else if (rt_remain != 0) capTrap(s, CapExcUser, cs);
+  if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if ((getPerms(cap_cs) & rt_perms) != rt_perms) raiseCapException(s, CapExcUser, cs);
+  else if ((getUPerms(cap_cs) & rt_uperms) != rt_uperms) raiseCapException(s, CapExcUser, cs);
+  else if (rt_remain != 0) raiseCapException(s, CapExcUser, cs);
   //XXX logInst(s.pc, fmtInstXCHERI("ccheckperm", ct, cs, cd));
 endaction;
 
@@ -393,11 +409,11 @@ function Action instrXCHERI_CCheckType(RVState s, Bit#(5) ct, Bit#(5) cs) = acti
   let cap_cs = cs_reg.Cap;
   let ct_reg = s.rCR(ct);
   let cap_ct = ct_reg.Cap;
-  if (!isCap(ct_reg)) capTrap(s, CapExcTag, ct);
-  else if (!isCap(cs_reg)) capTrap(s, CapExcTag, cs);
-  else if (!getSealed(cap_ct)) capTrap(s, CapExcSeal, ct);
-  else if (!getSealed(cap_cs)) capTrap(s, CapExcSeal, cs);
-  else if (getType(cap_ct) != getType(cap_cs)) capTrap(s, CapExcType, ct);
+  if (!isCap(ct_reg)) raiseCapException(s, CapExcTag, ct);
+  else if (!isCap(cs_reg)) raiseCapException(s, CapExcTag, cs);
+  else if (!getSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
+  else if (!getSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (getType(cap_ct) != getType(cap_cs)) raiseCapException(s, CapExcType, ct);
   //XXX logInst(s.pc, fmtInstXCHERI("cchecktype", ct, cs, cd));
 endaction;
 
