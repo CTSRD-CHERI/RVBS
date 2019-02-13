@@ -184,21 +184,6 @@ function Action instrXCHERI_CIncOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   end
 endaction;
 
-function Action instrXCHERI_CIncOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
-  let cs_reg = s.rCR(cs);
-  let cap_cs = cs_reg.Cap;
-  let rt_val = s.rGPR(rt);
-  if (isCap(cs_reg) && getSealed(cap_cs) /*XXX*/ && rt_val != 0 /*XXX real CMOVE inst?*/) raiseCapException(s, CapExcSeal, cs);
-  else if (!canRepOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val))) begin
-    RawCap n_cap = nullCap;
-    s.wCR(cd, Data(pack(setOffset(n_cap, getBase(cap_cs) + getOffset(cap_cs) + zeroExtend(rt_val)))));
-    //XXX logInst(s.pc, fmtInstXCHERI("cincoffset", ct, cs, cd));
-  end else begin
-    s.wCR(cd, Cap(setOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val))));
-    //XXX logInst(s.pc, fmtInstXCHERI("cincoffset", ct, cs, cd));
-  end
-endaction;
-
 function Action instrXCHERI_CIncOffsetImmediate(RVState s, Bit#(12) inc, Bit#(5) cs, Bit#(5) cd) = action
   let cs_reg = s.rCR(cs);
   let cap_cs = cs_reg.Cap;
