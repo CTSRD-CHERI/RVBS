@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -31,7 +31,6 @@ package CHERICC;
 import CHERICap :: *;
 
 export CHERICCCap;
-export Perms;
 export CHERICCBounds;
 
 `define div2(x) TDiv#(x, 2)
@@ -142,61 +141,68 @@ endinstance
 // CHERICC capability type
 ////////////////////////////////////////////////////////////////////////////////
 
+`define CCSoftPerms Bit#(4)
+`define AllPermsSz TAdd#(SizeOf#(`CCSoftPerms), SizeOf#(HardPerms))
+
 typedef struct {
-  UPerms                                 uperms;
-  Perms                                  perms;
-  Bit#(TSub#(addr_, TAdd#(bounds_, AllPermsSz))) res; // 15 permission bits and bounds_ bits to deduct
+  `CCSoftPerms softperms;
+  HardPerms hardperms;
+  Bit#(TSub#(addr_, TAdd#(bounds_, `AllPermsSz))) res; // 15 permission bits and bounds_ bits to deduct
   CHERICCBounds#(`div2(bounds_), e_, t_) bounds;
-  Bit#(addr_)                            addr;
+  Bit#(addr_) addr;
 } CHERICCCap#(numeric type addr_, numeric type bounds_, numeric type e_, numeric type t_);
 
 instance Bits#(CHERICCCap#(addr_, bounds_, e_, t_),
-               TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, AllPermsSz)))) provisos(
+               TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, `AllPermsSz)))) provisos(
     Bits#(CHERICCBounds#(TDiv#(bounds_, 2), e_, t_), bounds_),
-    Add#(TAdd#(bounds_, AllPermsSz), res_, addr_)
+    Add#(TAdd#(bounds_, `AllPermsSz), res_, addr_)
   );
   function pack(cap);
-    Bit#(SizeOf#(UPerms)) uperms = cap.uperms;
-    Bit#(SizeOf#(Perms))   perms = pack(cap.perms);
-    Bit#(res_)              res = cap.res;
-    Bit#(bounds_)        bounds = pack(cap.bounds);
-    Bit#(addr_)            addr = cap.addr;
-    return {uperms, perms, res, bounds, addr};
+    Bit#(SizeOf#(`CCSoftPerms)) softperms = cap.softperms;
+    Bit#(SizeOf#(HardPerms))   hardperms = pack(cap.hardperms);
+    Bit#(res_)                       res = cap.res;
+    Bit#(bounds_)                 bounds = pack(cap.bounds);
+    Bit#(addr_)                     addr = cap.addr;
+    return {softperms, hardperms, res, bounds, addr};
   endfunction
-  //function pack(cap) = {cap.uperms, pack(cap.perms), cap.res, pack(cap.bounds), cap.addr};
+  //function pack(cap) = {cap.softperms, pack(cap.perms), cap.res, pack(cap.bounds), cap.addr};
   function unpack(raw) = CHERICCCap {
-    uperms: raw[2*`i(addr_)-1:2*`i(addr_)-`i(SizeOf#(UPerms))],
-    perms:  unpack(raw[2*`i(addr_)-5:2*`i(addr_)-`i(AllPermsSz)]),
-    res:    raw[2*`i(addr_)-`i(AllPermsSz)-1:`i(addr_)+`i(bounds_)],
-    bounds: unpack(raw[`i(addr_)+`i(bounds_)-1:`i(addr_)]),
-    addr:   raw[`i(addr_)-1:0]
+    softperms: raw[2*`i(addr_)-1:2*`i(addr_)-`i(SizeOf#(`CCSoftPerms))],
+    hardperms: unpack(raw[2*`i(addr_)-5:2*`i(addr_)-`i(`AllPermsSz)]),
+    res:       raw[2*`i(addr_)-`i(`AllPermsSz)-1:`i(addr_)+`i(bounds_)],
+    bounds:    unpack(raw[`i(addr_)+`i(bounds_)-1:`i(addr_)]),
+    addr:      raw[`i(addr_)-1:0]
   };
 endinstance
+
+`undef AllPermsSz
+`undef CCSoftPerms
 
 // CHERICCCap inner helpers
 ////////////////////////////////////////////////////////////////////////////////
 
 CHERICCCap#(addr_, bounds_, e_, t_) almightyCC = CHERICCCap {
-  uperms: ~0,
-  perms: unpack(~0),
+  softperms: ~0,
+  hardperms: unpack(~0),
   res: 0,
   bounds: EmbeddedExp {
-    top:  0, // implied top bits of 01
-    base: 0,
-    e:    fromInteger(`i(addr_)-((`i(bounds_)/2)-2)) // position the 1 of top in the addr_'th bit
-  },
+            top:  0, // implied top bits of 01
+            base: 0,
+            // position the 1 of top in the addr_'th bit
+            e:    fromInteger(`i(addr_)-((`i(bounds_)/2)-2))
+          },
   addr: 0
 };
 
 CHERICCCap#(addr_, bounds_, e_, t_) nullCC = CHERICCCap {
-  uperms: 0,
-  perms: unpack(0),
+  softperms: 0,
+  hardperms: unpack(0),
   res: 0,
   bounds: EmbeddedExp {
-    top:  0, // implied top bits of 01
-    base: 0,
-    e:    fromInteger(`i(addr_)-((`i(bounds_)/2)-2)) // position the 1 of top in the addr_'th bit
-  },
+            top:  0, // implied top bits of 01
+            base: 0,
+            e:    fromInteger(`i(addr_)-((`i(bounds_)/2)-2)) // position the 1 of top in the addr_'th bit
+          },
   addr: 0
 };
 
@@ -257,29 +263,39 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     Add#(f__, e_, TLog#(TAdd#(1, addr_))) // can fit result of countZerosMSB in e_
   );
   //////////////////////////////////////////////////////////////////////////////
-  function getUPerms(cap) = cap.uperms;
+  function isValidCap(cap) = warning("isValidCap unimplemented, defaulting to False", False);
   //////////////////////////////////////////////////////////////////////////////
-  function setUPerms(cap, uperms);
-    cap.uperms = uperms;
+  function setValidCap(cap, v) = error("setValidCap unimplemented");
+  //////////////////////////////////////////////////////////////////////////////
+  function getHardPerms(cap) = cap.hardperms;
+  //////////////////////////////////////////////////////////////////////////////
+  function setHardPerms(cap, hardperms);
+    cap.hardperms = hardperms;
     return cap;
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function getPerms(cap) = cap.perms;
+  function getSoftPerms(cap) = zeroExtend(cap.softperms);
   //////////////////////////////////////////////////////////////////////////////
-  function setPerms(cap, perms);
-    cap.perms = perms;
+  function setSoftPerms(cap, softperms);
+    cap.softperms = truncate(softperms);
     return cap;
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function getSealed(cap) = case (cap.bounds) matches
-    tagged Sealed ._: return True;
-    default: return False;
+  function getKind(cap) = case (cap.bounds) matches
+    tagged Sealed ._: return SEALED_WITH_TYPE;
+    default: return UNSEALED;
   endcase;
   //////////////////////////////////////////////////////////////////////////////
-  function setSealed(cap, sealed);
+  function getType(cap) = case (cap.bounds) matches
+    tagged Sealed .b: return zeroExtend(b.otype);
+    default: return -1;
+  endcase;
+  //////////////////////////////////////////////////////////////////////////////
+  function setType(cap, otype);
     let new_cap = cap;
+    let isExact = True;
     case (cap.bounds) matches
-      tagged Sealed .b: if (sealed == False) begin
+      tagged Sealed .b: if (otype == -1) begin
         //Bit#(addr_) addrBits = cap.address >> b.e;
         //let baseMid = addrBits[`sub1(TAdd#(`div2(t_), `div2(e))):`div2(e_)];
         //let baseLo  = addrBits[`sub1(`div2(e_)):0];
@@ -298,7 +314,7 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
           e:    b.e
         };
       end
-      default: if (sealed == True) begin
+      default: if (otype != -1) begin
         Bit#(e_) new_e = case (cap.bounds) matches
           tagged EmbeddedExp .b: b.e;
           default: 0;
@@ -306,40 +322,44 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
         new_cap.bounds = Sealed {
           top:   truncateLSB(cap.bounds.Exp0.top),
           base:  truncateLSB(cap.bounds.Exp0.base),
-          otype: 0,
+          otype: otype,
           e:     new_e
         };
+        Bit#(`div2(t_)) zero = 0;
+        isExact = cap.bounds.Exp0.top[`i(t_)/2-1:0]  == zero &&
+                  cap.bounds.Exp0.base[`i(t_)/2-1:0] == zero;
       end
     endcase
-    return new_cap;
-  endfunction
-  //////////////////////////////////////////////////////////////////////////////
-  function getType(cap) = case (cap.bounds) matches
-    tagged Sealed .b: return zeroExtend(b.otype);
-    default: return 0;
-  endcase;
-  //////////////////////////////////////////////////////////////////////////////
-  function setType(cap, otype);
-    let new_cap = cap;
-    case (cap.bounds) matches
-      tagged Sealed .b: new_cap.bounds = Sealed {
-        top:   b.top,
-        base:  b.base,
-        otype: otype,
-        e:     b.e
-      };
-    endcase
-    return new_cap;
+    return Exact{exact: isExact, value: new_cap};
   endfunction
   //////////////////////////////////////////////////////////////////////////////
   function getAddr(cap) = zeroExtend(cap.addr);
   //////////////////////////////////////////////////////////////////////////////
+  function setAddr(cap) = error("setAddr unimplemented");
+  //////////////////////////////////////////////////////////////////////////////
   function getOffset(cap) = getAddr(cap) - getBase(cap);
   //////////////////////////////////////////////////////////////////////////////
   function setOffset(cap, offset);
+    // is the capability still exact after updating its offset
+    Bit#(`div2(bounds_)) e0m = ~(~0 << ((`i(t_)/2)+(`i(e_)/2)));
+    Bit#(TSub#(`div2(bounds_), `div2(e_))) eem = ~(~0 << (`i(t_)/2));
+    // extract specific useful values
+    Bit#(e_) e = getExpCC(cap);
+    Bit#(e_) almighty_e = fromInteger(`i(addr_)-((`i(bounds_)/2)-2)); // position the 1 of top in the addr_'th bit
+    Bit#(TAdd#(addr_, 1)) i = offset - getOffset(cap);
+    Bit#(`div2(bounds_)) imid = truncate(i >> e);
+    Bit#(`div2(bounds_)) amid = truncate(cap.addr >> e);
+    Bit#(`div2(bounds_)) r    = {getRepBoundCC(cap), 0};
+    // perform inRange and inLimit tests
+    Bit#(TAdd#(addr_, 1)) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
+    Bool inRange  = ((i & mask) == mask) || ((i & mask) == 0);
+    Bool inLimits = (i >= 0) ? imid < (r - amid - 1) :
+                               imid >= (r - amid) && r != amid;
+    Bool isExact = ((inRange && inLimits) || e >= almighty_e);
+    // perform the offset update
     let new_cap = cap;
     new_cap.addr = truncate(getBase(cap) + offset);
-    return new_cap;
+    return Exact{exact: isExact, value: new_cap};
   endfunction
   //////////////////////////////////////////////////////////////////////////////
   function getBase(cap);
@@ -368,9 +388,10 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
   //////////////////////////////////////////////////////////////////////////////
   function setBounds(cap, length);
     let new_cap = cap;
+    let isExact = True;
     // deriving new exponent
     Bit#(TLog#(TAdd#(1, addr_))) e =
-      pack(fromInteger(valueOf(addr_))
+      pack(fromInteger(`i(addr_))
       - countZerosMSB(length >> ((`i(bounds_)/2)-1)));
     // deriving the new base
     Bit#(`div2(bounds_)) newBase = truncate(cap.addr >> e);
@@ -396,55 +417,19 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
         base: upperBase,
         e:    truncate(e)
       };
+      // check for exact or not
+      Bit#(addr_) exactMask = ~(~0 << (e - fromInteger(`i(bounds_)/2 - `i(e_)/2 - 1)));
+      if ((cap.addr & exactMask) != 0) isExact = False;
+      if   ((length & exactMask) != 0) isExact = False;
     end
-    return new_cap;
+    return Exact{exact: isExact, value: new_cap};
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function canRepCap (cap, sealed, offset);
-    // check for sealed representability
-    Bit#(`div2(bounds_)) e0m = ~(~0 << ((`i(t_)/2)+(`i(e_)/2)));
-    Bit#(TSub#(`div2(bounds_), `div2(e_))) eem = ~(~0 << (`i(t_)/2));
-    Bool sealOk = (sealed) ? case (cap.bounds) matches
-      tagged Exp0 .b &&& (((b.top & truncate(e0m)) == 0) && ((b.base & e0m) == 0)): True;
-      tagged EmbeddedExp .b &&& (((b.top & truncate(eem)) == 0) && ((b.base & eem) == 0)): True;
-      tagged Sealed ._: True;
-      default: False;
-    endcase : True;
-    // extract specific useful values
-    Bit#(e_) e = getExpCC(cap);
-    Bit#(e_) almighty_e = fromInteger(`i(addr_)-((`i(bounds_)/2)-2)); // position the 1 of top in the addr_'th bit
-    Bit#(TAdd#(addr_, 1)) i = offset - getOffset(cap);
-    Bit#(`div2(bounds_)) imid = truncate(i >> e);
-    Bit#(`div2(bounds_)) amid = truncate(cap.addr >> e);
-    Bit#(`div2(bounds_)) r    = {getRepBoundCC(cap), 0};
-    // perform inRange and inLimit tests
-    Bit#(TAdd#(addr_, 1)) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
-    Bool inRange  = ((i & mask) == mask) || ((i & mask) == 0);
-    Bool inLimits = (i >= 0) ? imid < (r - amid - 1) :
-                               imid >= (r - amid) && r != amid;
-    // return overall representability
-    return ((inRange && inLimits) || e >= almighty_e) && sealOk;
-  endfunction
+  function nullify = error("nullify unimplemented");
   //////////////////////////////////////////////////////////////////////////////
   function almightyCap = almightyCC;
   //////////////////////////////////////////////////////////////////////////////
   function nullCap = nullCC;
-  //////////////////////////////////////////////////////////////////////////////
-  function canRepBounds (cap, length);
-    let base    = getBase(cap);
-    let offset  = getOffset(cap);
-    let sealed  = getSealed(cap);
-    CHERICCCap#(addr_, bounds_, e_, t_) testCap = almightyCC;
-    testCap = setOffset(testCap, base + offset);
-    testCap = setBounds(testCap, length);
-    testCap = setOffset(testCap, 0);
-    testCap = setSealed(testCap, sealed);
-    return (getBase(testCap) == base + offset &&
-            getOffset(testCap) == 0 &&
-            getLength(testCap) == zeroExtend(length) &&
-            getSealed(testCap) == sealed
-           );
-  endfunction
   //////////////////////////////////////////////////////////////////////////////
 endinstance
 

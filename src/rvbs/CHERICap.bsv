@@ -85,7 +85,7 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
   // Return whether the Capability is valid
   function Bool isValidCap (t cap);
   // Set the capability as valid. All fields left unchanged
-  function t setValidCap (t cap, Bool tag);
+  function t setValidCap (t cap, Bool valid);
 
   // Get the hardware permissions
   function HardPerms getHardPerms (t cap);
@@ -101,7 +101,6 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
 
   // Get the kind of the capability, i.e. whether it is sealed, sentry, unsealed, ...
   function Kind getKind (t cap);
-
   // Helper methods for identifying specific kinds
   function Bool isUnsealed (t cap) = getKind(cap) == UNSEALED;
   function Bool isSentry (t cap) = getKind(cap) == SENTRY;

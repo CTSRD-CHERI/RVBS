@@ -48,11 +48,11 @@ function Maybe#(CapExcCode) memCapChecks(
   BitPO#(4) numBytes,
   Bool capAccess);
   if (!isCap(cap)) return Valid(CapExcTag);
-  else if (getSealed(cap.Cap)) return Valid(CapExcSeal);
-  else if (reqType == READ   && !getPerms(cap.Cap).permitLoad) return Valid(CapExcPermLoad);
-  else if (reqType == WRITE  && !getPerms(cap.Cap).permitStore) return Valid(CapExcPermStore);
-  else if (reqType == READ   && capAccess && !getPerms(cap.Cap).permitLoadCap) return Valid(CapExcPermLoadCap);
-  else if (reqType == WRITE  && capAccess && !getPerms(cap.Cap).permitStoreCap) return Valid(CapExcPermStoreCap);
+  else if (!isUnsealed(cap.Cap)) return Valid(CapExcSeal);
+  else if (reqType == READ   && !getHardPerms(cap.Cap).permitLoad) return Valid(CapExcPermLoad);
+  else if (reqType == WRITE  && !getHardPerms(cap.Cap).permitStore) return Valid(CapExcPermStore);
+  else if (reqType == READ   && capAccess && !getHardPerms(cap.Cap).permitLoadCap) return Valid(CapExcPermLoadCap);
+  else if (reqType == WRITE  && capAccess && !getHardPerms(cap.Cap).permitStoreCap) return Valid(CapExcPermStoreCap);
   else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
   else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
   else return Invalid;
@@ -63,8 +63,8 @@ function Maybe#(CapExcCode) ifetchCapChecks(
   BitPO#(4) numBytes,
   Bool capAccess);
   if (!isCap(cap)) return Valid(CapExcTag);
-  else if (getSealed(cap.Cap)) return Valid(CapExcSeal);
-  else if (!getPerms(cap.Cap).permitExecute) return Valid(CapExcPermExe);
+  else if (!isUnsealed(cap.Cap)) return Valid(CapExcSeal);
+  else if (!getHardPerms(cap.Cap).permitExecute) return Valid(CapExcPermExe);
   else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
   else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
   else return Invalid;
@@ -233,9 +233,9 @@ function Recipe doWriteMem(
   match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, s.pcc, handle);
   return rFastSeq(rBlock(
   rIfElse (!isCap(cap), raiseMemCapException(s, CapExcTag, capIdx),
-  rIfElse (getSealed(cap.Cap), raiseMemCapException(s, CapExcSeal, capIdx),
-  rIfElse (!getPerms(cap.Cap).permitStore, raiseMemCapException(s, CapExcPermStore, capIdx),
-  rIfElse (capWrite && !getPerms(cap.Cap).permitStoreCap, raiseMemCapException(s, CapExcPermStoreCap, capIdx),
+  rIfElse (!isUnsealed(cap.Cap), raiseMemCapException(s, CapExcSeal, capIdx),
+  rIfElse (!getHardPerms(cap.Cap).permitStore, raiseMemCapException(s, CapExcPermStore, capIdx),
+  rIfElse (capWrite && !getHardPerms(cap.Cap).permitStoreCap, raiseMemCapException(s, CapExcPermStoreCap, capIdx),
   rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
   rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
     rFastSeq(rBlock(
