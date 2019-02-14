@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2019 Peter Rugg
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -30,21 +31,29 @@ package CHERICap;
 
 // CHERI capability typeclass
 ////////////////////////////////////////////////////////////////////////////////
+// Permission bits
 
-// Hardware permission bits
+typedef Bit#(16) SoftPerms
 typedef struct {
-    Bool accesSysRegs;
-    Bool permitUnseal;
-    Bool permitCCall;
-    Bool permitSeal;
-    Bool permitStoreLocalCap;
-    Bool permitStoreCap;
-    Bool permitLoadCap;
-    Bool permitStore;
-    Bool permitLoad;
-    Bool permitExecute;
-    Bool global;
+  Bit #(4) reserved;
+  Bool     accessSysRegs;
+  Bool     permitUnseal;
+  Bool     permitCCall;
+  Bool     permitSeal;
+  Bool     permitStoreLocalCap;
+  Bool     permitStoreCap;
+  Bool     permitLoadCap;
+  Bool     permitStore;
+  Bool     permitLoad;
+  Bool     permitExecute;
+  Bool     global;
+} HardPerms deriving(Bits, Eq, FShow);
+
+typedef struct {
+    SoftPerms soft;
+    HardPerms hard;
 } Perms deriving(Bits, Eq, FShow);
+
 instance Bitwise#(Perms);
   function \& (x1, x2) = unpack(pack(x1) & pack(x2));
   function \| (x1, x2) = unpack(pack(x1) | pack(x2));
@@ -58,46 +67,94 @@ instance Bitwise#(Perms);
   function lsb (x) = lsb(pack(x));
 endinstance
 
-typedef Bit#(4) UPerms;
+// Type to return the result of an operation along with whether the operation was exact
+// In cases where no sensible inexact representation exists, the only guarantee is that
+// the tag bit is not set.
+typedef struct {
+  Bool exact;
+  t    value;
+} Exact #(type t);
 
-typedef TAdd#(SizeOf#(UPerms), SizeOf#(Perms)) AllPermsSz;
+typedef enum {
+  UNSEALED,
+  SENTRY,
+  RES0,
+  RES1,
+  SEALED_WITH_TYPE
+} Kind deriving (FShow);
 
 typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t determines (ot, n));
+  // Type to allow for overflow by one bit in address arithmetic
   `define BigBit Bit#(TAdd#(n, 1))
-  function UPerms   getUPerms    (t cap);
-  function t        setUPerms    (t cap, UPerms uperms);
-  function Perms    getPerms     (t cap);
-  function t        setPerms     (t cap, Perms perms);
-  function Bool     getSealed    (t cap);
-  function t        setSealed    (t cap, Bool sealed);
-  function Bool     canRepSealed (t cap, Bool sealed) =
-    canRepCap(cap, sealed, getOffset(cap));
-  function Bit#(ot) getType      (t cap);
-  function t        setType      (t cap, Bit#(ot) otype);
-  function `BigBit  getAddr      (t cap);
-  function `BigBit  getOffset    (t cap) = getAddr(cap) - getBase(cap);
-  function t        setOffset    (t cap, `BigBit offset);
-  function Bool     canRepOffset (t cap, `BigBit offset) =
-    canRepCap(cap, getSealed(cap), offset);
-  function `BigBit  getBase      (t cap);
-  function `BigBit  getTop       (t cap);
-  function `BigBit  getLength    (t cap);
-  function t        setBounds    (t cap, Bit#(n) length);
-  function Bool     canRepBounds (t cap, Bit#(n) length);
-  function Bool     canRepCap    (t cap, Bool sealed, `BigBit offset);
-  function t        almightyCap;
-  function t        nullCap;
+
+  // Return whether the Capability is valid
+  function Bool isValidCap (t cap);
+  // Set the capability as valid. All fields left unchanged
+  function t setValidCap (t cap, Bool tag);
+
+  // Get the permissions bits (hardware and software)
+  function Perms getPerms (t cap);
+  // Set the permissions bits (hardware and software)
+  function t setPerms (t cap, Perms perms);
+
+  // Get the kind of the capability, i.e. whether it is sealed, sentry, unsealed, ...
+  function Kind getKind (t cap);
+
+  // Helper methods for identifying specific kinds
+  function Bool isSealed (t cap) = getKind(cap) == SEALED_WITH_TYPE || getKind(cap) == SENTRY;
+  function Bool isSentry (t cap) = getKind(cap) == SENTRY;
+  function Bool isSealedWithType (t cap) = getKind(cap) == SEALED_WITH_TYPE;
+  function Bool isUnsealed (t cap) = getKind(cap) == UNSEALED;
+
+  // Get the type field, including implicitly whether the cap is sealed/sentry
+  function Bit#(ot) getType (t cap);
+  // Set the type field, including implicitly sealing/unsealing the capability
+  // In the event the new type makes the cap unrepresentable
+  function Exact#(t) setType (t cap, Bit#(ot) otype);
+  // Get the address pointed to by the capability
+
+  function `BigBit getAddr (t cap);
+  // Set the address of the capability. Result invalid if not exact
+  function Exact#(t) setAddr (t cap, `BigBit addr);
+
+  // Get the offset of the capability
+  function `BigBit getOffset (t cap) = getAddr(cap) - getBase(cap);
+  // Set the offset of the capability. Result invalid if not exact
+  function Exact#(t) setOffset (t cap, `BigBit offset);
+
+  // Get the base
+  function `BigBit getBase (t cap);
+  // Get the top
+  function `BigBit getTop (t cap);
+  // Get the length
+  function `BigBit getLength (t cap);
+
+  // Set the length of the capability. Inexact: result length may be different to requested
+  function Exact#(t) setBounds (t cap, Bit#(n) length);
+
+  // Set all fields apart from address to match the null capability (including tag)
+  function t nullify (t cap);
+
+  // Return the maximally permissive capability (initial register state)
+  function t almightyCap;
+  // Return the null capability
+  function t nullCap;
+
   `undef BigBit
 endtypeclass
 
 function Fmt showCHERICap(t cap) provisos (CHERICap#(t, ot, n));
-  return $format( "UPerms: 0x%0x", getUPerms(cap)) +
+  return $format( "Valid: 0x%0x", getTag(cap)) +
          $format(" Perms: 0x%0x", getPerms(cap)) +
-         $format(" Sealed: ", fshow(getSealed(cap))) +
-         $format(" Type: %0d", getType(cap)) +
+         $format(" Kind: ", fShow(getKind(cap))) +
+         (isSealedWithType(cap) ? $format(" Type: %0d", getType(cap)) : "") +
          $format(" Addr: 0x%0x", getAddr(cap)) +
          $format(" Base: 0x%0x", getBase(cap)) +
          $format(" Length: 0x%0x", getLength(cap));
 endfunction
+
+typeclass Cast #(type src, type dest);
+  function dest cast (src x);
+endtypeclass
 
 endpackage
