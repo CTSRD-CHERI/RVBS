@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2018-2019 Alexandre Joannou
  * Copyright (c) 2019 Peter Rugg
  * All rights reserved.
  *
@@ -33,9 +33,8 @@ package CHERICap;
 ////////////////////////////////////////////////////////////////////////////////
 // Permission bits
 
-typedef Bit#(16) SoftPerms
+typedef Bit#(16) SoftPerms;
 typedef struct {
-  Bit #(4) reserved;
   Bool     accessSysRegs;
   Bool     permitUnseal;
   Bool     permitCCall;
@@ -49,12 +48,7 @@ typedef struct {
   Bool     global;
 } HardPerms deriving(Bits, Eq, FShow);
 
-typedef struct {
-    SoftPerms soft;
-    HardPerms hard;
-} Perms deriving(Bits, Eq, FShow);
-
-instance Bitwise#(Perms);
+instance Bitwise#(HardPerms);
   function \& (x1, x2) = unpack(pack(x1) & pack(x2));
   function \| (x1, x2) = unpack(pack(x1) | pack(x2));
   function \^ (x1, x2) = unpack(pack(x1) ^ pack(x2));
@@ -81,9 +75,10 @@ typedef enum {
   RES0,
   RES1,
   SEALED_WITH_TYPE
-} Kind deriving (FShow);
+} Kind deriving (Eq, FShow);
 
-typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t determines (ot, n));
+typeclass CHERICap#(type t, numeric type ot, numeric type n)
+  dependencies (t determines (ot, n));
   // Type to allow for overflow by one bit in address arithmetic
   `define BigBit Bit#(TAdd#(n, 1))
 
@@ -92,19 +87,26 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t det
   // Set the capability as valid. All fields left unchanged
   function t setValidCap (t cap, Bool tag);
 
-  // Get the permissions bits (hardware and software)
-  function Perms getPerms (t cap);
-  // Set the permissions bits (hardware and software)
-  function t setPerms (t cap, Perms perms);
+  // Get the hardware permissions
+  function HardPerms getHardPerms (t cap);
+  // Set the hardware permissions
+  function t setHardPerms (t cap, HardPerms hardperms);
+  // Get the software permissions
+  function SoftPerms getSoftPerms (t cap);
+  // Set the software permissions
+  function t setSoftPerms (t cap, SoftPerms softperms);
+  // Get the architectural permissions
+  function Bit#(31) getPerms (t cap) =
+    zeroExtend({pack(getSoftPerms(cap)), 4'h0, pack(getHardPerms(cap))});
 
   // Get the kind of the capability, i.e. whether it is sealed, sentry, unsealed, ...
   function Kind getKind (t cap);
 
   // Helper methods for identifying specific kinds
-  function Bool isSealed (t cap) = getKind(cap) == SEALED_WITH_TYPE || getKind(cap) == SENTRY;
+  function Bool isUnsealed (t cap) = getKind(cap) == UNSEALED;
   function Bool isSentry (t cap) = getKind(cap) == SENTRY;
   function Bool isSealedWithType (t cap) = getKind(cap) == SEALED_WITH_TYPE;
-  function Bool isUnsealed (t cap) = getKind(cap) == UNSEALED;
+  function Bool isSealed (t cap) = getKind(cap) == SEALED_WITH_TYPE || getKind(cap) == SENTRY;
 
   // Get the type field, including implicitly whether the cap is sealed/sentry
   function Bit#(ot) getType (t cap);
@@ -144,10 +146,10 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n) dependencies (t det
 endtypeclass
 
 function Fmt showCHERICap(t cap) provisos (CHERICap#(t, ot, n));
-  return $format( "Valid: 0x%0x", getTag(cap)) +
+  return $format( "Valid: 0x%0x", isValidCap(cap)) +
          $format(" Perms: 0x%0x", getPerms(cap)) +
-         $format(" Kind: ", fShow(getKind(cap))) +
-         (isSealedWithType(cap) ? $format(" Type: %0d", getType(cap)) : "") +
+         $format(" Kind: ", fshow(getKind(cap))) +
+         (isSealedWithType(cap) ? $format(" Type: %0d", getType(cap)) : $format("")) +
          $format(" Addr: 0x%0x", getAddr(cap)) +
          $format(" Base: 0x%0x", getBase(cap)) +
          $format(" Length: 0x%0x", getLength(cap));
