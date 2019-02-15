@@ -91,13 +91,13 @@ module [Module] mkState#(
   s.pendingException <- mkCReg(2, Invalid);
   s.pendingMemException <- mkCReg(2, Invalid);
   `ifdef RVXCHERI
-  RawCap nCap = nullCap;
-  RawCap yCap = almightyCap;
-  s.regFile <- mkRegFileInitZ(Data(pack(nCap)), Data(pack(nCap)));
-  function readGPR(i); return truncate(s.regFile.r[i].Data); endfunction
+  CapType nCap = nullCap;
+  CapType yCap = almightyCap;
+  s.regFile <- mkRegFileInitZ(nCap, nCap);
+  function readGPR(i); return truncate(pack(s.regFile.r[i])); endfunction
   s.rGPR = readGPR;
   function writeGPR(i, x) = action
-    s.regFile.r[i] <= Data(zeroExtend(x));
+    s.regFile.r[i] <= nullWithAddr(x);
     printTLogPlusArgs("itrace", $format(rName(i)," <= 0x%0x", x));
   endaction;
   s.wGPR = writeGPR;
@@ -105,7 +105,7 @@ module [Module] mkState#(
   s.rCR = readCR;
   function writeCR(i, x) = action
     s.regFile.r[i] <= x;
-    printTLogPlusArgs("itrace", $format("c%0d <= ", i, fshow(x)));
+    printTLogPlusArgs("itrace", $format("c%0d <= ", i, showCHERICap(x)));
   endaction;
   s.wCR = writeCR;
   `else
@@ -121,17 +121,17 @@ module [Module] mkState#(
   s.csrs <- mkCSRs();
   `ifdef RVXCHERI
   // CHERI specific state
-  s.pcc  <- mkArchReg(Cap(yCap));
-  s.ddc  <- mkArchReg(Cap(yCap));
-  s.utcc      <- mkArchReg(Data(pack(nCap)));
-  s.uscratchc <- mkArchReg(Data(pack(nCap)));
-  s.uepcc     <- mkArchReg(Data(pack(nCap)));
-  s.stcc      <- mkArchReg(Data(pack(nCap)));
-  s.sscratchc <- mkArchReg(Data(pack(nCap)));
-  s.sepcc     <- mkArchReg(Data(pack(nCap)));
-  s.mtcc      <- mkArchReg(Data(pack(nCap)));
-  s.mscratchc <- mkArchReg(Data(pack(nCap)));
-  s.mepcc     <- mkArchReg(Data(pack(nCap)));
+  s.pcc  <- mkArchReg(yCap);
+  s.ddc  <- mkArchReg(yCap);
+  s.utcc      <- mkArchReg(nCap);
+  s.uscratchc <- mkArchReg(nCap);
+  s.uepcc     <- mkArchReg(nCap);
+  s.stcc      <- mkArchReg(nCap);
+  s.sscratchc <- mkArchReg(nCap);
+  s.sepcc     <- mkArchReg(nCap);
+  s.mtcc      <- mkArchReg(nCap);
+  s.mscratchc <- mkArchReg(nCap);
+  s.mepcc     <- mkArchReg(nCap);
   function getCapSpecial(idx) = case (idx)
     0: Valid(asIfc(s.pcc));
     1: Valid(asIfc(s.ddc));

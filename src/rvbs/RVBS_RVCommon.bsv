@@ -64,7 +64,8 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
         tagged RVReadRsp .r: begin
           `ifdef RVXCHERI
           match {.captag, .data} = r;
-          RawCap newCap = unpack(truncate(data));
+          Bit#(CapNoValidSz) capData = truncate(data);
+          CapType newCap = unpack({captag, capData});
           `else
           let data = r;
           `endif
@@ -72,9 +73,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           Bool isNeg = unpack(data[topIdx-1]);
           Bit#(XLEN) mask = (~0) << topIdx;
           `ifdef RVXCHERI
-          let newData = Data(pack(newCap));
-          if (captag == 1) newData = Cap(newCap);
-          if (rCapAccess) s.wCR(rDest, newData);
+          if (rCapAccess) s.wCR(rDest, newCap);
           else
           `endif
           s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);

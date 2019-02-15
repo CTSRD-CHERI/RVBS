@@ -47,14 +47,14 @@ function Maybe#(CapExcCode) memCapChecks(
   VAddr vaddr,
   BitPO#(4) numBytes,
   Bool capAccess);
-  if (!isCap(cap)) return Valid(CapExcTag);
-  else if (!isUnsealed(cap.Cap)) return Valid(CapExcSeal);
-  else if (reqType == READ   && !getHardPerms(cap.Cap).permitLoad) return Valid(CapExcPermLoad);
-  else if (reqType == WRITE  && !getHardPerms(cap.Cap).permitStore) return Valid(CapExcPermStore);
-  else if (reqType == READ   && capAccess && !getHardPerms(cap.Cap).permitLoadCap) return Valid(CapExcPermLoadCap);
-  else if (reqType == WRITE  && capAccess && !getHardPerms(cap.Cap).permitStoreCap) return Valid(CapExcPermStoreCap);
-  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
-  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
+  if (!isValidCap(cap)) return Valid(CapExcTag);
+  else if (!isUnsealed(cap)) return Valid(CapExcSeal);
+  else if (reqType == READ   && !getHardPerms(cap).permitLoad) return Valid(CapExcPermLoad);
+  else if (reqType == WRITE  && !getHardPerms(cap).permitStore) return Valid(CapExcPermStore);
+  else if (reqType == READ   && capAccess && !getHardPerms(cap).permitLoadCap) return Valid(CapExcPermLoadCap);
+  else if (reqType == WRITE  && capAccess && !getHardPerms(cap).permitStoreCap) return Valid(CapExcPermStoreCap);
+  else if (zeroExtend(vaddr) < getBase(cap)) return Valid(CapExcLength);
+  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap)) return Valid(CapExcLength);
   else return Invalid;
 endfunction
 function Maybe#(CapExcCode) ifetchCapChecks(
@@ -62,11 +62,11 @@ function Maybe#(CapExcCode) ifetchCapChecks(
   VAddr vaddr,
   BitPO#(4) numBytes,
   Bool capAccess);
-  if (!isCap(cap)) return Valid(CapExcTag);
-  else if (!isUnsealed(cap.Cap)) return Valid(CapExcSeal);
-  else if (!getHardPerms(cap.Cap).permitExecute) return Valid(CapExcPermExe);
-  else if (zeroExtend(vaddr) < getBase(cap.Cap)) return Valid(CapExcLength);
-  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap)) return Valid(CapExcLength);
+  if (!isValidCap(cap)) return Valid(CapExcTag);
+  else if (!isUnsealed(cap)) return Valid(CapExcSeal);
+  else if (!getHardPerms(cap).permitExecute) return Valid(CapExcPermExe);
+  else if (zeroExtend(vaddr) < getBase(cap)) return Valid(CapExcLength);
+  else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap)) return Valid(CapExcLength);
   else return Invalid;
 endfunction
 `endif
@@ -232,12 +232,12 @@ function Recipe doWriteMem(
   `ifdef RVXCHERI
   match {.capIdx, .cap, .vaddr} = unpackHandle(s.ddc, s.pcc, handle);
   return rFastSeq(rBlock(
-  rIfElse (!isCap(cap), raiseMemCapException(s, CapExcTag, capIdx),
-  rIfElse (!isUnsealed(cap.Cap), raiseMemCapException(s, CapExcSeal, capIdx),
-  rIfElse (!getHardPerms(cap.Cap).permitStore, raiseMemCapException(s, CapExcPermStore, capIdx),
-  rIfElse (capWrite && !getHardPerms(cap.Cap).permitStoreCap, raiseMemCapException(s, CapExcPermStoreCap, capIdx),
-  rIfElse (zeroExtend(vaddr) < getBase(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
-  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap.Cap), raiseMemCapException(s, CapExcLength, capIdx),
+  rIfElse (!isValidCap(cap), raiseMemCapException(s, CapExcTag, capIdx),
+  rIfElse (!isUnsealed(cap), raiseMemCapException(s, CapExcSeal, capIdx),
+  rIfElse (!getHardPerms(cap).permitStore, raiseMemCapException(s, CapExcPermStore, capIdx),
+  rIfElse (capWrite && !getHardPerms(cap).permitStoreCap, raiseMemCapException(s, CapExcPermStoreCap, capIdx),
+  rIfElse (zeroExtend(vaddr) < getBase(cap), raiseMemCapException(s, CapExcLength, capIdx),
+  rIfElse (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap), raiseMemCapException(s, CapExcLength, capIdx),
     rFastSeq(rBlock(
   `else
   return rFastSeq(rBlock(
@@ -319,7 +319,14 @@ function Recipe writeCap(
   StrArgs args,
   VAddr vaddr,
   CapType cap
-) = rAct(s.writeMem.enq(tuple4(DDCAccessHandle(vaddr), fromInteger(args.numBytes), zeroExtend(pack(cap.Data)), isCap(cap))));
+);
+  Bit#(CapNoValidSz) capBits = truncate(pack(cap));
+  return rAct(s.writeMem.enq(tuple4(
+           DDCAccessHandle(vaddr),
+           fromInteger(args.numBytes),
+           zeroExtend(capBits),
+           isValidCap(cap))));
+endfunction
 
 function Recipe capWriteData(
   RVState s,
@@ -333,5 +340,12 @@ function Recipe capWriteCap(
   StrArgs args,
   Bit#(5) capIdx,
   CapType wcap
-) = rAct(s.writeMem.enq(tuple4(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), fromInteger(args.numBytes), zeroExtend(pack(wcap.Data)), isCap(wcap))));
+);
+  Bit#(CapNoValidSz) capBits = truncate(pack(wcap));
+  return rAct(s.writeMem.enq(tuple4(
+           CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))),
+           fromInteger(args.numBytes),
+           zeroExtend(capBits),
+           isValidCap(wcap))));
+endfunction
 `endif

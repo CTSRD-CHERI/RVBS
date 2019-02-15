@@ -69,26 +69,9 @@ typedef 16 CC_BOUNDS;
 typedef  6 CC_EXP;
 typedef  2 CC_OTYPE;
 `endif
-typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) RawCap;
-Bit#(CC_OTYPE) otypeMax = ~0;
-typedef union tagged {
-  RawCap Cap;
-  Bit#(TAdd#(XLEN, XLEN)) Data;
-} CapType deriving (Bits);
-instance FShow#(CapType);
-  function fshow (ct) = case (ct) matches
-    tagged Cap  .cap:  return $format("Tag: True ",  showCHERICap(cap));
-    tagged Data .data: begin
-      RawCap tmp = unpack(pack(data));
-      return $format("Tag: False ", showCHERICap(tmp));
-    end
-  endcase;
-endinstance
-// Helper functions
-function Bool isCap(CapType cap) = case (cap) matches
-  tagged Cap ._: return True;
-  default: return False;
-endcase;
+typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) CapType;
+typedef TAdd#(CC_ADDR, CC_ADDR) CapNoValidSz;
+Bit#(CC_OTYPE) otypeMax = -1;
 // Capability handle helper types
 typedef union tagged {
   Tuple2#(Bit#(5), CapType) CapAccessHandle;
@@ -104,17 +87,17 @@ function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, CapType pcc,
     tagged CapAccessHandle {.h_idx, .h_cap}: begin
       idx = zeroExtend(h_idx);
       cap = h_cap;
-      vaddr = truncate(getAddr(cap.Cap));
+      vaddr = getAddr(cap);
     end
     tagged DDCAccessHandle .h_addr: begin
       idx = 6'b100001; // this is DDC
       cap = ddc;
-      vaddr = truncate(getBase(cap.Cap)) + h_addr;
+      vaddr = truncate(getBase(cap)) + h_addr;
     end
     tagged PCCAccessHandle .h_addr: begin
       idx = 6'b100000; // this is PCC
       cap = pcc;
-      vaddr = truncate(getBase(cap.Cap)) + h_addr;
+      vaddr = truncate(getBase(cap)) + h_addr;
     end
   endcase
   return tuple3(idx, cap, vaddr);
@@ -194,6 +177,10 @@ instance State#(RVState);
   function lightReport = fullReport;
   function fullReport (s);
     Fmt str = $format("regfile\n");
+    `ifdef RVXCHERI
+    for (Integer i = 0; i < 32; i = i + 1)
+      str = str + $format(rName(fromInteger(i)),": ", showCHERICap(s.regFile.r[i]));
+    `else
     for (Integer i = 0; i < 6; i = i + 1) begin
       for (Integer j = 0; j < 5; j = j + 1) begin
         Bit#(5) ridx = fromInteger(i*5+j);
@@ -203,6 +190,7 @@ instance State#(RVState);
     end
     str = str + $format(rName(5'd30),": 0x%8x\t", s.regFile.r[30]);
     str = str + $format(rName(5'd31),": 0x%8x", s.regFile.r[31]);
+    `endif
     str = str + $format("\npc = 0x%8x", s.pc);
     str = str + $format(" - privilege mode = ", fshow(s.currentPrivLvl));
     return str;
@@ -231,7 +219,7 @@ instance State#(RVState);
       rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
       `ifdef RVXCHERI
-      rvfi_rd_wdata:  truncate(s.regFile.rd_new_val.Data),
+      rvfi_rd_wdata:  s.regFile.rd_new_val.addr,
       `else
       rvfi_rd_wdata:  s.regFile.rd_new_val,
       `endif

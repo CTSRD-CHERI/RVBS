@@ -145,6 +145,7 @@ endinstance
 `define AllPermsSz TAdd#(SizeOf#(`CCSoftPerms), SizeOf#(HardPerms))
 
 typedef struct {
+  Bool isCap;
   `CCSoftPerms softperms;
   HardPerms hardperms;
   Bit#(TSub#(addr_, TAdd#(bounds_, `AllPermsSz))) res; // 15 permission bits and bounds_ bits to deduct
@@ -153,20 +154,22 @@ typedef struct {
 } CHERICCCap#(numeric type addr_, numeric type bounds_, numeric type e_, numeric type t_);
 
 instance Bits#(CHERICCCap#(addr_, bounds_, e_, t_),
-               TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, `AllPermsSz)))) provisos(
+               TAdd#(1, TAdd#(addr_, TAdd#(bounds_, TAdd#(res_, `AllPermsSz))))) provisos(
     Bits#(CHERICCBounds#(TDiv#(bounds_, 2), e_, t_), bounds_),
     Add#(TAdd#(bounds_, `AllPermsSz), res_, addr_)
   );
   function pack(cap);
+    Bit#(1)                         isCap = pack(cap.isCap);
     Bit#(SizeOf#(`CCSoftPerms)) softperms = cap.softperms;
-    Bit#(SizeOf#(HardPerms))   hardperms = pack(cap.hardperms);
-    Bit#(res_)                       res = cap.res;
-    Bit#(bounds_)                 bounds = pack(cap.bounds);
-    Bit#(addr_)                     addr = cap.addr;
-    return {softperms, hardperms, res, bounds, addr};
+    Bit#(SizeOf#(HardPerms))    hardperms = pack(cap.hardperms);
+    Bit#(res_)                        res = cap.res;
+    Bit#(bounds_)                  bounds = pack(cap.bounds);
+    Bit#(addr_)                      addr = cap.addr;
+    return {isCap, softperms, hardperms, res, bounds, addr};
   endfunction
   //function pack(cap) = {cap.softperms, pack(cap.perms), cap.res, pack(cap.bounds), cap.addr};
   function unpack(raw) = CHERICCCap {
+    isCap:     unpack(msb(raw)),
     softperms: raw[2*`i(addr_)-1:2*`i(addr_)-`i(SizeOf#(`CCSoftPerms))],
     hardperms: unpack(raw[2*`i(addr_)-5:2*`i(addr_)-`i(`AllPermsSz)]),
     res:       raw[2*`i(addr_)-`i(`AllPermsSz)-1:`i(addr_)+`i(bounds_)],
@@ -182,6 +185,7 @@ endinstance
 ////////////////////////////////////////////////////////////////////////////////
 
 CHERICCCap#(addr_, bounds_, e_, t_) almightyCC = CHERICCCap {
+  isCap: True,
   softperms: ~0,
   hardperms: unpack(~0),
   res: 0,
@@ -195,6 +199,7 @@ CHERICCCap#(addr_, bounds_, e_, t_) almightyCC = CHERICCCap {
 };
 
 CHERICCCap#(addr_, bounds_, e_, t_) nullCC = CHERICCCap {
+  isCap: False,
   softperms: 0,
   hardperms: unpack(0),
   res: 0,
@@ -263,9 +268,12 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     Add#(f__, e_, TLog#(TAdd#(1, addr_))) // can fit result of countZerosMSB in e_
   );
   //////////////////////////////////////////////////////////////////////////////
-  function isValidCap(cap) = warning("isValidCap unimplemented, defaulting to False", False);
+  function isValidCap(cap) = cap.isCap;
   //////////////////////////////////////////////////////////////////////////////
-  function setValidCap(cap, v) = error("setValidCap unimplemented");
+  function setValidCap(cap, v);
+    cap.isCap = v;
+    return cap;
+  endfunction
   //////////////////////////////////////////////////////////////////////////////
   function getHardPerms(cap) = cap.hardperms;
   //////////////////////////////////////////////////////////////////////////////
@@ -333,11 +341,11 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     return Exact{exact: isExact, value: new_cap};
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function getAddr(cap) = zeroExtend(cap.addr);
+  function getAddr(cap) = cap.addr;
   //////////////////////////////////////////////////////////////////////////////
   function setAddr(cap) = error("setAddr unimplemented");
   //////////////////////////////////////////////////////////////////////////////
-  function getOffset(cap) = getAddr(cap) - getBase(cap);
+  function getOffset(cap) = zeroExtend(getAddr(cap)) - getBase(cap);
   //////////////////////////////////////////////////////////////////////////////
   function setOffset(cap, offset);
     // is the capability still exact after updating its offset
@@ -425,7 +433,11 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     return Exact{exact: isExact, value: new_cap};
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function nullify = error("nullify unimplemented");
+  function nullWithAddr(x);
+    let cap = nullCap;
+    cap.addr = x;
+    return nullCap;
+  endfunction
   //////////////////////////////////////////////////////////////////////////////
   function almightyCap = almightyCC;
   //////////////////////////////////////////////////////////////////////////////

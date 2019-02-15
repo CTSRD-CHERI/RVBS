@@ -114,12 +114,12 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
   function Exact#(t) setType (t cap, Bit#(ot) otype);
   // Get the address pointed to by the capability
 
-  function `BigBit getAddr (t cap);
+  function Bit#(n) getAddr (t cap);
   // Set the address of the capability. Result invalid if not exact
-  function Exact#(t) setAddr (t cap, `BigBit addr);
+  function Exact#(t) setAddr (t cap, Bit#(n) addr);
 
   // Get the offset of the capability
-  function `BigBit getOffset (t cap) = getAddr(cap) - getBase(cap);
+  function `BigBit getOffset (t cap) = zeroExtend(getAddr(cap)) - getBase(cap);
   // Set the offset of the capability. Result invalid if not exact
   function Exact#(t) setOffset (t cap, `BigBit offset);
 
@@ -133,8 +133,8 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
   // Set the length of the capability. Inexact: result length may be different to requested
   function Exact#(t) setBounds (t cap, Bit#(n) length);
 
-  // Set all fields apart from address to match the null capability (including tag)
-  function t nullify (t cap);
+  // Returns a null cap with an address set to the argument
+  function t nullWithAddr (Bit#(n) addr);
 
   // Return the maximally permissive capability (initial register state)
   function t almightyCap;
