@@ -79,8 +79,6 @@ typedef enum {
 
 typeclass CHERICap#(type t, numeric type ot, numeric type n)
   dependencies (t determines (ot, n));
-  // Type to allow for overflow by one bit in address arithmetic
-  `define BigBit Bit#(TAdd#(n, 1))
 
   // Return whether the Capability is valid
   function Bool isValidCap (t cap);
@@ -119,16 +117,16 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
   function Exact#(t) setAddr (t cap, Bit#(n) addr);
 
   // Get the offset of the capability
-  function `BigBit getOffset (t cap) = zeroExtend(getAddr(cap)) - getBase(cap);
+  function Bit#(n) getOffset (t cap) = getAddr(cap) - getBase(cap);
   // Set the offset of the capability. Result invalid if not exact
-  function Exact#(t) setOffset (t cap, `BigBit offset);
+  function Exact#(t) setOffset (t cap, Bit#(n) offset);
 
   // Get the base
-  function `BigBit getBase (t cap);
+  function Bit#(n) getBase (t cap);
   // Get the top
-  function `BigBit getTop (t cap);
+  function Bit#(TAdd#(n, 1)) getTop (t cap);
   // Get the length
-  function `BigBit getLength (t cap);
+  function Bit#(TAdd#(n, 1)) getLength (t cap);
 
   // Set the length of the capability. Inexact: result length may be different to requested
   function Exact#(t) setBounds (t cap, Bit#(n) length);
@@ -141,7 +139,6 @@ typeclass CHERICap#(type t, numeric type ot, numeric type n)
   // Return the null capability
   function t nullCap;
 
-  `undef BigBit
 endtypeclass
 
 function Fmt showCHERICap(t cap) provisos (CHERICap#(t, ot, n));

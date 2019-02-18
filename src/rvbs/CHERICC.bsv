@@ -262,10 +262,11 @@ function Bit#(`div2(bounds_))
 instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     Add#(3, a__, `div2(bounds_)), // 3 bits of bounds for 1/8th of rep space
     Add#(3, b__, addr_), // same for addr
-    Add#(c__, TAdd#(2, `div2(bounds_)), TAdd#(addr_, 1)), // 2 bits of Int#(2) correction
-    Add#(d__, `div2(bounds_), addr_), // slice addr into smaller bounds field
-    Add#(e__, `div2(bounds_), TAdd#(addr_, 1)), // same for addr+1
-    Add#(f__, e_, TLog#(TAdd#(1, addr_))) // can fit result of countZerosMSB in e_
+    Add#(c__, TAdd#(2, `div2(bounds_)), addr_), // for base correction
+    Add#(d__, TAdd#(2, `div2(bounds_)), TAdd#(addr_, 1)), // for top 2 bits of Int#(2) correction
+    Add#(e__, `div2(bounds_), addr_), // slice addr into smaller bounds field
+    Add#(f__, `div2(bounds_), TAdd#(addr_, 1)), // same for addr+1
+    Add#(g__, e_, TLog#(TAdd#(1, addr_))) // can fit result of countZerosMSB in e_
   );
   //////////////////////////////////////////////////////////////////////////////
   function isValidCap(cap) = cap.isCap;
@@ -348,18 +349,17 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
   function getOffset(cap) = zeroExtend(getAddr(cap)) - getBase(cap);
   //////////////////////////////////////////////////////////////////////////////
   function setOffset(cap, offset);
-    // is the capability still exact after updating its offset
     Bit#(`div2(bounds_)) e0m = ~(~0 << ((`i(t_)/2)+(`i(e_)/2)));
     Bit#(TSub#(`div2(bounds_), `div2(e_))) eem = ~(~0 << (`i(t_)/2));
     // extract specific useful values
     Bit#(e_) e = getExpCC(cap);
     Bit#(e_) almighty_e = fromInteger(`i(addr_)-((`i(bounds_)/2)-2)); // position the 1 of top in the addr_'th bit
-    Bit#(TAdd#(addr_, 1)) i = offset - getOffset(cap);
+    Bit#(addr_) i = offset - getOffset(cap);
     Bit#(`div2(bounds_)) imid = truncate(i >> e);
     Bit#(`div2(bounds_)) amid = truncate(cap.addr >> e);
     Bit#(`div2(bounds_)) r    = {getRepBoundCC(cap), 0};
     // perform inRange and inLimit tests
-    Bit#(TAdd#(addr_, 1)) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
+    Bit#(addr_) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
     Bool inRange  = ((i & mask) == mask) || ((i & mask) == 0);
     Bool inLimits = (i >= 0) ? imid < (r - amid - 1) :
                                imid >= (r - amid) && r != amid;
@@ -376,8 +376,8 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     let correction = getRegionCorrectionCC(truncateLSB(cap.addr),
                                            truncateLSB(baseCC),
                                            getRepBoundCC(cap));
-    Bit#(TAdd#(addr_, 1)) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
-    Bit#(TAdd#(addr_, 1)) acc = zeroExtend(cap.addr) & mask;
+    Bit#(addr_) mask = ~0 << (e + fromInteger(`i(bounds_)/2));
+    Bit#(addr_) acc = cap.addr & mask;
     return acc + (signExtend({pack(correction), baseCC}) << e);
   endfunction
   //////////////////////////////////////////////////////////////////////////////
@@ -392,7 +392,7 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
     return acc + (signExtend({pack(correction), topCC}) << e);
   endfunction
   //////////////////////////////////////////////////////////////////////////////
-  function getLength(cap) = getTop(cap) - getBase(cap);
+  function getLength(cap) = getTop(cap) - zeroExtend(getBase(cap));
   //////////////////////////////////////////////////////////////////////////////
   function setBounds(cap, length);
     let new_cap = cap;
