@@ -94,7 +94,7 @@ module [Module] mkState#(
   CapType nCap = nullCap;
   CapType yCap = almightyCap;
   s.regFile <- mkRegFileInitZ(nCap, nCap);
-  function readGPR(i); return truncate(pack(s.regFile.r[i])); endfunction
+  function readGPR(i); return getAddr(s.regFile.r[i]); endfunction
   s.rGPR = readGPR;
   function writeGPR(i, x) = action
     s.regFile.r[i] <= nullWithAddr(x);

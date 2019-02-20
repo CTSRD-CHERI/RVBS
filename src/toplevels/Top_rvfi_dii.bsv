@@ -136,11 +136,11 @@ module mkRVBS_rvfi_dii (Empty);
       printTLogPlusArgs("itrace", "-------- Reseting --------"),
       action s.pc <= 'h80000000; endaction, action s.pc.commit; endaction,
       `ifdef RVXCHERI
-      action RawCap c0 = nullCap; s.wCR(0, Data(pack(c0))); endaction,
+      action CapType c0 = nullCap; s.wCR(0, c0); endaction,
       s.regFile.commit,
       writeReg(cnt, 1),
       rWhile(cnt < 32, rFastSeq(rBlock(
-        action RawCap c0 = nullCap; s.wCR(truncate(cnt), Data(pack(c0))); endaction,
+        action CapType c0 = nullCap; s.wCR(truncate(cnt), c0); endaction,
         action
           s.regFile.commit;
           cnt <= cnt + 1;

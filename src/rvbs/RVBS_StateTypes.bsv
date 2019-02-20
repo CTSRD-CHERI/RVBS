@@ -219,7 +219,7 @@ instance State#(RVState);
       rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
       `ifdef RVXCHERI
-      rvfi_rd_wdata:  s.regFile.rd_new_val.addr,
+      rvfi_rd_wdata:  getAddr(s.regFile.rd_new_val),
       `else
       rvfi_rd_wdata:  s.regFile.rd_new_val,
       `endif
