@@ -360,16 +360,16 @@ endmodule
 (* synthesize *)
 module mkRVBS_synth#(parameter VAddr reset_pc) (RVBS_synth);
   let ifc <- mkRVBS(reset_pc);
-  let m0 <- toAXI4Lite_Master_Synth(ifc.instAXI4Lite_Master);
-  let m1 <- toAXI4Lite_Master_Synth(ifc.dataAXI4Lite_Master);
+  let m0 <- toUnguarded_AXI4Lite_Master(ifc.instAXI4Lite_Master);
+  let m1 <- toUnguarded_AXI4Lite_Master(ifc.dataAXI4Lite_Master);
   method      peekPC = ifc.peekPC;
   method peekCtrlCSR = ifc.peekCtrlCSR;
   interface   probes = ifc.probes;
   method     setMSIP = ifc.setMSIP;
   method     setMTIP = ifc.setMTIP;
   method     setMEIP = ifc.setMEIP;
-  interface instAXI4Lite_Master = m0;
-  interface dataAXI4Lite_Master = m1;
+  interface instAXI4Lite_Master = toAXI4Lite_Master_Synth(m0);
+  interface dataAXI4Lite_Master = toAXI4Lite_Master_Synth(m1);
 endmodule
 
 /////////////////////////////
@@ -457,14 +457,14 @@ endmodule
 (* synthesize *)
 module mkRVBS_CLINT_synth#(parameter VAddr reset_pc) (RVBS_CLINT_synth);
   let ifc <- mkRVBS_CLINT(reset_pc);
-  let m0 <- toAXI4Lite_Master_Synth(ifc.instAXI4Lite_Master);
-  let m1 <- toAXI4Lite_Master_Synth(ifc.dataAXI4Lite_Master);
+  let m0 <- toUnguarded_AXI4Lite_Master(ifc.instAXI4Lite_Master);
+  let m1 <- toUnguarded_AXI4Lite_Master(ifc.dataAXI4Lite_Master);
   method      peekPC = ifc.peekPC;
   method peekCtrlCSR = ifc.peekCtrlCSR;
   interface   probes = ifc.probes;
   method     setMEIP = ifc.setMEIP;
-  interface instAXI4Lite_Master = m0;
-  interface dataAXI4Lite_Master = m1;
+  interface instAXI4Lite_Master = toAXI4Lite_Master_Synth(m0);
+  interface dataAXI4Lite_Master = toAXI4Lite_Master_Synth(m1);
 endmodule
 
 `undef AXI4_PARAMS
