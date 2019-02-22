@@ -215,7 +215,7 @@ instance State#(RVState);
       rvfi_rs1_data:  ?,
       rvfi_rs2_data:  ?,
       rvfi_pc_rdata:  s.pc,
-      rvfi_pc_wdata:  s.pc.late,
+      rvfi_pc_wdata:  isException ? {s.csrs.mtvec.base, 2'b00} : s.pc.late,
       rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
       `ifdef RVXCHERI

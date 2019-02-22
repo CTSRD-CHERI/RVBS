@@ -436,7 +436,7 @@ instance CHERICap#(CHERICCCap#(addr_, bounds_, e_, t_), t_, addr_) provisos (
   function nullWithAddr(x);
     let cap = nullCap;
     cap.addr = x;
-    return nullCap;
+    return cap;
   endfunction
   //////////////////////////////////////////////////////////////////////////////
   function almightyCap = almightyCC;
