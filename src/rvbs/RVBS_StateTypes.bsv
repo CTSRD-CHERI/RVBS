@@ -164,6 +164,7 @@ typedef struct {
   `ifdef RVFI_DII
   FIFO#(Bit#(InstWidth)) iFF;
   Reg#(Bit#(64)) count;
+  Array#(Reg#(Maybe#(VAddr))) exc_tgt;
   Array#(Reg#(VAddr)) mem_addr;
   Array#(Reg#(Bit#(DMemWidth))) mem_wdata;
   Array#(Reg#(Bit#(TDiv#(DMemWidth, 8)))) mem_wmask;
@@ -196,9 +197,6 @@ instance State#(RVState);
     return str;
   endfunction
   function commit (s) = action
-    let isException = isValid(s.pendingIFetchException[1]) ||
-                      isValid(s.pendingException[1]) ||
-                      isValid(s.pendingMemException[1]);
     `ifdef RVFI_DII
     // first do the  RVFI_DII reporting
     s.iFF.deq;
@@ -206,7 +204,7 @@ instance State#(RVState);
     // TODO Update to new BSV-RVFI-DII bridge and parameterize the struct on XLEN
     s.rvfi_dii_bridge.client.report.put(RVFI_DII_Execution{
       rvfi_order: s.count,
-      rvfi_trap:  isException,
+      rvfi_trap:  isValid(s.exc_tgt[1]),
       rvfi_halt:  ?,
       rvfi_intr:  ?,
       rvfi_insn:  s.iFF.first,
@@ -215,7 +213,7 @@ instance State#(RVState);
       rvfi_rs1_data:  ?,
       rvfi_rs2_data:  ?,
       rvfi_pc_rdata:  s.pc,
-      rvfi_pc_wdata:  isException ? {s.csrs.mtvec.base, 2'b00} : s.pc.late,
+      rvfi_pc_wdata:  isValid(s.exc_tgt[1]) ? s.exc_tgt[1].Valid : s.pc.late,
       rvfi_mem_wdata: s.mem_wdata[1],
       rvfi_rd_addr:   s.regFile.rd_idx,
       `ifdef RVXCHERI
@@ -229,28 +227,27 @@ instance State#(RVState);
       rvfi_mem_rdata: ?
     });
     // reset the cregs
+    s.exc_tgt[1]   <= Invalid;
     s.mem_addr[1]  <= 0;
     s.mem_wdata[1] <= 0;
     s.mem_wmask[1] <= 0;
     `endif
-    // do the stateful commits
-    if (!isException) begin
-      s.pc.commit;
-      s.regFile.commit;
-      `ifdef RVXCHERI
-      s.pcc.commit;
-      s.ddc.commit;
-      s.utcc.commit;
-      s.uscratchc.commit;
-      s.uepcc.commit;
-      s.stcc.commit;
-      s.sscratchc.commit;
-      s.sepcc.commit;
-      s.mtcc.commit;
-      s.mscratchc.commit;
-      s.mepcc.commit;
-      `endif
-    end
+    // perform architectural stateful changes
+    s.pc.commit;
+    s.regFile.commit;
+    `ifdef RVXCHERI
+    s.pcc.commit;
+    s.ddc.commit;
+    s.utcc.commit;
+    s.uscratchc.commit;
+    s.uepcc.commit;
+    s.stcc.commit;
+    s.sscratchc.commit;
+    s.sepcc.commit;
+    s.mtcc.commit;
+    s.mscratchc.commit;
+    s.mepcc.commit;
+    `endif
   endaction;
 
 endinstance

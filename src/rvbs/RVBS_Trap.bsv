@@ -335,6 +335,9 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     s.pendingIFetchException[0] <= Invalid;
     s.pendingException[0] <= Invalid;
     s.pendingMemException[0] <= Invalid;
+    `ifdef RVFI_DII
+    s.exc_tgt[0] <= Valid(tgt);
+    `endif
   endaction});
 
 endmodule

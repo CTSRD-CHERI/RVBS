@@ -195,6 +195,7 @@ module [Module] mkState#(
   `ifdef RVFI_DII
   s.iFF   <- mkFIFO;
   s.count <- mkReg(0);
+  s.exc_tgt   <- mkCReg(2, Invalid);
   s.mem_addr  <- mkCReg(2, 0);
   s.mem_wdata <- mkCReg(2, 0);
   s.mem_wmask <- mkCReg(2, 0);
