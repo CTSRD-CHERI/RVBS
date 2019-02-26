@@ -136,7 +136,7 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
   function Recipe instFetch(RVState s, Sink#(Bit#(InstWidth)) snk);
     // call back for ifetch responses
     function ifetchCallBack(rsp) = action
-      let newInst = ?; //XXX Force a NOP
+      let newInst = 'h00000013; // default to NOP (defined as addi, x0, x0, 0)
       case (rsp) matches
         tagged Left .excTok: raiseIFetchTokException(s, excTok);
         tagged Right .memRsp: case (memRsp) matches
