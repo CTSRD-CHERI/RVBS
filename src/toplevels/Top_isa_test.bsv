@@ -29,23 +29,18 @@
 import        Vector :: *;
 import   Connectable :: *;
 
+import          RVBS :: *;
+import RVBS_Wrappers :: *;
 import           AXI :: *;
 import      Routable :: *;
 import    BlueBasics :: *;
 import     BlueUtils :: *;
-import          RVBS :: *;
-import RVBS_Wrappers :: *;
 
-typedef PAddrWidth ADDR_sz;
-typedef        128 DATA_sz;
-typedef          0 AWUSER_sz;
-typedef          0 WUSER_sz;
-typedef          0 BUSER_sz;
-typedef          0 ARUSER_sz;
-typedef          0 RUSER_sz;
-
-`define AXI4_PARAMS ADDR_sz, DATA_sz,\
-                   AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
+`ifdef RVXCHERI
+`define AXI4_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
+`else
+`define AXI4_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
+`endif
 `define MASTER_T   AXI4Lite_Master#(`AXI4_PARAMS)
 `define SLAVE_T    AXI4Lite_Slave#(`AXI4_PARAMS)
 
@@ -88,7 +83,7 @@ module mkTestSOC (SOC_NO_CLINT);
   Vector#(`NSLAVES, `SLAVE_T) ss;
   ss[0] = offsetSlave(mem[1], 'h80000000);
   ss[1] = tester;
-  MappingTable#(`NSLAVES, ADDR_sz) maptab = newVector;
+  MappingTable#(`NSLAVES, PAddrWidth) maptab = newVector;
   maptab[0] = Range{base: 'h80000000, size: 'h01000};
   maptab[1] = Range{base: 'h80001000, size: 'h01000};
   mkAXI4LiteBus(maptab, ms, ss);
