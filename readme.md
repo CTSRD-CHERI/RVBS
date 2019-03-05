@@ -9,9 +9,12 @@ RVBS currently supports:
 - 32-bit and 64-bit RISC-V **I** base integer instructions
 - RISC-V **M** integer multiply/divide instructions
 - RISC-V **C** compressed instructions
+- RISC-V **Zicsr** control and status registers manipulation instructions
 - **Machine/Supervisor/User** privilege modes
 - **Sv32** virtual memory translation mechanism **without Sv32 memory protection features**
 - **PMP** physical memory protection mechanism
+- *RISC-V **Zifencei** the fence.i instruction, currently a nop*
+- *Initial support for the **Xcheri** extention*
 
 RVBS supports traps between privilege modes, but **Supervisor mode** is not fully implemented.
 
@@ -36,6 +39,9 @@ Once the libraries are available, you can build RVBS and specify a number of bui
 - `PMP` can be set to enable the Physical Memory Protection unit
 - `RVM` can be set to enable the *M* integer multiply/divide instructions extention
 - `RVC` can be set to enable the *C* compressed instructions extention
+- `RVZICSR` can be set to enable the *Zicsr* control and status registers manipulation instructions extention
+- `RVZIFENCEI` can be set to enable the *Zifencei* fence.i instruction extention
+- `RVXCHERI` can be set to enable the *Xcheri* CHERI capability extention initial support
 - `NO_LOGS` can be set to skip print statements (accelerates simulation)
 - `PRINT_ABI_REG_NAME` can be set to use ABI names for registers instead of their index
 
@@ -77,7 +83,7 @@ $ make isa-test
 The `+itrace` flag can be specified on the command line when running the simulator to get an instruction trace in `stdout` as follows:
 
 ```sh
-$ output/rvbs-rv64im +itrace
+$ output/rvbs-rv64IM +itrace
 ```
 
 ### Verilog
@@ -86,7 +92,7 @@ To build a 32-bit verilog module with support for compressed instructions, you c
 ```sh
 $ make RVC=1 XLEN=32 verilog
 ```
-The generated verilog can be found in the `output/rvbs-rv32ic-vdir/` folder. Specifically, the `rvbs` verilog module with an AXI4Lite interface can be found in `output/rvbs-rv32ic-vdir/rvbs.v`.
+The generated verilog can be found in the `output/rvbs-rv32IC-vdir/` folder. Specifically, the `rvbs` verilog module with an AXI4Lite interface can be found in `output/rvbs-rv32IC-vdir/rvbs.v`.
 
 ### TODOs, upcoming features and experimentations...
 
