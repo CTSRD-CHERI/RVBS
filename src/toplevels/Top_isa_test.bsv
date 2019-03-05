@@ -36,13 +36,14 @@ import      Routable :: *;
 import    BlueBasics :: *;
 import     BlueUtils :: *;
 
+`define MEM_AXI4_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
 `ifdef RVXCHERI
 `define AXI4_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
 `else
 `define AXI4_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
 `endif
-`define MASTER_T   AXI4Lite_Master#(`AXI4_PARAMS)
-`define SLAVE_T    AXI4Lite_Slave#(`AXI4_PARAMS)
+`define MASTER_T AXI4Lite_Master#(`AXI4_PARAMS)
+`define SLAVE_T  AXI4Lite_Slave#(`AXI4_PARAMS)
 
 // memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,9 +59,16 @@ module mkTestSOC (SOC_NO_CLINT);
   `else
   String memimg = "test-prog.hex";
   `endif
-  AXI4Lite_Slave#(`AXI4_PARAMS) mem[2] <- mkAXI4LiteSharedMem2('h10000, Valid(memimg));
+  AXI4Lite_Slave#(`MEM_AXI4_PARAMS) tmp[2] <- mkAXI4LiteSharedMem2('h10000, Valid(memimg));
+  `SLAVE_T mem[2];
+  `ifdef RVXCHERI
+  mem[0] = zeroUserFields(tmp[0]);
+  mem[1] = zeroUserFields(tmp[1]);
+  `else
+  mem = tmp;
+  `endif
   // tester
-  module mkAXI4LiteTester (AXI4Lite_Slave#(`AXI4_PARAMS));
+  module mkAXI4LiteTester (`SLAVE_T);
     let shim <- mkAXI4LiteShim;
     rule doWrite;
       let awflit <- get(shim.master.aw);
@@ -76,7 +84,7 @@ module mkTestSOC (SOC_NO_CLINT);
     endrule
     return shim.slave;
   endmodule
-  AXI4Lite_Slave#(`AXI4_PARAMS) tester <- mkAXI4LiteTester;
+  `SLAVE_T tester <- mkAXI4LiteTester;
   // interconnect
   Vector#(`NMASTERS, `MASTER_T) ms;
   ms[0] = shimData.master;
