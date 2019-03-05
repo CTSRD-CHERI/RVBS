@@ -26,6 +26,17 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+`ifdef RVXCHERI
+import CHERICap :: *;
+//XXX TEMPORARY- FIXME XXX//
+`ifdef XLEN64
+import CHERICC_Fat :: *;
+`else
+import CHERICC :: *;
+`endif
+//XXX TEMPORARY- FIXME XXX//
+`endif
+
 import Vector :: *;
 import FIFOF :: *;
 
@@ -41,10 +52,6 @@ import RVBS_PMPTypes :: *;
 `endif
 `ifdef SUPERVISOR_MODE
 import RVBS_VMTranslateTypes :: *;
-`endif
-`ifdef RVXCHERI
-import CHERICap :: *;
-import CHERICC :: *;
 `endif
 `ifdef RVFI_DII
 import RVFI_DII :: *;
@@ -62,14 +69,20 @@ import FIFO :: *;
 typedef 64 CC_ADDR;
 typedef 46 CC_BOUNDS;
 typedef  6 CC_EXP;
-typedef  6 CC_OTYPE;
+//XXX TEMPORARY- FIXME XXX//
+//typedef  6 CC_OTYPE;
+typedef  18 CC_OTYPE;
+typedef CapPipe CapType;
+//XXX TEMPORARY- FIXME XXX//
 `else
 typedef 32 CC_ADDR;
 typedef 16 CC_BOUNDS;
 typedef  6 CC_EXP;
 typedef  2 CC_OTYPE;
-`endif
+//XXX TEMPORARY- FIXME XXX//
 typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) CapType;
+//XXX TEMPORARY- FIXME XXX//
+`endif
 typedef TAdd#(CC_ADDR, CC_ADDR) CapNoValidSz;
 Bit#(CC_OTYPE) otypeMax = -1;
 // Capability handle helper types

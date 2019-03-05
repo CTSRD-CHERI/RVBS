@@ -30,13 +30,13 @@ import        FIFOF :: *;
 import SpecialFIFOs :: *;
 import  Connectable :: *;
 
+import         RVBS :: *;
+import    RVBS_Core :: *;
 import   BlueBasics :: *;
 import    BlueUtils :: *;
 import          AXI :: *;
 import       Recipe :: *;
 import          BID :: *;
-import         RVBS :: *;
-import    RVBS_Core :: *;
 import        CLINT :: *;
 
 // provided interfaces

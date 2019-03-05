@@ -29,17 +29,16 @@
 import        FIFOF :: *;
 import SpecialFIFOs :: *;
 
+import         RVBS :: *;
+import    RVBS_Core :: *;
+`ifdef RVXCHERI
+import     CHERICap :: *;
+`endif
 import     RVFI_DII :: *;
 import       Recipe :: *;
 import   BlueBasics :: *;
 import    BlueUtils :: *;
 import          BID :: *;
-import         RVBS :: *;
-import    RVBS_Core :: *;
-`ifdef RVXCHERI
-import     CHERICap :: *;
-import      CHERICC :: *;
-`endif
 
 (* synthesize *)
 module mkRVBS_rvfi_dii (Empty);

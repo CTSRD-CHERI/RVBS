@@ -46,7 +46,6 @@ import RVBS_VMTranslate :: *;
 `endif
 `ifdef RVXCHERI
 import CHERICap :: *;
-import CHERICC :: *;
 `endif
 
 `ifdef RVFI_DII

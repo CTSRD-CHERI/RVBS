@@ -26,9 +26,9 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
+import       RVBS :: *;
 import BlueBasics :: *;
 import        BID :: *;
-import       RVBS :: *;
 
 //////////////////////
 // Core RVBS module //

@@ -44,6 +44,14 @@ import ClientServer :: *;
 import GetPut :: *;
 `endif
 
+//XXX TEMPORARY- FIXME XXX//
+`ifdef RVXCHERI
+`ifdef XLEN64
+import CHERICap :: *;
+`endif
+`endif
+//XXX TEMPORARY- FIXME XXX//
+
 module [ISADefModule] mkRVCommon#(RVState s) (Empty);
 
   // Memory commons
@@ -65,7 +73,13 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           `ifdef RVXCHERI
           match {.captag, .data} = r;
           Bit#(CapNoValidSz) capData = truncate(data);
+          //XXX TEMPORARY- FIXME XXX//
+          `ifdef XLEN64
+          CapType newCap = CHERICap::cast({captag, capData});
+          `else
           CapType newCap = unpack({captag, capData});
+          `endif
+          //XXX TEMPORARY- FIXME XXX//
           `else
           let data = r;
           `endif

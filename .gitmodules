@@ -7,3 +7,6 @@
 [submodule "src/toplevels/CHERISOC"]
 	path = src/toplevels/CHERISOC
 	url = https://github.com/CTSRD-CHERI/CHERISOC.git
+[submodule "src/rvbs/cheri-cap-lib"]
+	path = src/rvbs/cheri-cap-lib
+	url = git@github.com:CTSRD-CHERI/cheri-cap-lib.git

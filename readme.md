@@ -14,7 +14,6 @@ RVBS currently supports:
 - **Sv32** virtual memory translation mechanism **without Sv32 memory protection features**
 - **PMP** physical memory protection mechanism
 - *RISC-V **Zifencei** the fence.i instruction, currently a nop*
-- *Initial support for the **Xcheri** extention*
 
 RVBS supports traps between privilege modes, but **Supervisor mode** is not fully implemented.
 
@@ -41,7 +40,6 @@ Once the libraries are available, you can build RVBS and specify a number of bui
 - `RVC` can be set to enable the *C* compressed instructions extention
 - `RVZICSR` can be set to enable the *Zicsr* control and status registers manipulation instructions extention
 - `RVZIFENCEI` can be set to enable the *Zifencei* fence.i instruction extention
-- `RVXCHERI` can be set to enable the *Xcheri* CHERI capability extention initial support
 - `NO_LOGS` can be set to skip print statements (accelerates simulation)
 - `PRINT_ABI_REG_NAME` can be set to use ABI names for registers instead of their index
 
