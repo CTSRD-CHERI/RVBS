@@ -42,7 +42,9 @@ class RVBS:
     mem_size = 0x10000, mem_img="test-prog.hex",
     s_mode = False, u_mode = False,
     m_ext = False, c_ext = False,
-    n_ext = False, pmp = False):
+    n_ext = False, zicsr_ext=False,
+    zifencei_ext = False, xcheri_ext = False,
+    pmp = False):
     self.size = size
     if mem_width:
       self.mem_width = mem_width
@@ -57,14 +59,20 @@ class RVBS:
     self.m_ext = m_ext
     self.c_ext = c_ext
     self.n_ext = n_ext
+    self.zicsr_ext = zicsr_ext
+    self.zifencei_ext = zifencei_ext
+    self.xcheri_ext = xcheri_ext
     self.pmp = pmp
 
   def name(self):
-    name = "rv{:d}i{:s}{:s}{:s}".format(
+    name = "rv{:d}I{:s}{:s}{:s}{:s}{:s}{:s}".format(
       self.size,
-      "m" if self.m_ext else "",
-      "c" if self.c_ext else "",
-      "n" if self.n_ext else "")
+      "M" if self.m_ext else "",
+      "C" if self.c_ext else "",
+      "N" if self.n_ext else "",
+      "Zicsr" if self.zicsr_ext else "",
+      "Zifencei" if self.zifencei_ext else "",
+      "Xcheri" if self.xcheri_ext else "")
     if (self.s_mode or self.u_mode):
       name += "-{:s}{:s}".format(
         "s" if self.s_mode else "",
@@ -75,8 +83,8 @@ class RVBS:
 
   def bsc_flags(self):
     flags = ["-D", "PRINT_ABI_REG_NAME"]
-    flags += ["-steps-warn-interval", "500000"]
-    flags += ["+RTS", "-K20M", "-RTS"]
+    flags += ["-steps-warn-interval", "3000000"]
+    flags += ["+RTS", "-K60M", "-RTS"]
     flags += ["-D", "XLEN32"]
     if self.size >= 64:
       flags += ["-D","XLEN64"]
@@ -92,6 +100,12 @@ class RVBS:
       flags += ["-D","RVC"]
     if self.n_ext:
       flags += ["-D","RVN"]
+    if self.zicsr_ext:
+      flags += ["-D","RVZICSR"]
+    if self.zifencei_ext:
+      flags += ["-D","RVZIFENCEI"]
+    if self.xcheri_ext:
+      flags += ["-D","RVXCHERI"]
     if self.pmp:
       flags+=["-D","PMP"]
     return flags
@@ -123,14 +137,16 @@ class RVBS:
 
 # list of all project's configs
 rvbss = [
-  RVBS( size = sz,
-    s_mode = s, u_mode = u,
-    m_ext = m, c_ext = c,
-    n_ext = n, pmp = pmp)
+  RVBS(size = sz, s_mode = s, u_mode = u,
+    m_ext = m, c_ext = c, n_ext = n,
+    zicsr_ext = zicsr, zifencei_ext = zifencei,
+    xcheri_ext = xcheri, pmp = pmp)
   for sz in [32, 64]
   for s in [False, True] for u in [False, True]
   for m in [False, True] for c in [False, True]
-  for n in [False, True] for pmp in [False, True]
+  for n in [False, True] for zicsr in [False, True]
+  for zifencei in [False, True] for xcheri in [False, True]
+  for pmp in [False, True]
   if (u or not s) # Supervisor mode implies User mode
   if (u or not n) # N ext implies User mode
 ]
@@ -199,6 +215,7 @@ if op.isdir(tests_dir):
 else:
   tests = None
 nb_exts = 3
+#nb_exts = 6
 # test pass
 test_pass_re = re.compile("TEST SUCCESS")
 
@@ -232,10 +249,19 @@ cfiles = [op.join(blueutilsdir,"SimUtils.c"),op.join(blueutilsdir,"MemSim.c"),op
 cc="gcc-4.8"
 cxx="g++-4.8"
 # bluesim simulator
-def fullname (s, hasI, hasM, hasC,hasPMP):
-    return "rv{:d}{:s}{:s}{:s}{:s}".format(s, "i" if hasI else "", "m" if hasM else "", "c" if hasC else "", "-pmp" if hasPMP else "")
-def simname (s, hasM, hasC, hasPMP):
-    return fullname(s, True, hasM, hasC, hasPMP)
+def fullname (s, hasI, hasM, hasC, hasPMP):
+    return "rv{:d}{:s}{:s}{:s}{:s}".format(s, "i" if hasI else "",
+            "m" if hasM else "",
+            "c" if hasC else "",
+            "-pmp" if hasPMP else "")
+#def fullname (s, hasI, hasM, hasC, hasZicsr, hasZifencei, hasXcheri, hasPMP):
+#    return "rv{:d}{:s}{:s}{:s}{:s}{:s}{:s}{:s}".format(s, "I" if hasI else "",
+#            "M" if hasM else "",
+#            "C" if hasC else "",
+#            "Zicsr" if hasZicsr else "",
+#            "Zifencei" if hasZifencei else "",
+#            "Xcheri" if hasXcheri else "",
+#            "-pmp" if hasPMP else "")
 def bdir (rvbs):
   return "{:s}-bdir".format(rvbs.name())
 def simdir (rvbs):
@@ -295,11 +321,13 @@ def task_build_simulator () :
     os.makedirs(in_output_dir(infodir(rvbs)),exist_ok=True)
     more_bsc_flags = ["-bdir",in_build_dir(bdir(rvbs)),"-simdir",in_build_dir(simdir(rvbs)),"-info-dir",in_output_dir(infodir(rvbs))]
     cmd =  [bsc] + bsc_flags + more_bsc_flags + rvbs.bsc_flags() + ["-sim","-g",topmod,"-u",topfile]
+    print(cmd)
     sub.run(cmd)
     env2 = os.environ.copy()
     env2["CC"] = cc
     env2["CXX"] = cxx
     cmd = [bsc] + bsc_flags + more_bsc_flags + rvbs.bsc_flags() + ["-sim","-o",in_output_dir(rvbs.name()),"-e",topmod] + cfiles
+    print(cmd)
     sub.run(cmd,env=env2)
 
   for rvbs in rvbss:

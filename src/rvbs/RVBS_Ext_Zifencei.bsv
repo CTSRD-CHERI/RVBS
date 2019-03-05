@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2018 Alexandre Joannou
+ * Copyright (c) 2019 Alexandre Joannou
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -26,54 +26,18 @@
  * @BERI_LICENSE_HEADER_END@
  */
 
-package RVBS;
-
+import BID        :: *;
+import BitPat     :: *;
+import BlueUtils  :: *;
 import RVBS_Types :: *;
-import RVBS_State :: *;
-import RVBS_Trap :: *;
-import RVBS_RVCommon :: *;
-import RVBS_MemAccess :: *;
 
-export RVBS_Types :: *;
-export RVBS_State :: *;
-export RVBS_Trap :: *;
-export RVBS_RVCommon :: *;
-export RVBS_MemAccess :: *;
+// funct3 = FENCE.I = 001
+// opcode = 0001111
+function Action instrFENCE_I(RVState s) = action
+  //TODO
+  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence.i", s.pc));
+endaction;
 
-import RVBS_Base_RV32I :: *;
-export RVBS_Base_RV32I :: *;
-`ifdef RVZICSR
-import RVBS_Ext_Zicsr :: *;
-export RVBS_Ext_Zicsr :: *;
-`endif
-`ifdef RVZIFENCEI
-import RVBS_Ext_Zifencei :: *;
-export RVBS_Ext_Zifencei :: *;
-`endif
-`ifdef RVM
-import RVBS_Ext_32_M :: *;
-export RVBS_Ext_32_M :: *;
-`endif
-`ifdef RVC
-import RVBS_Ext_32_C :: *;
-export RVBS_Ext_32_C :: *;
-`endif
-`ifdef RVXCHERI
-import RVBS_Ext_Xcheri :: *;
-export RVBS_Ext_Xcheri :: *;
-`endif
-
-`ifdef XLEN64
-import RVBS_Base_RV64I :: *;
-export RVBS_Base_RV64I :: *;
-`ifdef RVM
-import RVBS_Ext_64_M :: *;
-export RVBS_Ext_64_M :: *;
-`endif
-`ifdef RVC
-import RVBS_Ext_64_C :: *;
-export RVBS_Ext_64_C :: *;
-`endif
-`endif
-
-endpackage
+module [ISADefModule] mkExt_Zifencei#(RVState s) ();
+  defineInstEntry("fence.i", pat(n(4'b0000), n(4'b0000), n(4'b0000), n(5'b00000), n(3'b001), n(5'b00000), n(7'b0001111)), instrFENCE_I(s));
+endmodule

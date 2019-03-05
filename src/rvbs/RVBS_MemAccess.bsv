@@ -36,6 +36,38 @@ import RVBS_Types :: *;
 import RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
 
+/////////////////////////////////
+// Load and Store Instructions //
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+  I-type
+
+   31                                 20 19    15 14    12 11     7 6        0
+  +-------------------------------------+--------+--------+--------+----------+
+  |               imm[11:0]             |   rs1  | funct3 |   rd   |  opcode  |
+  +-------------------------------------+--------+--------+--------+----------+
+*/
+function Recipe load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
+  readData(s, args, s.rGPR(rs1) + signExtend(imm), rd);
+
+/*
+  S-type
+
+   31                        25 24    20 19    15 14    12 11     7 6        0
+  +----------------------------+--------+--------+--------+--------+----------+
+  |         imm[11:5]          |   rs2  |   rs1  | funct3 |imm[4:0]|  opcode  |
+  +----------------------------+--------+--------+--------+--------+----------+
+*/
+function Recipe store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
+  Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+  return writeData(s, args, s.rGPR(rs1) + signExtend(imm), zeroExtend(s.rGPR(rs2)));
+endfunction
+
+///////////////////
+// inner helpers //
+////////////////////////////////////////////////////////////////////////////////
+
 `ifdef RVXCHERI
 import CHERICap :: *;
 `endif

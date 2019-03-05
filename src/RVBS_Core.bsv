@@ -40,27 +40,30 @@ module [Module] mkRVBSCore#(RVState s,
   (BIDProbes);
 
   // instanciating simulator
-  let modList = list(init, iFetch, mkRVCommon, mkRVTrap, mkRV32I);
+  let modList = list(init, iFetch, mkRVCommon, mkRVTrap, mkBase_RV32I);
   `ifdef RVM
-    modList = append(modList, list(mkRV32M));
+    modList = append(modList, list(mkExt_32_M));
   `endif
   `ifdef RVC
-    modList = append(modList, list(mkRV32C));
-  `endif
-  `ifdef RVXCHERI
-    modList = append(modList, list(mkRV32XCHERI));
+    modList = append(modList, list(mkExt_32_C));
   `endif
   `ifdef XLEN64
-  modList = append(modList, list(mkRV64I));
+  modList = append(modList, list(mkBase_RV64I));
     `ifdef RVM
-      modList = append(modList, list(mkRV64M));
+      modList = append(modList, list(mkExt_64_M));
     `endif
     `ifdef RVC
-      modList = append(modList, list(mkRV64C));
+      modList = append(modList, list(mkExt_64_C));
     `endif
-    `ifdef RVXCHERI
-      //modList = append(modList, list(mkRV64XCHERI));
-    `endif
+  `endif
+  `ifdef RVZICSR
+    modList = append(modList, list(mkExt_Zicsr));
+  `endif
+  `ifdef RVZIFENCEI
+    modList = append(modList, list(mkExt_Zifencei));
+  `endif
+  `ifdef RVXCHERI
+    modList = append(modList, list(mkExt_Xcheri));
   `endif
   let bid_probes <- mkISASim(s, modList);
 

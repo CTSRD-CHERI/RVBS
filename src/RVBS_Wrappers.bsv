@@ -384,7 +384,7 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
   let  rvbs <- mkRVBS(reset_pc);
   let clint <- mkAXI4LiteCLINT;
   `ifdef RVXCHERI
-  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = dropUserFields(clint.axiLiteSlave);
+  AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = zeroUserFields(clint.axiLiteSlave);
   `else
   AXI4Lite_Slave#(`AXI4_PARAMS) clintSlave = clint.axiLiteSlave;
   `endif
