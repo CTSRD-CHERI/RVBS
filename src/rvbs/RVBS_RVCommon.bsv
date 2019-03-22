@@ -27,6 +27,7 @@
  */
 
 import FIFOF :: *;
+import SpecialFIFOs :: *;
 
 import BID :: *;
 import BlueBasics :: *;
@@ -54,6 +55,28 @@ import CHERICap :: *;
 
 module [ISADefModule] mkRVCommon#(RVState s) (Empty);
 
+  // instanciate memory access state machines
+  match {.dataReadRules, .dataReadFSM} <- mkRecipeFSMSlaveRules(doReadMemCore(
+    `ifdef SUPERVISOR_MODE
+    s.dvm,
+    `endif
+    `ifdef PMP
+    s.dpmp,
+    `endif
+    s.dmem
+  ));
+  match {.dataWriteRules, .dataWriteFSM} <- mkRecipeFSMSlaveRules(
+    doWriteMemCore(
+      `ifdef SUPERVISOR_MODE
+      s.dvm,
+      `endif
+      `ifdef PMP
+      s.dpmp,
+      `endif
+      s.dmem
+  ));
+  addRules(rJoinMutuallyExclusive(dataReadRules, dataWriteRules));
+
   // Memory commons
   `ifdef RVXCHERI
   match {.rHandle, .rDest, .rNumBytes, .rSgnExt, .rCapAccess} = s.readMem.first;
@@ -65,7 +88,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
   match {.wVaddr, .wNumBytes, .wData} = s.writeMem.first;
   `endif
   // call back for read responses
-  function readCallBack(rsp) = action 
+  function readCallBack(rsp) = action
     case (rsp) matches
       tagged Left .excTok: raiseMemTokException(s, excTok);
       tagged Right .memRsp: case (memRsp) matches
@@ -96,10 +119,21 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
       endcase
     endcase
   endaction;
-  // check for potential capability exceptions
+  // call back for write responses
+  function writeCallBack(rsp) = action
+    case (rsp) matches
+      tagged Left .excTok: raiseMemTokException(s, excTok);
+      tagged Right .memRsp: case (memRsp) matches
+        tagged RVWriteRsp .w: noAction;
+        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault); endaction
+      endcase
+    endcase
+  endaction;
+  // prepare exception tokens
   let rExcTok = Invalid;
   let wExcTok = Invalid;
   `ifdef RVXCHERI
+  // check for potential capability exceptions
   let m_rCapExc = memCapChecks(READ, rCap, rVaddr, rNumBytes, rCapAccess);
   if (isValid(m_rCapExc)) rExcTok = Valid(ExcToken{
     excCode: CHERIFault,
@@ -118,26 +152,45 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
                            list(
                              // handle reads
                              rFastSeq(rBlock(
-                               doReadMem(rExcTok, readCallBack, s, rVaddr, rNumBytes),
-                               s.readMem.deq
+                               dataReadFSM.sink.put(tuple4(rExcTok, READ, rVaddr, rNumBytes)),
+                               action
+                                 let rsp <- get(dataReadFSM.source);
+                                 readCallBack(rsp);
+                                 s.readMem.deq;
+                               endaction
                              )),
                              // handle writes
                              rFastSeq(rBlock(
                                `ifdef RVXCHERI
-                               doWriteMem(wExcTok, s, wHandle, wNumBytes, wData, wCapAccess),
+                               dataWriteFSM.sink.put(tuple5(wExcTok, wVaddr, wNumBytes, wData, wCapAccess)),
                                `else
-                               doWriteMem(wExcTok, s, wVaddr, wNumBytes, wData),
+                               dataWriteFSM.sink.put(tuple4(wExcTok, wVaddr, wNumBytes, wData)),
                                `endif
-                               s.writeMem.deq
+                               action
+                                 let rsp <- get(dataWriteFSM.source);
+                                 writeCallBack(rsp);
+                                 s.writeMem.deq;
+                               endaction
                              ))
                            ),
                            rAct(noAction)));
-
 endmodule
 
 // Instruction fetch
 ////////////////////////////////////////////////////////////////////////////////
 module [ISADefModule] mkRVIFetch#(RVState s) ();
+  // memory read recipe function
+  let iFetchFF <- mkBypassFIFOF;
+  let iFetchCore = doReadMemCore(
+    `ifdef SUPERVISOR_MODE
+    s.ivm,
+    `endif
+    `ifdef PMP
+    s.ipmp,
+    `endif
+    s.imem
+  );
+  // preparing exception token
   let excTok = Invalid;
   `ifdef RVXCHERI
   let m_ifetchCapExc = ifetchCapChecks(s.pcc, s.pc, 4, False);
@@ -172,7 +225,13 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
       endcase
       snk.put(newInst);
     endaction;
-    return doIFetchMem(excTok, ifetchCallBack, s, s.pc.late, 4);
+    return rFastSeq(rBlock(
+      iFetchCore(tuple4(excTok, IFETCH, s.pc.late, 4), toSink(iFetchFF)),
+      action
+        let rsp <- get(iFetchFF);
+        ifetchCallBack(rsp);
+      endaction
+    ));
   endfunction
   // instruction fetching definition
   defineFetchInstEntry(instFetch(s));
