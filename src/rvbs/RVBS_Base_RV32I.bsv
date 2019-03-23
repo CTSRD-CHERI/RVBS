@@ -384,9 +384,9 @@ endaction;
 
 // funct3 = FENCE = 000
 // opcode = 0001111
-function Action instrFENCE(RVState s, Bit#(4) pred, Bit#(4) succ) = action
+function Action instrFENCE(RVState s, Bit#(4) fm, Bit#(4) pred, Bit#(4) succ) = action
   //TODO
-  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence 0b%4b, 0b%4b", s.pc, pred, succ));
+  printTLogPlusArgs("itrace", $format("pc: 0x%0x -- fence 0b%4b, 0b%4b, 0b%4b", s.pc, fm, pred, succ));
 endaction;
 
 `ifdef SUPERVISOR_MODE
@@ -461,7 +461,7 @@ module [ISADefModule] mkBase_RV32I#(RVState s) ();
   defineInstEntry("sb",      pat(v, v, v, n(3'b000), v, n(7'b0100011)), store(s, StrArgs{name: "sb", numBytes: 1}));
   defineInstEntry("sh",      pat(v, v, v, n(3'b001), v, n(7'b0100011)), store(s, StrArgs{name: "sh", numBytes: 2}));
   defineInstEntry("sw",      pat(v, v, v, n(3'b010), v, n(7'b0100011)), store(s, StrArgs{name: "sw", numBytes: 4}));
-  defineInstEntry("fence",   pat(n(4'b0000), v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE(s));
+  defineInstEntry("fence",   pat(v, v, v, n(5'b00000), n(3'b000), n(5'b00000), n(7'b0001111)), instrFENCE(s));
   `ifdef SUPERVISOR_MODE
   defineInstEntry("sfence.vma", pat(n(7'b0001001), v, v, n(3'b000), n(5'b00000), n(7'b1110011)), instrSFENCE_VMA(s));
   `endif
