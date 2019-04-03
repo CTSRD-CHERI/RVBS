@@ -413,9 +413,9 @@ function Recipe ddcCheriLoad(RVState s, LoadArgs args, Bit#(5) rs1, Bit#(5) rd_c
   else return readData(s, args, s.rGPR(rs1), rd_cd);
 endfunction
 
-function Recipe ddcCheriStore(RVState s, StrArgs args, Bit#(5) rs1, Bit#(5) rs_cs);
-  if (args.numBytes == 16) return writeCap(s, args, s.rGPR(rs1), s.rCR(rs_cs));
-  else return writeData(s, args, s.rGPR(rs1), zeroExtend(s.rGPR(rs_cs)));
+function Recipe ddcCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) rs1);
+  if (args.numBytes == 16) return writeCap(s, args, s.rCR(rs2_cs), s.rGPR(rs1));
+  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs)), s.rGPR(rs1));
 endfunction
 
 function Recipe capCheriLoad(RVState s, LoadArgs args, Bit#(5) cb, Bit#(5) rd_cd);
@@ -423,9 +423,9 @@ function Recipe capCheriLoad(RVState s, LoadArgs args, Bit#(5) cb, Bit#(5) rd_cd
   else return capReadData(s, args, cb, rd_cd);
 endfunction
 
-function Recipe capCheriStore(RVState s, StrArgs args, Bit#(5) cb, Bit#(5) rs_cs);
-  if (args.numBytes == 16) return capWriteCap(s, args, cb, s.rCR(rs_cs));
-  else return capWriteData(s, args, cb, zeroExtend(s.rGPR(rs_cs)));
+function Recipe capCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) cb);
+  if (args.numBytes == 16) return capWriteCap(s, args, s.rCR(rs2_cs), cb);
+  else return capWriteData(s, args, zeroExtend(s.rGPR(rs2_cs)), cb);
 endfunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,38 +476,35 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("clear",   pat(n(7'h7f), n(5'h0d), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_Clear(s));
   defineInstEntry("fpclear", pat(n(7'h7f), n(5'h10), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_FPClear(s));
 
-  // Memory-Access with Explicit Address Type Instructions
-  defineInstEntry("lbddc",  pat(n(7'h0), n(5'h00), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lbddc", numBytes: 1, sgnExt: True}));
-  defineInstEntry("lhddc",  pat(n(7'h0), n(5'h01), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lhddc", numBytes: 2, sgnExt: True}));
-  defineInstEntry("lwddc",  pat(n(7'h0), n(5'h02), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lwddc", numBytes: 4, sgnExt: True}));
-  defineInstEntry("ldddc",  pat(n(7'h0), n(5'h03), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "ldddc", numBytes: 8, sgnExt: True}));
-  defineInstEntry("lbuddc", pat(n(7'h0), n(5'h04), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lbuddc", numBytes: 1, sgnExt: False}));
-  defineInstEntry("lhuddc", pat(n(7'h0), n(5'h05), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lhuddc", numBytes: 2, sgnExt: False}));
-  defineInstEntry("lwuddc", pat(n(7'h0), n(5'h06), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lwuddc", numBytes: 4, sgnExt: False}));
-  defineInstEntry("lduddc", pat(n(7'h0), n(5'h07), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lduddc", numBytes: 8, sgnExt: False}));
-  defineInstEntry("sbddc",  pat(n(7'h0), n(5'h08), v, n(3'h0), v, n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sbddc", numBytes: 1}));
-  defineInstEntry("shddc",  pat(n(7'h0), n(5'h09), v, n(3'h0), v, n(7'h5b)), ddcCheriStore(s, StrArgs{name: "shddc", numBytes: 2}));
-  defineInstEntry("swddc",  pat(n(7'h0), n(5'h0a), v, n(3'h0), v, n(7'h5b)), ddcCheriStore(s, StrArgs{name: "swddc", numBytes: 4}));
-  defineInstEntry("sdddc",  pat(n(7'h0), n(5'h0b), v, n(3'h0), v, n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sdddc", numBytes: 8}));
-  defineInstEntry("sqddc",  pat(n(7'h0), n(5'h0c), v, n(3'h0), v, n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sqddc", numBytes: 16})); // also considers tag bit
-  defineInstEntry("lqddc",  pat(n(7'h0), n(5'h0d), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lqddc", numBytes: 16, sgnExt: True})); // also considers tag bit
-  //defineInstEntry("", pat(n(7'h0), n(5'h0e), v, n(3'h0), v, n(7'h5b)),);
-  //defineInstEntry("", pat(n(7'h0), n(5'h0f), v, n(3'h0), v, n(7'h5b)),);
-  defineInstEntry("lbcap",  pat(n(7'h0), n(5'h10), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lbcap", numBytes: 1, sgnExt: True}));
-  defineInstEntry("lhcap",  pat(n(7'h0), n(5'h11), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lhcap", numBytes: 2, sgnExt: True}));
-  defineInstEntry("lwcap",  pat(n(7'h0), n(5'h12), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lwcap", numBytes: 4, sgnExt: True}));
-  defineInstEntry("ldcap",  pat(n(7'h0), n(5'h13), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "ldcap", numBytes: 8, sgnExt: True}));
-  defineInstEntry("lbucap", pat(n(7'h0), n(5'h14), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lbucap", numBytes: 1, sgnExt: False}));
-  defineInstEntry("lhucap", pat(n(7'h0), n(5'h15), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lhucap", numBytes: 2, sgnExt: False}));
-  defineInstEntry("lwucap", pat(n(7'h0), n(5'h16), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lwucap", numBytes: 4, sgnExt: False}));
-  defineInstEntry("lducap", pat(n(7'h0), n(5'h17), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lducap", numBytes: 8, sgnExt: False}));
-  defineInstEntry("sbcap",  pat(n(7'h0), n(5'h18), v, n(3'h0), v, n(7'h5b)), capCheriStore(s, StrArgs{name: "sbcap", numBytes: 1}));
-  defineInstEntry("shcap",  pat(n(7'h0), n(5'h19), v, n(3'h0), v, n(7'h5b)), capCheriStore(s, StrArgs{name: "shcap", numBytes: 2}));
-  defineInstEntry("swcap",  pat(n(7'h0), n(5'h1a), v, n(3'h0), v, n(7'h5b)), capCheriStore(s, StrArgs{name: "swcap", numBytes: 4}));
-  defineInstEntry("sdcap",  pat(n(7'h0), n(5'h1b), v, n(3'h0), v, n(7'h5b)), capCheriStore(s, StrArgs{name: "sdcap", numBytes: 8}));
-  defineInstEntry("sqcap",  pat(n(7'h0), n(5'h1c), v, n(3'h0), v, n(7'h5b)), capCheriStore(s, StrArgs{name: "sqcap", numBytes: 16})); // also considers tag bit
-  defineInstEntry("lqcap",  pat(n(7'h0), n(5'h1d), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lqcap", numBytes: 16, sgnExt: True})); // also considers tag bit
-  //defineInstEntry("", pat(n(7'h0), n(5'h1e), v, n(3'h0), v, n(7'h5b)),);
-  //defineInstEntry("", pat(n(7'h0), n(5'h1f), v, n(3'h0), v, n(7'h5b)),);
+  // Memory-Stores with Explicit Address Type Instructions
+  defineInstEntry("sbddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h08), n(7'h00)), ddcCheriStore(s, StrArgs{name: "sbddc", numBytes: 1}));
+  defineInstEntry("shddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h09), n(7'h01)), ddcCheriStore(s, StrArgs{name: "shddc", numBytes: 2}));
+  defineInstEntry("swddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0a), n(7'h02)), ddcCheriStore(s, StrArgs{name: "swddc", numBytes: 4}));
+  defineInstEntry("sdddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0b), n(7'h03)), ddcCheriStore(s, StrArgs{name: "sdddc", numBytes: 8}));
+  defineInstEntry("sqddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0c), n(7'h04)), ddcCheriStore(s, StrArgs{name: "sqddc", numBytes: 16})); // also considers tag bit
+  defineInstEntry("sbcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h18), n(7'h08)), capCheriStore(s, StrArgs{name: "sbcap", numBytes: 1}));
+  defineInstEntry("shcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h19), n(7'h09)), capCheriStore(s, StrArgs{name: "shcap", numBytes: 2}));
+  defineInstEntry("swcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1a), n(7'h0a)), capCheriStore(s, StrArgs{name: "swcap", numBytes: 4}));
+  defineInstEntry("sdcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1b), n(7'h0b)), capCheriStore(s, StrArgs{name: "sdcap", numBytes: 8}));
+  defineInstEntry("sqcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1c), n(7'h0c)), capCheriStore(s, StrArgs{name: "sqcap", numBytes: 16})); // also considers tag bit
+  // Memory-Loads with Explicit Address Type Instructions
+  defineInstEntry("lbddc",  pat(n(7'h7d), n(5'h00), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lbddc",  numBytes: 1,  sgnExt: True}));
+  defineInstEntry("lhddc",  pat(n(7'h7d), n(5'h01), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lhddc",  numBytes: 2,  sgnExt: True}));
+  defineInstEntry("lwddc",  pat(n(7'h7d), n(5'h02), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lwddc",  numBytes: 4,  sgnExt: True}));
+  defineInstEntry("ldddc",  pat(n(7'h7d), n(5'h03), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "ldddc",  numBytes: 8,  sgnExt: True}));
+  defineInstEntry("lbuddc", pat(n(7'h7d), n(5'h04), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lbuddc", numBytes: 1,  sgnExt: False}));
+  defineInstEntry("lhuddc", pat(n(7'h7d), n(5'h05), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lhuddc", numBytes: 2,  sgnExt: False}));
+  defineInstEntry("lwuddc", pat(n(7'h7d), n(5'h06), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lwuddc", numBytes: 4,  sgnExt: False}));
+  defineInstEntry("lduddc", pat(n(7'h7d), n(5'h07), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lduddc", numBytes: 8,  sgnExt: False}));
+  defineInstEntry("lbcap",  pat(n(7'h7d), n(5'h08), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lbcap",  numBytes: 1,  sgnExt: True}));
+  defineInstEntry("lhcap",  pat(n(7'h7d), n(5'h09), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lhcap",  numBytes: 2,  sgnExt: True}));
+  defineInstEntry("lwcap",  pat(n(7'h7d), n(5'h0a), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lwcap",  numBytes: 4,  sgnExt: True}));
+  defineInstEntry("ldcap",  pat(n(7'h7d), n(5'h0b), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "ldcap",  numBytes: 8,  sgnExt: True}));
+  defineInstEntry("lbucap", pat(n(7'h7d), n(5'h0c), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lbucap", numBytes: 1,  sgnExt: False}));
+  defineInstEntry("lhucap", pat(n(7'h7d), n(5'h0d), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lhucap", numBytes: 2,  sgnExt: False}));
+  defineInstEntry("lwucap", pat(n(7'h7d), n(5'h0e), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lwucap", numBytes: 4,  sgnExt: False}));
+  defineInstEntry("lducap", pat(n(7'h7d), n(5'h0f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lducap", numBytes: 8,  sgnExt: False}));
+  defineInstEntry("lqddc",  pat(n(7'h7d), n(5'h17), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lqddc",  numBytes: 16, sgnExt: True})); // also considers tag bit
+  defineInstEntry("lqcap",  pat(n(7'h7d), n(5'h1f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lqcap",  numBytes: 16, sgnExt: True})); // also considers tag bit
 
 endmodule

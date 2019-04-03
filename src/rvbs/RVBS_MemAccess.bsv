@@ -61,7 +61,7 @@ function Recipe load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5
 */
 function Recipe store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-  return writeData(s, args, s.rGPR(rs1) + signExtend(imm), zeroExtend(s.rGPR(rs2)));
+  return writeData(s, args, zeroExtend(s.rGPR(rs2)), s.rGPR(rs1) + signExtend(imm));
 endfunction
 
 ///////////////////
@@ -246,8 +246,8 @@ endfunction
 function Recipe writeData(
   RVState s,
   StrArgs args,
-  VAddr vaddr,
-  Bit#(128) wdata
+  Bit#(128) wdata,
+  VAddr vaddr
 ) =
   `ifndef RVXCHERI
   rAct(s.writeMem.enq(tuple3(vaddr, fromInteger(args.numBytes), wdata)));
@@ -259,8 +259,8 @@ function Recipe writeData(
 function Recipe writeCap(
   RVState s,
   StrArgs args,
-  VAddr vaddr,
-  CapType cap
+  CapType cap,
+  VAddr vaddr
 );
   Bit#(CapNoValidSz) capBits = truncate(pack(cap));
   return rAct(s.writeMem.enq(tuple4(
@@ -273,15 +273,15 @@ endfunction
 function Recipe capWriteData(
   RVState s,
   StrArgs args,
-  Bit#(5) capIdx,
-  Bit#(128) wdata
+  Bit#(128) wdata,
+  Bit#(5) capIdx
 ) = rAct(s.writeMem.enq(tuple4(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), fromInteger(args.numBytes), wdata, False)));
 
 function Recipe capWriteCap(
   RVState s,
   StrArgs args,
-  Bit#(5) capIdx,
-  CapType wcap
+  CapType wcap,
+  Bit#(5) capIdx
 );
   Bit#(CapNoValidSz) capBits = truncate(pack(wcap));
   return rAct(s.writeMem.enq(tuple4(
