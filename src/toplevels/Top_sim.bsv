@@ -94,7 +94,7 @@ module mkSimSOC (SOC);
   maptab[1] = Range{base: 'h10000000, size: 'h01000};
   maptab[2] = Range{base: 'h02000000, size: 'h10000};
   maptab[3] = Range{base: 'h80000000, size: fromInteger(memsize)};
-  mkAXI4LiteBus(maptab, ms, ss);
+  mkAXI4LiteBus(routeFromMappingTable(maptab), ms, ss);
   // interfaces
   interface instAXI4Lite_Slave = offsetSlave(mem[0], 'h80000000);
   interface dataAXI4Lite_Slave = shimData.slave;
