@@ -347,7 +347,7 @@ function Action instrXcheri_CJALR(RVState s, Bit#(5) cb, Bit#(5) cd) = action
   notImplemented("cjalr");
 endaction;
 
-function Action instrXcheri_CCall(RVState s, Bit#(5) sel, Bit#(5) cb, Bit#(5) cs) = action
+function Action instrXcheri_CCall(RVState s, Bit#(5) cb, Bit#(5) cs, Bit#(5) sel) = action
   //TODO
   notImplemented("ccall");
 endaction;
