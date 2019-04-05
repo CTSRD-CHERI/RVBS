@@ -73,7 +73,7 @@ module connectIFCs#(RVBS_CLINT rvbs, CHERISOC cheriSOC) (Empty);
   ss[0] = expandAXI4_Slave_Addr(cheriSOC.slave);
   MappingTable#(1, ADDR_sz) maptab = newVector;
   maptab[0] = Range{base: 'h00000000, size: 'h100000000};
-  mkAXI4Bus(maptab, ms, ss);
+  mkAXI4Bus(routeFromMappingTable(maptab), ms, ss);
   rule connect_interrupts;
     rvbs.setMEIP(unpack(cheriSOC.peekIRQs[0]));
   endrule
