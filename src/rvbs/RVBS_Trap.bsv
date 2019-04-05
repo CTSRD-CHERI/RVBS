@@ -105,7 +105,6 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
     default: terminateSim(s, $format("TRAP INTO UNKNOWN PRIVILEGE MODE ", fshow(s.currentPrivLvl)));
   endcase
   s.currentPrivLvl <= M;
-  printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(trapCode), ", mepc <= 0x%0x, pc <= 0x%0x", epc, s.csrs.mtvec));
 endaction;
 
 function Action raiseIFetchException(RVState s, ExcCode code) = action
@@ -126,11 +125,13 @@ instance RaiseException#(function Action f(RVState s, ExcCode code, Bit#(XLEN) t
   endaction;
 endinstance
 
-function Action raiseMemException(RVState s, ExcCode code) = action
-  s.pendingMemException[0] <= Valid(code);
+function Action raiseMemException(RVState s, ExcCode code, Bit#(XLEN) tval) = action
+  s.pendingMemException[0] <= Valid(tuple2(code, tval));
 endaction;
 
 `ifdef RVXCHERI
+import CHERICap :: *;
+
 typeclass RaiseCapException#(type a); a raiseCapException; endtypeclass
 
 instance RaiseCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
@@ -149,7 +150,7 @@ typeclass RaiseMemCapException#(type a); a raiseMemCapException; endtypeclass
 instance RaiseMemCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
   function raiseMemCapException(s, exc, idx) = action
     // TODO set cheri cause etc...
-    raiseMemException(s, CHERIFault);
+    raiseMemException(s, CHERIFault, (msb(idx) == 1) ? 0 : getAddr(s.rCR(truncate(idx)))); // TODO update the address to look into special cap regs
   endaction;
 endinstance
 
@@ -181,7 +182,7 @@ function Action raiseMemTokException(RVState s, ExcToken excToken) = action
     raiseMemCapException(s, excToken.capExcCode, excToken.capIdx);
   else
   `endif
-  raiseMemException(s, excToken.excCode);
+  raiseMemException(s, excToken.excCode, excToken.tval);
 endaction;
 
 function Action raiseIFetchTokException(RVState s, ExcToken excToken) = action
@@ -314,7 +315,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     let isException = isStdException || isMemException;
     let ifetchexc = s.pendingIFetchException[0].Valid;
     match {.exc, .maybe_tval} = s.pendingException[0].Valid;
-    let memexc = s.pendingMemException[0].Valid;
+    match {.memexc, .memexc_tval} = s.pendingMemException[0].Valid;
     TrapCode code = Interrupt(irqCode.Valid);
     if (isIFetchException) code = Exception(ifetchexc);
     else if (isStdException) code = Exception(exc);
@@ -322,7 +323,10 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     // handle general trap behaviour
     general_trap(M, code, s.pc, s);
     // potential tval latching
-    if (isStdException && isValid(maybe_tval)) s.csrs.mtval <= maybe_tval.Valid;
+    let new_mtval = 0;
+    if (isStdException && isValid(maybe_tval)) new_mtval = maybe_tval.Valid;
+    else if (isMemException) new_mtval = memexc_tval;
+    s.csrs.mtval <= new_mtval;
     // handle pc update
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
     case (s.csrs.mtvec.mode) matches
@@ -338,6 +342,8 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     `ifdef RVFI_DII
     s.exc_tgt[0] <= Valid(tgt);
     `endif
+    // tracing
+    printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(code), ", mepc <= 0x%0x, mtval <= 0x%0x, pc <= 0x%0x", s.pc, new_mtval, s.csrs.mtvec));
   endaction});
 
 endmodule

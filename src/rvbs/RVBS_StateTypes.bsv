@@ -126,7 +126,7 @@ typedef struct {
   Reg#(VAddr) instByteSz;
   Array#(Reg#(Maybe#(ExcCode))) pendingIFetchException;
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
-  Array#(Reg#(Maybe#(ExcCode))) pendingMemException;
+  Array#(Reg#(Maybe#(Tuple2#(ExcCode, Bit#(XLEN))))) pendingMemException;
   `ifdef RVXCHERI
   ArchRegFile#(32, CapType) regFile;
   `else

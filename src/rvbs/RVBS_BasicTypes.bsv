@@ -201,21 +201,24 @@ typedef enum {
 `endif
 typedef struct {
   ExcCode excCode;
+  Bit#(XLEN) tval;
   `ifdef RVXCHERI
   CapExcCode capExcCode;
   Bit#(6) capIdx;
   `endif
 } ExcToken deriving (Bits, Eq, FShow);
-function ExcToken craftExcToken(ExcCode code) = ExcToken {
-  excCode: code
+function ExcToken craftExcToken(ExcCode code, Bit#(XLEN) val) = ExcToken {
+    excCode: code
+  , tval: val
   `ifdef RVXCHERI
   , capExcCode: ?
   , capIdx: ?
   `endif
 };
 `ifdef RVXCHERI
-function ExcToken craftCapExcToken(CapExcCode code, Bit#(6) idx) = ExcToken {
+function ExcToken craftCapExcToken(CapExcCode code, Bit#(6) idx, Bit#(XLEN) val) = ExcToken {
   excCode: CHERIFault,
+  tval: val,
   capExcCode: code,
   capIdx: idx
 };

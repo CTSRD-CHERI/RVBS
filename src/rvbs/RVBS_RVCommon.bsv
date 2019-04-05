@@ -115,7 +115,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           `endif
           s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
         end
-        tagged RVBusError: action raiseMemException(s, LoadAccessFault); endaction
+        tagged RVBusError: action raiseMemException(s, LoadAccessFault, rVaddr); endaction
       endcase
     endcase
   endaction;
@@ -125,7 +125,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
       tagged Left .excTok: raiseMemTokException(s, excTok);
       tagged Right .memRsp: case (memRsp) matches
         tagged RVWriteRsp .w: noAction;
-        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault); endaction
+        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault, wVaddr); endaction
       endcase
     endcase
   endaction;
@@ -137,12 +137,14 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
   let m_rCapExc = memCapChecks(READ, rCap, rVaddr, rNumBytes, rCapAccess);
   if (isValid(m_rCapExc)) rExcTok = Valid(ExcToken{
     excCode: CHERIFault,
+    tval: 0,
     capExcCode: m_rCapExc.Valid,
     capIdx: rCapIdx
   });
   let m_wCapExc = memCapChecks(WRITE, wCap, wVaddr, wNumBytes, wCapAccess);
   if (isValid(m_wCapExc)) wExcTok = Valid(ExcToken{
     excCode: CHERIFault,
+    tval: 0,
     capExcCode: m_wCapExc.Valid,
     capIdx: wCapIdx
   });
@@ -196,6 +198,7 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
   let m_ifetchCapExc = ifetchCapChecks(s.pcc, s.pc, 4, False);
   if (isValid(m_ifetchCapExc)) excTok = Valid(ExcToken{
     excCode: CHERIFault,
+    tval: 0,
     capExcCode: m_ifetchCapExc.Valid,
     capIdx: 6'b100000 // this is PCC
   });
