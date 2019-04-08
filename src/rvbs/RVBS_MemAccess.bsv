@@ -34,7 +34,6 @@ import BlueBasics :: *;
 
 import RVBS_Types :: *;
 import RVBS_Trap :: *;
-import RVBS_TraceInsts :: *;
 
 /////////////////////////////////
 // Load and Store Instructions //

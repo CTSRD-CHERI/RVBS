@@ -37,6 +37,7 @@ import Recipe :: *;
 import RVBS_Trap :: *;
 import RVBS_Types :: *;
 import RVBS_MemAccess :: *;
+import RVBS_TraceInsts :: *;
 
 `ifdef RVFI_DII
 import RVFI_DII_Bridge :: *;
@@ -114,6 +115,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           else
           `endif
           s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
+          logInst(s, $format("load"));
         end
         tagged RVBusError: action raiseMemException(s, LoadAccessFault, rVaddr); endaction
       endcase
@@ -124,7 +126,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
     case (rsp) matches
       tagged Left .excTok: raiseMemTokException(s, excTok);
       tagged Right .memRsp: case (memRsp) matches
-        tagged RVWriteRsp .w: noAction;
+        tagged RVWriteRsp .w: logInst(s, $format("store"));
         tagged RVBusError: action raiseMemException(s, StrAMOAccessFault, wVaddr); endaction
       endcase
     endcase
