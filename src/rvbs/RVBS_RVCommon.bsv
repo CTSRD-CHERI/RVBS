@@ -126,7 +126,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
     case (rsp) matches
       tagged Left .excTok: raiseMemTokException(s, excTok);
       tagged Right .memRsp: case (memRsp) matches
-        tagged RVWriteRsp .w: logInst(s, $format("store"));
+        tagged RVWriteRsp: logInst(s, $format("store"));
         tagged RVBusError: action raiseMemException(s, StrAMOAccessFault, wVaddr); endaction
       endcase
     endcase
