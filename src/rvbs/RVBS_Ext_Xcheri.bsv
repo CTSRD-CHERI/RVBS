@@ -334,7 +334,7 @@ function Action instrXcheri_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(
       if (cd != 0) s.wCR(cd, cspecial);
       if (cs != 0) cspecial <= s.rCR(cs);
     end
-    default: notImplemented("cspecialrw"); // TODO IllegalInst
+    default: raiseException(s, IllegalInst);
   endcase
   //XXX logInst(s.pc, fmtInstXcheri("cspecialrw", idx, cs, cd));
 endaction;
