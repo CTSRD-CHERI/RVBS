@@ -343,8 +343,22 @@ endaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 function Action instrXcheri_CJALR(RVState s, Bit#(5) cb, Bit#(5) cd) = action
-  //TODO
-  notImplemented("cjalr");
+  let cap_cb = s.rCR(cb);
+  let tgt = getOffset(cap_cb);
+  tgt[0] = 0;
+  if (!isValidCap(cap_cb)) raiseCapException(s, CapExcTag, cb);
+  else if (isSealedWithType(cap_cb)) raiseCapException(s, CapExcSeal, cb);
+  else if (!getHardPerms(cap_cb).permitExecute) raiseCapException(s, CapExcPermExe, cb);
+  else if (getAddr(cap_cb) < getBase(cap_cb)) raiseCapException(s, CapExcLength, cb);
+  else if ({0, getAddr(cap_cb) + s.instByteSz} > getTop(cap_cb)) raiseCapException(s, CapExcLength, cb);
+  else if (!isInstAligned(tgt)) raiseException(s, InstAddrAlign, tgt);
+  else begin
+    CapType link_cap = setOffset(s.pcc, s.pc + s.instByteSz).value;
+    s.pc <= tgt;
+    s.pcc <= cap_cb;
+    s.wCR(cd, link_cap);
+    //TODO test this
+  end
 endaction;
 
 function Action instrXcheri_CCall(RVState s, Bit#(5) cb, Bit#(5) cs, Bit#(5) sel) = action
