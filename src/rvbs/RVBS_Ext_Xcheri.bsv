@@ -423,23 +423,39 @@ endaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 function Recipe ddcCheriLoad(RVState s, LoadArgs args, Bit#(5) rs1, Bit#(5) rd_cd);
-  if (args.numBytes == 16) return readCap(s, args, s.rGPR(rs1), rd_cd);
-  else return readData(s, args, s.rGPR(rs1), rd_cd);
+  if (args.numBytes == 16) return readCap(s, args, s.rGPR(rs1), 0, rd_cd);
+  else return readData(s, args, s.rGPR(rs1), 0, rd_cd);
 endfunction
 
 function Recipe ddcCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) rs1);
-  if (args.numBytes == 16) return writeCap(s, args, s.rCR(rs2_cs), s.rGPR(rs1));
-  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs)), s.rGPR(rs1));
+  if (args.numBytes == 16) return writeCap(s, args, s.rCR(rs2_cs), s.rGPR(rs1), 0);
+  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs)), s.rGPR(rs1), 0);
 endfunction
 
 function Recipe capCheriLoad(RVState s, LoadArgs args, Bit#(5) cb, Bit#(5) rd_cd);
-  if (args.numBytes == 16) return capReadCap(s, args, cb, rd_cd);
-  else return capReadData(s, args, cb, rd_cd);
+  if (args.numBytes == 16) return capReadCap(s, args, cb, 0, rd_cd);
+  else return capReadData(s, args, cb, 0, rd_cd);
 endfunction
 
 function Recipe capCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) cb);
-  if (args.numBytes == 16) return capWriteCap(s, args, s.rCR(rs2_cs), cb);
-  else return capWriteData(s, args, zeroExtend(s.rGPR(rs2_cs)), cb);
+  if (args.numBytes == 16) return capWriteCap(s, args, s.rCR(rs2_cs), cb, 0);
+  else return capWriteData(s, args, zeroExtend(s.rGPR(rs2_cs)), cb, 0);
+endfunction
+
+// Override standard RISC-V memory accesses
+////////////////////////////////////////////////////////////////////////////////
+
+function Recipe overrideLoad(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1_cs1, Bit#(5) rd_cd);
+  // check for current capability mode
+  if (inCapMode(s.pcc)) return capReadData(s, args, rs1_cs1, signExtend(imm), rd_cd);
+  else return readData(s, args, s.rGPR(rs1_cs1), signExtend(imm), rd_cd);
+endfunction
+
+function Recipe overrideStore(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2_cs2, Bit#(5) rs1_cs1, Bit#(5) imm4_0);
+  Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+  // check for current capability mode
+  if (inCapMode(s.pcc)) return capWriteData(s, args, tpl_2(toMem(s.rCR(rs2_cs2))), rs1_cs1, signExtend(imm));
+  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs2)), s.rGPR(rs1_cs1), signExtend(imm));
 endfunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,5 +536,19 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("lducap", pat(n(7'h7d), n(5'h0f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lducap", numBytes: 8,  sgnExt: False}));
   defineInstEntry("lqddc",  pat(n(7'h7d), n(5'h17), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lqddc",  numBytes: 16, sgnExt: True})); // also considers tag bit
   defineInstEntry("lqcap",  pat(n(7'h7d), n(5'h1f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lqcap",  numBytes: 16, sgnExt: True})); // also considers tag bit
+  // Overriding existing memory loads and stores
+  defineInstEntry("lb",     pat(v, v, n(3'b000), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lb",  numBytes: 1, sgnExt: True}));
+  defineInstEntry("lbu",    pat(v, v, n(3'b100), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lbu", numBytes: 1, sgnExt: False}));
+  defineInstEntry("lh",     pat(v, v, n(3'b001), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lh",  numBytes: 2, sgnExt: True}));
+  defineInstEntry("lhu",    pat(v, v, n(3'b101), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lhu", numBytes: 2, sgnExt: False}));
+  defineInstEntry("lw",     pat(v, v, n(3'b010), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lw",  numBytes: 4, sgnExt: True}));
+  defineInstEntry("sb",     pat(v, v, v, n(3'b000), v, n(7'b0100011)), overrideStore(s, StrArgs{name: "sb", numBytes: 1}));
+  defineInstEntry("sh",     pat(v, v, v, n(3'b001), v, n(7'b0100011)), overrideStore(s, StrArgs{name: "sh", numBytes: 2}));
+  defineInstEntry("sw",     pat(v, v, v, n(3'b010), v, n(7'b0100011)), overrideStore(s, StrArgs{name: "sw", numBytes: 4}));
+  `ifdef XLEN64
+  defineInstEntry("lwu",    pat(v, v, n(3'b110), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lwu", numBytes: 4, sgnExt: False}));
+  defineInstEntry("ld",     pat(v, v, n(3'b011), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}));
+  defineInstEntry("sd",     pat(v, v, v, n(3'b011), v, n(7'b0100011)), overrideStore(s, StrArgs{name: "sd", numBytes: 8}));
+  `endif
 
 endmodule

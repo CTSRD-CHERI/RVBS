@@ -48,7 +48,7 @@ import RVBS_Trap :: *;
   +-------------------------------------+--------+--------+--------+----------+
 */
 function Recipe load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) =
-  readData(s, args, s.rGPR(rs1) + signExtend(imm), rd);
+  readData(s, args, s.rGPR(rs1), signExtend(imm), rd);
 
 /*
   S-type
@@ -60,7 +60,7 @@ function Recipe load(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1, Bit#(5
 */
 function Recipe store(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2, Bit#(5) rs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-  return writeData(s, args, zeroExtend(s.rGPR(rs2)), s.rGPR(rs1) + signExtend(imm));
+  return writeData(s, args, zeroExtend(s.rGPR(rs2)), s.rGPR(rs1), signExtend(imm));
 endfunction
 
 ///////////////////
@@ -154,12 +154,13 @@ function Recipe readData(
   RVState s,
   LoadArgs args,
   VAddr vaddr,
+  VAddr offset,
   Bit#(5) dest
 ) =
   `ifndef RVXCHERI
-  rAct(s.readMem.enq(tuple4(vaddr, dest, fromInteger(args.numBytes), args.sgnExt)));
+  rAct(s.readMem.enq(tuple5(vaddr, offset, dest, fromInteger(args.numBytes), args.sgnExt)));
   `else
-  rAct(s.readMem.enq(tuple5(DDCAccessHandle(vaddr), dest, fromInteger(args.numBytes), args.sgnExt, False)));
+  rAct(s.readMem.enq(tuple6(DDCAccessHandle(vaddr), offset, dest, fromInteger(args.numBytes), args.sgnExt, False)));
   `endif
 
 `ifdef RVXCHERI
@@ -167,22 +168,25 @@ function Recipe readCap(
   RVState s,
   LoadArgs args,
   VAddr vaddr,
+  VAddr offset,
   Bit#(5) dest
-) = rAct(s.readMem.enq(tuple5(DDCAccessHandle(vaddr), dest, fromInteger(args.numBytes), args.sgnExt, True)));
+) = rAct(s.readMem.enq(tuple6(DDCAccessHandle(vaddr), offset, dest, fromInteger(args.numBytes), args.sgnExt, True)));
 
 function Recipe capReadData(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
+  VAddr offset,
   Bit#(5) dest
-) = rAct(s.readMem.enq(tuple5(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, fromInteger(args.numBytes), args.sgnExt, False)));
+) = rAct(s.readMem.enq(tuple6(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), offset, dest, fromInteger(args.numBytes), args.sgnExt, False)));
 
 function Recipe capReadCap(
   RVState s,
   LoadArgs args,
   Bit#(5) capIdx,
+  VAddr offset,
   Bit#(5) dest
-) = rAct(s.readMem.enq(tuple5(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), dest, fromInteger(args.numBytes), args.sgnExt, True)));
+) = rAct(s.readMem.enq(tuple6(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), offset, dest, fromInteger(args.numBytes), args.sgnExt, True)));
 `endif
 
 // Write access
@@ -246,12 +250,13 @@ function Recipe writeData(
   RVState s,
   StrArgs args,
   Bit#(128) wdata,
-  VAddr vaddr
+  VAddr vaddr,
+  VAddr offset
 ) =
   `ifndef RVXCHERI
-  rAct(s.writeMem.enq(tuple3(vaddr, fromInteger(args.numBytes), wdata)));
+  rAct(s.writeMem.enq(tuple4(vaddr, offset, fromInteger(args.numBytes), wdata)));
   `else
-  rAct(s.writeMem.enq(tuple4(DDCAccessHandle(vaddr), fromInteger(args.numBytes), wdata, False)));
+  rAct(s.writeMem.enq(tuple5(DDCAccessHandle(vaddr), offset, fromInteger(args.numBytes), wdata, False)));
   `endif
 
 `ifdef RVXCHERI
@@ -259,11 +264,13 @@ function Recipe writeCap(
   RVState s,
   StrArgs args,
   CapType cap,
-  VAddr vaddr
+  VAddr vaddr,
+  VAddr offset
 );
   Bit#(CapNoValidSz) capBits = truncate(pack(cap));
-  return rAct(s.writeMem.enq(tuple4(
+  return rAct(s.writeMem.enq(tuple5(
            DDCAccessHandle(vaddr),
+           offset,
            fromInteger(args.numBytes),
            zeroExtend(capBits),
            isValidCap(cap))));
@@ -273,18 +280,21 @@ function Recipe capWriteData(
   RVState s,
   StrArgs args,
   Bit#(128) wdata,
-  Bit#(5) capIdx
-) = rAct(s.writeMem.enq(tuple4(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), fromInteger(args.numBytes), wdata, False)));
+  Bit#(5) capIdx,
+  VAddr offset
+) = rAct(s.writeMem.enq(tuple5(CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))), offset, fromInteger(args.numBytes), wdata, False)));
 
 function Recipe capWriteCap(
   RVState s,
   StrArgs args,
   CapType wcap,
-  Bit#(5) capIdx
+  Bit#(5) capIdx,
+  VAddr offset
 );
   Bit#(CapNoValidSz) capBits = truncate(pack(wcap));
-  return rAct(s.writeMem.enq(tuple4(
+  return rAct(s.writeMem.enq(tuple5(
            CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))),
+           offset,
            fromInteger(args.numBytes),
            zeroExtend(capBits),
            isValidCap(wcap))));

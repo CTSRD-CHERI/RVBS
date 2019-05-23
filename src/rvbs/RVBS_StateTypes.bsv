@@ -115,6 +115,9 @@ function Tuple3#(Bit#(6), CapType, VAddr) unpackHandle(CapType ddc, CapType pcc,
   endcase
   return tuple3(idx, cap, vaddr);
 endfunction
+
+function Bool inCapMode (CapType cap) = getFlags(cap)[0] == 1;
+
 `endif
 
 // state type
@@ -152,11 +155,11 @@ typedef struct {
   ArchReg#(CapType) mscratchc;
   ArchReg#(CapType) mepcc;
   function Maybe#(ArchReg#(CapType)) f(Bit#(5) idx) getCSpecial;
-  FIFOF#(Tuple5#(MemAccessHandle, Bit#(5), BitPO#(4), Bool, Bool)) readMem;
-  FIFOF#(Tuple4#(MemAccessHandle, BitPO#(4), Bit#(128), Bool)) writeMem;
+  FIFOF#(Tuple6#(MemAccessHandle, VAddr, Bit#(5), BitPO#(4), Bool, Bool)) readMem;
+  FIFOF#(Tuple5#(MemAccessHandle, VAddr, BitPO#(4), Bit#(128), Bool)) writeMem;
   `else
-  FIFOF#(Tuple4#(VAddr, Bit#(5), BitPO#(4), Bool)) readMem;
-  FIFOF#(Tuple3#(VAddr, BitPO#(4), Bit#(128))) writeMem;
+  FIFOF#(Tuple5#(VAddr, VAddr, Bit#(5), BitPO#(4), Bool)) readMem;
+  FIFOF#(Tuple4#(VAddr, VAddr, BitPO#(4), Bit#(128))) writeMem;
   `endif
   RVMem imem;
   RVMem dmem;

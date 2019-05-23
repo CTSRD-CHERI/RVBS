@@ -105,7 +105,7 @@ class RVBS:
     if self.zifencei_ext:
       flags += ["-D","RVZIFENCEI"]
     if self.xcheri_ext:
-      flags += ["-D","RVXCHERI"]
+      flags += ["-D","RVXCHERI", "-D", "RISCV"]
     if self.pmp:
       flags+=["-D","PMP"]
     return flags
@@ -234,8 +234,9 @@ socketpacketdir=op.join(bluestuffdir, "SocketPacketUtils")
 axidir=op.join(bluestuffdir, "AXI")
 rvbssrcdir=in_root_dir("src")
 rvbscoresrcdir=op.join(rvbssrcdir, "rvbs")
+chericaplibdir=op.join(rvbscoresrcdir, "cheri-cap-lib")
 rvbstoplvlsrcdir=op.join(rvbssrcdir, "toplevels")
-bsvpath=":".join(["+",rvbssrcdir,rvbscoresrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir])
+bsvpath=":".join(["+",rvbssrcdir,rvbscoresrcdir,recipedir,bitpatdir,biddir,bluebasicsdir,bluestuffdir,blueutilsdir,axidir,chericaplibdir])
 bsv_re = re.compile(".*\.bsv")
 bsv_sources=list([f for f in os.listdir(root_dir) if re.match(bsv_re,f)],)
 bsc_flags=["-p",bsvpath,"-check-assert"]

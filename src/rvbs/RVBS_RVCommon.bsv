@@ -80,14 +80,16 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
 
   // Memory commons
   `ifdef RVXCHERI
-  match {.rHandle, .rDest, .rNumBytes, .rSgnExt, .rCapAccess} = s.readMem.first;
+  match {.rHandle, .rOffset, .rDest, .rNumBytes, .rSgnExt, .rCapAccess} = s.readMem.first;
   match {.rCapIdx, .rCap, .rVaddr} = unpackHandle(s.ddc, s.pcc, rHandle);
-  match {.wHandle, .wNumBytes, .wData, .wCapAccess} = s.writeMem.first;
+  match {.wHandle, .wOffset, .wNumBytes, .wData, .wCapAccess} = s.writeMem.first;
   match {.wCapIdx, .wCap, .wVaddr} = unpackHandle(s.ddc, s.pcc, wHandle);
   `else
-  match {.rVaddr, .rDest, .rNumBytes, .rSgnExt} = s.readMem.first;
-  match {.wVaddr, .wNumBytes, .wData} = s.writeMem.first;
+  match {.rVaddr, .rOffset, .rDest, .rNumBytes, .rSgnExt} = s.readMem.first;
+  match {.wVaddr, .wOffset, .wNumBytes, .wData} = s.writeMem.first;
   `endif
+  let readAddr  = rVaddr + rOffset;
+  let writeAddr = wVaddr + wOffset;
   // call back for read responses
   function readCallBack(rsp) = action
     case (rsp) matches
@@ -97,13 +99,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           `ifdef RVXCHERI
           match {.captag, .data} = r;
           Bit#(CapNoValidSz) capData = truncate(data);
-          //XXX TEMPORARY- FIXME XXX//
-          `ifdef XLEN64
-          CapType newCap = CHERICap::cast({captag, capData});
-          `else
-          CapType newCap = unpack({captag, capData});
-          `endif
-          //XXX TEMPORARY- FIXME XXX//
+          CapType newCap = fromMem(tuple2(captag == 1, capData));
           `else
           let data = r;
           `endif
@@ -117,7 +113,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
           s.wGPR(rDest, (rSgnExt && isNeg) ? truncate(data) | mask : truncate(data) & ~mask);
           logInst(s, $format("load"));
         end
-        tagged RVBusError: action raiseMemException(s, LoadAccessFault, rVaddr); endaction
+        tagged RVBusError: action raiseMemException(s, LoadAccessFault, readAddr); endaction
       endcase
     endcase
   endaction;
@@ -127,7 +123,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
       tagged Left .excTok: raiseMemTokException(s, excTok);
       tagged Right .memRsp: case (memRsp) matches
         tagged RVWriteRsp: logInst(s, $format("store"));
-        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault, wVaddr); endaction
+        tagged RVBusError: action raiseMemException(s, StrAMOAccessFault, writeAddr); endaction
       endcase
     endcase
   endaction;
@@ -136,14 +132,14 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
   let wExcTok = Invalid;
   `ifdef RVXCHERI
   // check for potential capability exceptions
-  let m_rCapExc = memCapChecks(READ, rCap, rVaddr, rNumBytes, rCapAccess);
+  let m_rCapExc = memCapChecks(READ, rCap, readAddr, rNumBytes, rCapAccess);
   if (isValid(m_rCapExc)) rExcTok = Valid(ExcToken{
     excCode: CHERIFault,
     tval: 0,
     capExcCode: m_rCapExc.Valid,
     capIdx: rCapIdx
   });
-  let m_wCapExc = memCapChecks(WRITE, wCap, wVaddr, wNumBytes, wCapAccess);
+  let m_wCapExc = memCapChecks(WRITE, wCap, writeAddr, wNumBytes, wCapAccess);
   if (isValid(m_wCapExc)) wExcTok = Valid(ExcToken{
     excCode: CHERIFault,
     tval: 0,
@@ -156,7 +152,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
                            list(
                              // handle reads
                              rFastSeq(rBlock(
-                               dataReadFSM.sink.put(tuple4(rExcTok, READ, rVaddr, rNumBytes)),
+                               dataReadFSM.sink.put(tuple4(rExcTok, READ, readAddr, rNumBytes)),
                                action
                                  let rsp <- get(dataReadFSM.source);
                                  readCallBack(rsp);
@@ -166,9 +162,9 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
                              // handle writes
                              rFastSeq(rBlock(
                                `ifdef RVXCHERI
-                               dataWriteFSM.sink.put(tuple5(wExcTok, wVaddr, wNumBytes, wData, wCapAccess)),
+                               dataWriteFSM.sink.put(tuple5(wExcTok, writeAddr, wNumBytes, wData, wCapAccess)),
                                `else
-                               dataWriteFSM.sink.put(tuple4(wExcTok, wVaddr, wNumBytes, wData)),
+                               dataWriteFSM.sink.put(tuple4(wExcTok, writeAddr, wNumBytes, wData)),
                                `endif
                                action
                                  let rsp <- get(dataWriteFSM.source);
