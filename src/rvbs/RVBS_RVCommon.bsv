@@ -168,7 +168,7 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
                                  dataWriteFSM.sink.put(tuple4(wExcTok, writeAddr, wNumBytes, wData));
                                  `endif
                                  `ifdef RVFI_DII
-                                 s.mem_addr[0]  <= wVaddr;
+                                 s.mem_addr[0]  <= writeAddr;
                                  s.mem_wdata[0] <= truncate(wData);
                                  s.mem_wmask[0] <= ~((~0) << readBitPO(wNumBytes));
                                  `endif
