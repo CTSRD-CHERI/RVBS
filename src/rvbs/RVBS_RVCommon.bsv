@@ -161,12 +161,18 @@ module [ISADefModule] mkRVCommon#(RVState s) (Empty);
                              )),
                              // handle writes
                              rFastSeq(rBlock(
-                               `ifdef RVXCHERI
-                               dataWriteFSM.sink.put(tuple5(wExcTok, writeAddr, wNumBytes, wData, wCapAccess)),
-                               `else
-                               dataWriteFSM.sink.put(tuple4(wExcTok, writeAddr, wNumBytes, wData)),
-                               `endif
                                action
+                                 `ifdef RVXCHERI
+                                 dataWriteFSM.sink.put(tuple5(wExcTok, writeAddr, wNumBytes, wData, wCapAccess));
+                                 `else
+                                 dataWriteFSM.sink.put(tuple4(wExcTok, writeAddr, wNumBytes, wData));
+                                 `endif
+                                 `ifdef RVFI_DII
+                                 s.mem_addr[0]  <= wVaddr;
+                                 s.mem_wdata[0] <= truncate(wData);
+                                 s.mem_wmask[0] <= ~((~0) << readBitPO(wNumBytes));
+                                 `endif
+                               endaction, action
                                  let rsp <- get(dataWriteFSM.source);
                                  writeCallBack(rsp);
                                  s.writeMem.deq;
