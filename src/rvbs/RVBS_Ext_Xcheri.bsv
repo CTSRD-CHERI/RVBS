@@ -237,7 +237,7 @@ function Action instrXcheri_CClearTag(RVState s, Bit#(5) cs, Bit#(5) cd) = actio
 endaction;
 
 function Action instrXcheri_CBuildCap(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd) = action
-  let cap_cs = s.rCR(cs);
+  let cap_cs = (cs == 0) ? s.ddc : s.rCR(cs);
   let cap_ct = s.rCR(ct);
   if (!isValidCap(cap_cs)) raiseCapException(s, CapExcTag, cs);
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
@@ -297,7 +297,7 @@ endaction;
 
 function Action instrXcheri_CToPtr(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd) = action
   let cap_cs = s.rCR(cs);
-  let cap_ct = s.rCR(ct);
+  let cap_ct = (ct == 0) ? s.ddc : s.rCR(ct);
   if (!isValidCap(cap_ct)) raiseCapException(s, CapExcTag, ct);
   else if (!isValidCap(cap_cs)) s.wGPR(rd, 0);
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
