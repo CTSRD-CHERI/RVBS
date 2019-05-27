@@ -308,7 +308,7 @@ function Action instrXcheri_CToPtr(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd
 endaction;
 
 function Action instrXcheri_CFromPtr(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
-  let cap_cs = s.rCR(cs);
+  let cap_cs = (cs == 0) ? s.ddc : s.rCR(cs);
   let rt_val = s.rGPR(rt);
   let new_cap = setOffset(cap_cs, zeroExtend(rt_val));
   if (rt_val == 0) s.wCR(cd, nullCap);
