@@ -139,7 +139,7 @@ module mkRVBS_rvfi_dii (Empty);
       s.regFile.commit,
       writeReg(cnt, 1),
       rWhile(cnt < 32, rFastSeq(rBlock(
-        action CapType c0 = nullCap; s.wCR(truncate(cnt), c0); endaction,
+        action CapType c = almightyCap; s.wCR(truncate(cnt), c); endaction,
         action
           s.regFile.commit;
           cnt <= cnt + 1;
