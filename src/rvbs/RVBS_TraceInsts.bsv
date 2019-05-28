@@ -148,3 +148,41 @@ function a patSType (Bit#(3) funct3, Bit#(7) opcode) =
 */
 function Fmt fmtInstS(String i, Bit#(5) rs1, Bit#(5) rs2, Bit#(XLEN) imm) =
   $format(i, "\t", rName(rs1),", ", rName(rs2), ", 0x%0x", imm);
+
+`ifdef RVXCHERI
+/*
+  Three-op-type
+
+   31                        25 24     20 19    15 14   12 11     7 6        0
+  +----------------------------+---------+--------+-------+--------+----------+
+  |           funct7           | {r,c}s2 |   cs1  |   0   | {r,c}d |   0x5b   |
+  +----------------------------+---------+--------+-------+--------+----------+
+
+*/
+function Fmt fmtInstXcheri3op(String i, TraceRegType rd_cd,
+                                        TraceRegType cs1,
+                                        TraceRegType rs_cs2) =
+  $format(i, "\t", traceReg(rd_cd), ", ", traceReg(cs1), ", ", traceReg(rs_cs2));
+/*
+  SrcDst-type
+
+   31                       25 24    20 19     15 14   12 11     7 6        0
+  +---------------------------+--------+---------+-------+--------+----------+
+  |            0x7f           |  func  | {r,c}s1 |   0   | {r,c}d |   0x5b   |
+  +---------------------------+--------+---------+-------+--------+----------+
+
+*/
+function Fmt fmtInstXcheriSrcDst(String i, TraceRegType rd_cd, TraceRegType rs_cs1) =
+  $format(i, "\t", traceReg(rd_cd), ", ", traceReg(rs_cs1));
+/*
+  Store-type
+
+   31                       25 24    20 19      15 14   12 11     7 6        0
+  +---------------------------+---------+---------+-------+--------+----------+
+  |            0x7c           | {r,c}s2 | {r,c}s1 |   0   |  func  |   0x5b   |
+  +---------------------------+---------+---------+-------+--------+----------+
+
+*/
+function Fmt fmtInstXcheriStore(String i, TraceRegType rs_cs1, TraceRegType rs_cs2) =
+  $format(i, "\t", traceReg(rs_cs2), ", ", traceReg(rs_cs1));
+`endif

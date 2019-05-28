@@ -35,6 +35,7 @@ import        CHERICap :: *;
 import      RVBS_Types :: *;
 import       RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
+import RVBS_TraceUtils :: *;
 import  RVBS_MemAccess :: *;
 
 function Action notImplemented(String str) = action
@@ -48,51 +49,51 @@ endaction;
 function Action instrXcheri_CGetPerm(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   let cap = s.rCR(cb);
   s.wGPR(rd, zeroExtend(getPerms(cap)));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetperm", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetperm", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetType(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   let cap = s.rCR(cb);
   if (isSealedWithType(cap)) s.wGPR(rd, zeroExtend(getType(cap)));
   else s.wGPR(rd, signExtend(getType(cap)));
-  //XXX logInst(s.pc, fmtInstXcheri("cgettype", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgettype", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetBase(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, truncate(getBase(s.rCR(cb))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetbase", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetbase", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetLen(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   let len = getLength(s.rCR(cb));
   if (msb(len) == 1) s.wGPR(rd, ~0);
   else s.wGPR(rd, truncate(len));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetlen", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetlen", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetTag(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, zeroExtend(pack(isValidCap(s.rCR(cb)))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgettag", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgettag", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetFlags(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, zeroExtend(getFlags(s.rCR(cb))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetflags", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetflags", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetSealed(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, zeroExtend(pack(isSealed(s.rCR(cb)))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetsealed", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetsealed", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetOffset(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, truncate(getOffset(s.rCR(cb))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetoffset", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetoffset", GPR(rd), CR(cb)));
 endaction;
 
 function Action instrXcheri_CGetAddr(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, truncate(getAddr(s.rCR(cb))));
-  //XXX logInst(s.pc, fmtInstXcheri("cgetaddr", rd, cb));
+  logInst(s, fmtInstXcheriSrcDst("cgetaddr", GPR(rd), CR(cb)));
 endaction;
 
 // Capability modification instructions
@@ -103,7 +104,7 @@ function Action instrXcheri_CSetFlags(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5)
   if (isValidCap(cap_cs) && isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else begin
     s.wCR(cd, setFlags(cap_cs, truncate(s.rGPR(rt))));
-    //XXX logInst(s.pc, fmtInstXcheri("csetflags", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("csetflags", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -122,7 +123,7 @@ function Action instrXcheri_CSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd)
   else if (!new_cap.exact) raiseCapException(s, CapExcInexact, cs);
   else begin
     s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("cseal", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("cseal", CR(cd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -143,7 +144,7 @@ function Action instrXcheri_CUnseal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) c
     p.global = p.global && getHardPerms(cap_ct).global;
     new_cap  = setHardPerms(new_cap, p);
     s.wCR(cd, new_cap);
-    //XXX logInst(s.pc, fmtInstXcheri("cunseal", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("cunseal", CR(cd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -158,7 +159,7 @@ function Action instrXcheri_CAndPerm(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) 
     let new_cap = setHardPerms(cap_cs, newHardPerms);
     new_cap = setSoftPerms(new_cap, newSoftPerms);
     s.wCR(cd, new_cap);
-    //XXX logInst(s.pc, fmtInstXcheri("candperms", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("candperms", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -167,12 +168,10 @@ function Action instrXcheri_CSetOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   let rt_val = s.rGPR(rt);
   let new_cap = setOffset(cap_cs, zeroExtend(rt_val));
   if (isValidCap(cap_cs) && isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
-  else if (!new_cap.exact) begin
-    s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs)) + rt_val));
-    //XXX logInst(s.pc, fmtInstXcheri("csetoffset", ct, cs, cd));
-  end else begin
-    s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("csetoffset", ct, cs, cd));
+  else begin
+    if (!new_cap.exact) s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs)) + rt_val));
+    else s.wCR(cd, new_cap.value);
+    logInst(s, fmtInstXcheri3op("csetoffset", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -181,13 +180,12 @@ function Action instrXcheri_CIncOffset(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   let rt_val = s.rGPR(rt);
   let new_cap = setOffset(cap_cs, getOffset(cap_cs) + zeroExtend(rt_val));
   if (isValidCap(cap_cs) && isSealed(cap_cs) /*XXX*/ && rt_val != 0 /*XXX real CMOVE inst?*/) raiseCapException(s, CapExcSeal, cs);
-  else if (!new_cap.exact) begin
-    CapType n_cap = nullCap;
-    s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs) + getOffset(cap_cs) + zeroExtend(rt_val))));
-    //XXX logInst(s.pc, fmtInstXcheri("cincoffset", ct, cs, cd));
-  end else begin
-    s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("cincoffset", ct, cs, cd));
+  else begin
+    if (!new_cap.exact) begin
+      CapType n_cap = nullCap;
+      s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs) + getOffset(cap_cs) + zeroExtend(rt_val))));
+    end else s.wCR(cd, new_cap.value);
+    logInst(s, fmtInstXcheri3op("cincoffset", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -195,12 +193,10 @@ function Action instrXcheri_CIncOffsetImmediate(RVState s, Bit#(12) inc, Bit#(5)
   let cap_cs = s.rCR(cs);
   let new_cap = setOffset(cap_cs, getOffset(cap_cs) + signExtend(inc));
   if (isValidCap(cap_cs) && isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
-  else if (!new_cap.exact) begin
-    s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs) + getOffset(cap_cs) + signExtend(inc))));
-    //XXX logInst(s.pc, fmtInstXcheri("cincoffsetimmediate", ct, cs, cd));
-  end else begin
-    s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("cincoffsetimmediate", ct, cs, cd));
+  else begin
+    if (!new_cap.exact) s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs) + getOffset(cap_cs) + signExtend(inc))));
+    else s.wCR(cd, new_cap.value);
+    logInst(s, $format("cincoffsetimmediate"));
   end
 endaction;
 
@@ -214,7 +210,7 @@ function Action instrXcheri_CSetBounds(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5
   else if ({0, addr} + zeroExtend(rt_val) > getTop(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, setBounds(cap_cs, rt_val).value);
-    //XXX logInst(s.pc, fmtInstXcheri("csetbounds", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("csetbounds", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -230,7 +226,7 @@ function Action instrXcheri_CSetBoundsExact(RVState s, Bit#(5) rt, Bit#(5) cs, B
   else if (!new_cap.exact) raiseCapException(s, CapExcInexact, cs);
   else begin
     s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("csetboundsexact", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("csetboundsexact", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
@@ -243,13 +239,13 @@ function Action instrXcheri_CSetBoundsImmediate(RVState s, Bit#(12) req_length, 
   else if ({0, addr} + zeroExtend(req_length) > getTop(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, setBounds(cap_cs, zeroExtend(req_length)).value);
-    //XXX logInst(s.pc, fmtInstXcheri("csetboundimmediate", ct, cs, cd));
+    logInst(s, $format("csetboundimmediate"));
   end
 endaction;
 
 function Action instrXcheri_CClearTag(RVState s, Bit#(5) cs, Bit#(5) cd) = action
   s.wCR(cd, setValidCap(s.rCR(cs), False));
-  //XXX logInst(s.pc, fmtInstXcheri("ccleartag", ct, cs, cd));
+  logInst(s, fmtInstXcheriSrcDst("ccleartag", CR(cd), CR(cs)));
 endaction;
 
 function Action instrXcheri_CBuildCap(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd) = action
@@ -270,7 +266,7 @@ function Action instrXcheri_CBuildCap(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5)
     new_cap = setOffset(new_cap, getOffset(cap_ct)).value;
     new_cap = setType(new_cap, -1).value;
     s.wCR(cd, new_cap);
-    //XXX logInst(s.pc, fmtInstXcheri("cbuildcap", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("cbuildcap", CR(cd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -284,7 +280,7 @@ function Action instrXcheri_CCopyType(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5)
   else if (zeroExtend(getType(cap_ct)) >= getTop(cap_cs)) raiseCapException(s, CapExcLength, cs);
   else begin
     s.wCR(cd, setOffset(cap_cs, zeroExtend(getType(cap_ct)) - getBase(cap_cs)).value);
-    //XXX logInst(s.pc, fmtInstXcheri("ccopytype", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("ccopytype", CR(cd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -305,7 +301,7 @@ function Action instrXcheri_CCSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd
   else if (!new_cap.exact) raiseCapException(s, CapExcInexact, cs);
   else begin
     s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("ccseal", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("ccseal", CR(cd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -320,7 +316,7 @@ function Action instrXcheri_CToPtr(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else begin
     s.wGPR(rd, truncate(getBase(cap_cs) + getOffset(cap_cs) - getBase(cap_ct)));
-    //XXX logInst(s.pc, fmtInstXcheri("ctoptr", ct, cs, cd));
+    logInst(s, fmtInstXcheri3op("ctoptr", GPR(rd), CR(cs), CR(ct)));
   end
 endaction;
 
@@ -331,18 +327,16 @@ function Action instrXcheri_CFromPtr(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) 
   if (rt_val == 0) s.wCR(cd, nullCap);
   else if (!isValidCap(cap_cs)) raiseCapException(s, CapExcTag, cs);
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
-  else if (!new_cap.exact) begin
-    s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs)) + rt_val));
-    //XXX logInst(s.pc, fmtInstXcheri("cfromptr", ct, cs, cd));
-  end else begin
-    s.wCR(cd, new_cap.value);
-    //XXX logInst(s.pc, fmtInstXcheri("cfromptr", ct, cs, cd));
+  else begin
+    if (!new_cap.exact) s.wCR(cd, nullWithAddr(truncate(getBase(cap_cs)) + rt_val));
+    else s.wCR(cd, new_cap.value);
+    logInst(s, fmtInstXcheri3op("cfromptr", CR(cd), CR(cs), GPR(rt)));
   end
 endaction;
 
 function Action instrXcheri_CMove(RVState s, Bit#(5) cs, Bit#(5) cd) = action
   s.wCR(cd, s.rCR(cs));
-  //XXX logInst(s.pc, fmtInstXcheri("cmove", ct, cs, cd));
+  logInst(s, fmtInstXcheriSrcDst("cmove", CR(cd), CR(cs)));
 endaction;
 
 function Action instrXcheri_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(5) cd) = action
@@ -350,10 +344,10 @@ function Action instrXcheri_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(
     tagged Valid .cspecial: begin
       if (cd != 0) s.wCR(cd, cspecial);
       if (cs != 0) cspecial <= s.rCR(cs);
+      logInst(s, $format("cspecialrw"));
     end
     default: raiseException(s, IllegalInst);
   endcase
-  //XXX logInst(s.pc, fmtInstXcheri("cspecialrw", idx, cs, cd));
 endaction;
 
 // Control-Flow instructions
@@ -374,6 +368,7 @@ function Action instrXcheri_CJALR(RVState s, Bit#(5) cb, Bit#(5) cd) = action
     s.pc <= tgt;
     s.pcc <= cap_cb;
     s.wCR(cd, link_cap);
+    logInst(s, fmtInstXcheriSrcDst("cjalr", CR(cd), CR(cb)));
     //TODO test this
   end
 endaction;
@@ -397,6 +392,8 @@ endaction;
 // Assertion instructions
 ////////////////////////////////////////////////////////////////////////////////
 
+// XXX DEPRECATED
+/*
 function Action instrXcheri_CCheckPerm(RVState s, Bit#(5) rt, Bit#(5) cs) = action
   let cap_cs = s.rCR(cs);
   let rt_val = s.rGPR(rt);
@@ -407,9 +404,11 @@ function Action instrXcheri_CCheckPerm(RVState s, Bit#(5) rt, Bit#(5) cs) = acti
   else if ((getHardPerms(cap_cs) & rt_perms) != rt_perms) raiseCapException(s, CapExcUser, cs);
   else if ((getSoftPerms(cap_cs) & rt_uperms) != rt_uperms) raiseCapException(s, CapExcUser, cs);
   else if (rt_remain != 0) raiseCapException(s, CapExcUser, cs);
-  //XXX logInst(s.pc, fmtInstXcheri("ccheckperm", ct, cs, cd));
 endaction;
+*/
 
+// XXX DEPRECATED
+/*
 function Action instrXcheri_CCheckType(RVState s, Bit#(5) ct, Bit#(5) cs) = action
   let cap_cs = s.rCR(cs);
   let cap_ct = s.rCR(ct);
@@ -418,8 +417,8 @@ function Action instrXcheri_CCheckType(RVState s, Bit#(5) ct, Bit#(5) cs) = acti
   else if (!isSealedWithType(cap_ct)) raiseCapException(s, CapExcSeal, ct);
   else if (!isSealedWithType(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (getType(cap_ct) != getType(cap_cs)) raiseCapException(s, CapExcType, ct);
-  //XXX logInst(s.pc, fmtInstXcheri("cchecktype", ct, cs, cd));
 endaction;
+*/
 
 function Action instrXcheri_CTestSubset(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd) = action
   let cap_cs = s.rCR(cs);
@@ -431,7 +430,7 @@ function Action instrXcheri_CTestSubset(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(
   else if ((getHardPerms(cap_ct) & getHardPerms(cap_cs)) != getHardPerms(cap_ct)) isSubset = False;
   else if ((getSoftPerms(cap_ct) & getSoftPerms(cap_cs)) != getSoftPerms(cap_ct)) isSubset = False;
   s.wGPR(rd, zeroExtend(pack(isSubset)));
-  //XXX logInst(s.pc, fmtInstXcheri("ctestsubset", ct, cs, cd));
+  logInst(s, fmtInstXcheri3op("ctestsubset", GPR(rd), CR(cs), CR(ct)));
 endaction;
 
 // Fast Register-Clearing instructions
@@ -528,8 +527,8 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("ccall", pat(n(7'h7e), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CCall(s)); // 1F selector for CReturn
 
   // Assertion instructions
-  defineInstEntry("ccheckperm",  pat(n(7'h7f), n(5'h08), v, n(3'h0), v, n(7'h5b)), instrXcheri_CCheckPerm(s));
-  defineInstEntry("cchecktype",  pat(n(7'h7f), n(5'h09), v, n(3'h0), v, n(7'h5b)), instrXcheri_CCheckType(s));
+  // XXX DEPRECATED defineInstEntry("ccheckperm",  pat(n(7'h7f), n(5'h08), v, n(3'h0), v, n(7'h5b)), instrXcheri_CCheckPerm(s));
+  // XXX DEPRECATED defineInstEntry("cchecktype",  pat(n(7'h7f), n(5'h09), v, n(3'h0), v, n(7'h5b)), instrXcheri_CCheckType(s));
   defineInstEntry("ctestsubset", pat(n(7'h20), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CTestSubset(s));
 
   // Fast Register-Clearing instructions

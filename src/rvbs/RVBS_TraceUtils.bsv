@@ -58,6 +58,16 @@ function Fmt rName(Bit#(5) r) = bothRegName(r);
 //function Fmt rName(Bit#(5) r) = gpRegName(r);
 function Fmt rName(Bit#(5) r) = bothRegName(r);
 `endif
+`ifdef RVXCHERI
+typedef union tagged {
+  Bit#(5) CR;
+  Bit#(5) GPR;
+} TraceRegType;
+function Fmt traceReg(TraceRegType idx) = case (idx) matches
+  tagged CR  .cr: $format("c%0d", cr);
+  tagged GPR .gpr: rName(gpr);
+endcase;
+`endif
 
 // CSRs logging
 function Fmt csrName(Bit#(12) idx) = case (idx)
