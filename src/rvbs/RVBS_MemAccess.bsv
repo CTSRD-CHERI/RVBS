@@ -84,7 +84,7 @@ function Maybe#(CapExcCode) memCapChecks(
   BitPO#(4) numBytes,
   Bool capAccess);
   if (!isValidCap(cap)) return Valid(CapExcTag);
-  else if (!isUnsealed(cap)) return Valid(CapExcSeal);
+  else if (isSealed(cap)) return Valid(CapExcSeal);
   else if (reqType == READ   && !getHardPerms(cap).permitLoad) return Valid(CapExcPermLoad);
   else if (reqType == WRITE  && !getHardPerms(cap).permitStore) return Valid(CapExcPermStore);
   else if (reqType == READ   && capAccess && !getHardPerms(cap).permitLoadCap) return Valid(CapExcPermLoadCap);
@@ -99,7 +99,7 @@ function Maybe#(CapExcCode) ifetchCapChecks(
   BitPO#(4) numBytes,
   Bool capAccess);
   if (!isValidCap(cap)) return Valid(CapExcTag);
-  else if (!isUnsealed(cap)) return Valid(CapExcSeal);
+  else if (isSealed(cap)) return Valid(CapExcSeal);
   else if (!getHardPerms(cap).permitExecute) return Valid(CapExcPermExe);
   else if (zeroExtend(vaddr) < getBase(cap)) return Valid(CapExcLength);
   else if (zeroExtend(vaddr) + zeroExtend(readBitPO(numBytes)) > getTop(cap)) return Valid(CapExcLength);
