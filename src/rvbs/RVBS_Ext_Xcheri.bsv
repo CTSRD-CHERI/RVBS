@@ -496,7 +496,7 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("cincoffset",      pat(n(7'h11), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CIncOffset(s));
   defineInstEntry("cincoffsetimmediate", pat(v, v, n(3'h1), v, n(7'h5b)), instrXcheri_CIncOffsetImmediate(s));
   defineInstEntry("csetbounds",      pat(n(7'h08), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetBounds(s));
-  defineInstEntry("csetboundsexact", pat(n(7'h09), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetBounds(s));
+  defineInstEntry("csetboundsexact", pat(n(7'h09), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetBoundsExact(s));
   defineInstEntry("csetboundsimmediate", pat(v, v, n(3'h2), v, n(7'h5b)), instrXcheri_CSetBoundsImmediate(s));
   defineInstEntry("ccleartag",       pat(n(7'h7f), n(5'h0b), v, n(3'h0), v, n(7'h5b)), instrXcheri_CClearTag(s));
   defineInstEntry("cbuildcap",       pat(n(7'h1d), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CBuildCap(s));
