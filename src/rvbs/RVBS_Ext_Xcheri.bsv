@@ -133,8 +133,9 @@ function Action instrXcheri_CUnseal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) c
   else if (!isValidCap(cap_ct)) raiseCapException(s, CapExcTag, ct);
   else if (!isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (isSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
-  else if (getBase(cap_ct) + getOffset(cap_ct) != zeroExtend(getType(cap_cs))) raiseCapException(s, CapExcType, ct);
+  else if (getAddr(cap_ct) != zeroExtend(getType(cap_cs))) raiseCapException(s, CapExcType, ct);
   else if (!getHardPerms(cap_ct).permitUnseal) raiseCapException(s, CapExcPermUnseal, ct);
+  else if (getAddr(cap_ct) < getBase(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else if ({0, getAddr(cap_ct)} >= getTop(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else begin
     let new_cap  = setType(cap_cs, -1).value;
