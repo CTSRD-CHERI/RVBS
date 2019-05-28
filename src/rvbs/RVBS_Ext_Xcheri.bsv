@@ -75,6 +75,11 @@ function Action instrXcheri_CGetTag(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   //XXX logInst(s.pc, fmtInstXcheri("cgettag", rd, cb));
 endaction;
 
+function Action instrXcheri_CGetFlags(RVState s, Bit#(5) cb, Bit#(5) rd) = action
+  s.wGPR(rd, zeroExtend(getFlags(s.rCR(cb))));
+  //XXX logInst(s.pc, fmtInstXcheri("cgetflags", rd, cb));
+endaction;
+
 function Action instrXcheri_CGetSealed(RVState s, Bit#(5) cb, Bit#(5) rd) = action
   s.wGPR(rd, zeroExtend(pack(isSealed(s.rCR(cb)))));
   //XXX logInst(s.pc, fmtInstXcheri("cgetsealed", rd, cb));
@@ -92,6 +97,15 @@ endaction;
 
 // Capability modification instructions
 ////////////////////////////////////////////////////////////////////////////////
+
+function Action instrXcheri_CSetFlags(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
+  let cap_cs = s.rCR(cs);
+  if (isValidCap(cap_cs) && isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else begin
+    s.wCR(cd, setFlags(cap_cs, truncate(s.rGPR(rt))));
+    //XXX logInst(s.pc, fmtInstXcheri("csetflags", ct, cs, cd));
+  end
+endaction;
 
 function Action instrXcheri_CSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd) = action
   let cap_ct = s.rCR(ct);
@@ -470,12 +484,14 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("cgettag",    pat(n(7'h7f), n(5'h04), v, n(3'h0), v, n(7'h5b)), instrXcheri_CGetTag(s));
   defineInstEntry("cgetsealed", pat(n(7'h7f), n(5'h05), v, n(3'h0), v, n(7'h5b)), instrXcheri_CGetSealed(s));
   defineInstEntry("cgetoffset", pat(n(7'h7f), n(5'h06), v, n(3'h0), v, n(7'h5b)), instrXcheri_CGetOffset(s));
+  defineInstEntry("cgetflags",  pat(n(7'h7f), n(5'h07), v, n(3'h0), v, n(7'h5b)), instrXcheri_CGetFlags(s));
   defineInstEntry("cgetaddr",   pat(n(7'h7f), n(5'h0f), v, n(3'h0), v, n(7'h5b)), instrXcheri_CGetAddr(s));
 
   // Capability modification instructions
   defineInstEntry("cseal"     ,      pat(n(7'h0b), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSeal(s));
   defineInstEntry("cunseal"   ,      pat(n(7'h0c), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CUnseal(s));
   defineInstEntry("candperm"  ,      pat(n(7'h0d), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CAndPerm(s));
+  defineInstEntry("csetflags",       pat(n(7'h0e), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetFlags(s));
   defineInstEntry("csetoffset",      pat(n(7'h0f), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetOffset(s));
   defineInstEntry("cincoffset",      pat(n(7'h11), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CIncOffset(s));
   defineInstEntry("cincoffsetimmediate", pat(v, v, n(3'h1), v, n(7'h5b)), instrXcheri_CIncOffsetImmediate(s));
