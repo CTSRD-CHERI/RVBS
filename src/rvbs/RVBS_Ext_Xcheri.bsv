@@ -376,8 +376,19 @@ function Action instrXcheri_CJALR(RVState s, Bit#(5) cb, Bit#(5) cd) = action
 endaction;
 
 function Action instrXcheri_CCall(RVState s, Bit#(5) cb, Bit#(5) cs, Bit#(5) sel) = action
-  //TODO
-  notImplemented("ccall");
+  let cap_cs = s.rCR(cs);
+  let cap_cb = s.rCR(cb);
+  let cs_addr = getAddr(cap_cs);
+  if (!isValidCap(cap_cs)) raiseCapException(s, CapExcTag, cs);
+  else if (!isValidCap(cap_cb)) raiseCapException(s, CapExcTag, cb);
+  else if (!isSealedWithType(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else if (!isSealedWithType(cap_cb)) raiseCapException(s, CapExcSeal, cb);
+  else if (getType(cap_cs) != getType(cap_cb)) raiseCapException(s, CapExcType, cs);
+  else if (!getHardPerms(cap_cs).permitExecute) raiseCapException(s, CapExcPermExe, cs);
+  else if (getHardPerms(cap_cb).permitExecute) raiseCapException(s, CapExcPermExe, cb);
+  else if (cs_addr < getBase(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else if ({0, cs_addr} >= getTop(cap_cs)) raiseCapException(s, CapExcLength, cs);
+  else raiseCapException(s, CapExcCall, cs);
 endaction;
 
 // Assertion instructions
