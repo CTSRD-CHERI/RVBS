@@ -116,6 +116,7 @@ function Action instrXcheri_CSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd)
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (isSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
   else if (!getHardPerms(cap_ct).permitSeal) raiseCapException(s, CapExcPermSeal, ct);
+  else if (getAddr(cap_ct) < getBase(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else if ({0, getAddr(cap_ct)} >= getTop(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else if (getAddr(cap_ct) > zeroExtend(otypeMax)) raiseCapException(s, CapExcLength, ct); //XXX large ineq in spec
   else if (!new_cap.exact) raiseCapException(s, CapExcInexact, cs);
@@ -297,6 +298,7 @@ function Action instrXcheri_CCSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else if (isSealed(cap_ct)) raiseCapException(s, CapExcSeal, ct);
   else if (!getHardPerms(cap_ct).permitSeal) raiseCapException(s, CapExcPermSeal, ct);
+  else if (getAddr(cap_ct) < getBase(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else if ({0, getAddr(cap_ct)} >= getTop(cap_ct)) raiseCapException(s, CapExcLength, ct);
   else if (getAddr(cap_ct) > zeroExtend(otypeMax)) raiseCapException(s, CapExcLength, ct); //XXX large ineq in spec
   else if (!new_cap.exact) raiseCapException(s, CapExcInexact, cs);
