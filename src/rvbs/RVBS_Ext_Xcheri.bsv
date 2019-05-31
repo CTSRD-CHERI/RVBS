@@ -37,6 +37,7 @@ import       RVBS_Trap :: *;
 import RVBS_TraceInsts :: *;
 import RVBS_TraceUtils :: *;
 import  RVBS_MemAccess :: *;
+import RVBS_Base_RV32I :: *;
 
 function Action notImplemented(String str) = action
   $display(str + " is not currently implemented");
@@ -449,41 +450,73 @@ endaction;
 // Memory-Access with Explicit Address Type Instructions
 ////////////////////////////////////////////////////////////////////////////////
 
-function Recipe ddcCheriLoad(RVState s, LoadArgs args, Bit#(5) rs1, Bit#(5) rd_cd);
-  if (args.numBytes == 16) return readCap(s, args, s.rGPR(rs1), 0, rd_cd);
-  else return readData(s, args, s.rGPR(rs1), 0, rd_cd);
-endfunction
+function Recipe ddcCheriLoad(RVState s, LoadArgs args, Bit#(5) rs1, Bit#(5) rd_cd) =
+  rIfElse(args.numBytes == 16,
+          readCap(s, args, s.rGPR(rs1), 0, rd_cd),
+          readData(s, args, s.rGPR(rs1), 0, rd_cd));
 
-function Recipe ddcCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) rs1);
-  if (args.numBytes == 16) return writeCap(s, args, s.rCR(rs2_cs), s.rGPR(rs1), 0);
-  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs)), s.rGPR(rs1), 0);
-endfunction
+function Recipe ddcCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) rs1) =
+  rIfElse(args.numBytes == 16,
+          writeCap(s, args, s.rCR(rs2_cs), s.rGPR(rs1), 0),
+          writeData(s, args, zeroExtend(s.rGPR(rs2_cs)), s.rGPR(rs1), 0));
 
-function Recipe capCheriLoad(RVState s, LoadArgs args, Bit#(5) cb, Bit#(5) rd_cd);
-  if (args.numBytes == 16) return capReadCap(s, args, cb, 0, rd_cd);
-  else return capReadData(s, args, cb, 0, rd_cd);
-endfunction
+function Recipe capCheriLoad(RVState s, LoadArgs args, Bit#(5) cb, Bit#(5) rd_cd) =
+  rIfElse(args.numBytes == 16,
+          capReadCap(s, args, cb, 0, rd_cd),
+          capReadData(s, args, cb, 0, rd_cd));
 
-function Recipe capCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) cb);
-  if (args.numBytes == 16) return capWriteCap(s, args, s.rCR(rs2_cs), cb, 0);
-  else return capWriteData(s, args, zeroExtend(s.rGPR(rs2_cs)), cb, 0);
+function Recipe capCheriStore(RVState s, StrArgs args, Bit#(5) rs2_cs, Bit#(5) cb) =
+  rIfElse(args.numBytes == 16,
+          capWriteCap(s, args, s.rCR(rs2_cs), cb, 0),
+          capWriteData(s, args, zeroExtend(s.rGPR(rs2_cs)), cb, 0));
+
+// new capability load and store instructions
+////////////////////////////////////////////////////////////////////////////////
+
+function Recipe newCapLoad(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1_cs1, Bit#(5) rd_cd) =
+  rIfElse(inCapMode(s.pcc), // check for current capability mode
+          capReadCap(s, args, rs1_cs1, signExtend(imm), rd_cd),
+          readCap(s, args, s.rGPR(rs1_cs1), signExtend(imm), rd_cd));
+
+function Recipe newCapStore(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2_cs2, Bit#(5) rs1_cs1, Bit#(5) imm4_0);
+  Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
+  return rIfElse(inCapMode(s.pcc), // check for current capability mode
+                 capWriteCap(s, args, s.rCR(rs2_cs2), rs1_cs1, signExtend(imm)),
+                 writeCap(s, args, s.rCR(rs2_cs2), s.rGPR(rs1_cs1), signExtend(imm)));
 endfunction
 
 // Override standard RISC-V memory accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-function Recipe overrideLoad(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1_cs1, Bit#(5) rd_cd);
-  // check for current capability mode
-  if (inCapMode(s.pcc)) return capReadData(s, args, rs1_cs1, signExtend(imm), rd_cd);
-  else return readData(s, args, s.rGPR(rs1_cs1), signExtend(imm), rd_cd);
-endfunction
+function Recipe overrideLoad(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1_cs1, Bit#(5) rd_cd) =
+  rIfElse(inCapMode(s.pcc), // check for current capability mode
+          capReadData(s, args, rs1_cs1, signExtend(imm), rd_cd),
+          readData(s, args, s.rGPR(rs1_cs1), signExtend(imm), rd_cd));
 
 function Recipe overrideStore(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2_cs2, Bit#(5) rs1_cs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
-  // check for current capability mode
-  if (inCapMode(s.pcc)) return capWriteData(s, args, tpl_2(toMem(s.rCR(rs2_cs2))), rs1_cs1, signExtend(imm));
-  else return writeData(s, args, zeroExtend(s.rGPR(rs2_cs2)), s.rGPR(rs1_cs1), signExtend(imm));
+  return rIfElse(inCapMode(s.pcc), // check for current capability mode
+                 capWriteData(s, args, tpl_2(toMem(s.rCR(rs2_cs2))), rs1_cs1, signExtend(imm)),
+                 writeData(s, args, zeroExtend(s.rGPR(rs2_cs2)), s.rGPR(rs1_cs1), signExtend(imm)));
 endfunction
+
+// Override standard RISC-V auipc -> auipcc in capmode
+////////////////////////////////////////////////////////////////////////////////
+
+function Recipe overrideAUIPC(RVState s, Bit#(20) imm, Bit#(5) rd_cd) =
+  // check for current capability mode
+  rIfElse(inCapMode(s.pcc),
+    rAct(action
+           let new_cap = setOffset(s.pcc, s.pc + signExtend({imm, 12'b0}));
+           if (new_cap.exact) begin
+             s.wCR(rd_cd, new_cap.value);
+             logInst(s, $format("auipcc"));
+           end else begin
+             $display("ERROR on AUIPCC, unrepresentable PCC, should never happen");
+             $finish(0);
+           end
+         endaction),
+    rAct(instrAUIPC(s, imm, rd_cd)));
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -536,16 +569,16 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("fpclear", pat(n(7'h7f), n(5'h10), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_FPClear(s));
 
   // Memory-Stores with Explicit Address Type Instructions
-  defineInstEntry("sbddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h08), n(7'h00)), ddcCheriStore(s, StrArgs{name: "sbddc", numBytes: 1}));
-  defineInstEntry("shddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h09), n(7'h01)), ddcCheriStore(s, StrArgs{name: "shddc", numBytes: 2}));
-  defineInstEntry("swddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0a), n(7'h02)), ddcCheriStore(s, StrArgs{name: "swddc", numBytes: 4}));
-  defineInstEntry("sdddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0b), n(7'h03)), ddcCheriStore(s, StrArgs{name: "sdddc", numBytes: 8}));
-  defineInstEntry("sqddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0c), n(7'h04)), ddcCheriStore(s, StrArgs{name: "sqddc", numBytes: 16})); // also considers tag bit
-  defineInstEntry("sbcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h18), n(7'h08)), capCheriStore(s, StrArgs{name: "sbcap", numBytes: 1}));
-  defineInstEntry("shcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h19), n(7'h09)), capCheriStore(s, StrArgs{name: "shcap", numBytes: 2}));
-  defineInstEntry("swcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1a), n(7'h0a)), capCheriStore(s, StrArgs{name: "swcap", numBytes: 4}));
-  defineInstEntry("sdcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1b), n(7'h0b)), capCheriStore(s, StrArgs{name: "sdcap", numBytes: 8}));
-  defineInstEntry("sqcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h1c), n(7'h0c)), capCheriStore(s, StrArgs{name: "sqcap", numBytes: 16})); // also considers tag bit
+  defineInstEntry("sbddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h00), n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sbddc", numBytes: 1}));
+  defineInstEntry("shddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h01), n(7'h5b)), ddcCheriStore(s, StrArgs{name: "shddc", numBytes: 2}));
+  defineInstEntry("swddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h02), n(7'h5b)), ddcCheriStore(s, StrArgs{name: "swddc", numBytes: 4}));
+  defineInstEntry("sdddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h03), n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sdddc", numBytes: 8}));
+  defineInstEntry("sqddc",  pat(n(7'h7c), v, v, n(3'h0), n(5'h04), n(7'h5b)), ddcCheriStore(s, StrArgs{name: "sqddc", numBytes: 16})); // also considers tag bit
+  defineInstEntry("sbcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h08), n(7'h5b)), capCheriStore(s, StrArgs{name: "sbcap", numBytes: 1}));
+  defineInstEntry("shcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h09), n(7'h5b)), capCheriStore(s, StrArgs{name: "shcap", numBytes: 2}));
+  defineInstEntry("swcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0a), n(7'h5b)), capCheriStore(s, StrArgs{name: "swcap", numBytes: 4}));
+  defineInstEntry("sdcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0b), n(7'h5b)), capCheriStore(s, StrArgs{name: "sdcap", numBytes: 8}));
+  defineInstEntry("sqcap",  pat(n(7'h7c), v, v, n(3'h0), n(5'h0c), n(7'h5b)), capCheriStore(s, StrArgs{name: "sqcap", numBytes: 16})); // also considers tag bit
   // Memory-Loads with Explicit Address Type Instructions
   defineInstEntry("lbddc",  pat(n(7'h7d), n(5'h00), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lbddc",  numBytes: 1,  sgnExt: True}));
   defineInstEntry("lhddc",  pat(n(7'h7d), n(5'h01), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lhddc",  numBytes: 2,  sgnExt: True}));
@@ -565,6 +598,9 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("lducap", pat(n(7'h7d), n(5'h0f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lducap", numBytes: 8,  sgnExt: False}));
   defineInstEntry("lqddc",  pat(n(7'h7d), n(5'h17), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lqddc",  numBytes: 16, sgnExt: True})); // also considers tag bit
   defineInstEntry("lqcap",  pat(n(7'h7d), n(5'h1f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lqcap",  numBytes: 16, sgnExt: True})); // also considers tag bit
+  // new capability load and store instruction
+  defineInstEntry("loadCap",  pat(v, v, n(3'b010), v, n(7'b0001111)), newCapLoad(s, LoadArgs{name: "loadCap",  numBytes: 16, sgnExt: True}));
+  defineInstEntry("storeCap", pat(v, v, v, n(3'b100), v, n(7'b0100011)), newCapStore(s, StrArgs{name: "storeCap", numBytes: 16}));
   // Overriding existing memory loads and stores
   defineInstEntry("lb",     pat(v, v, n(3'b000), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lb",  numBytes: 1, sgnExt: True}));
   defineInstEntry("lbu",    pat(v, v, n(3'b100), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lbu", numBytes: 1, sgnExt: False}));
@@ -579,5 +615,7 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("ld",     pat(v, v, n(3'b011), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "ld",  numBytes: 8, sgnExt: True}));
   defineInstEntry("sd",     pat(v, v, v, n(3'b011), v, n(7'b0100011)), overrideStore(s, StrArgs{name: "sd", numBytes: 8}));
   `endif
+  // Overriding existing auipc instruction
+  defineInstEntry("auipc",  pat(v, v, n(7'b0010111)), overrideAUIPC(s));
 
 endmodule
