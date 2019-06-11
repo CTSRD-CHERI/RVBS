@@ -4,9 +4,9 @@
 [submodule "BSV-RVFI-DII"]
 	path = BSV-RVFI-DII
 	url = https://github.com/CTSRD-CHERI/BSV-RVFI-DII.git
-[submodule "src/toplevels/CHERISOC"]
+[submodule "CHERISOC"]
 	path = src/toplevels/CHERISOC
 	url = https://github.com/CTSRD-CHERI/CHERISOC.git
-[submodule "src/rvbs/cheri-cap-lib"]
+[submodule "cheri-cap-lib"]
 	path = src/rvbs/cheri-cap-lib
-	url = git@github.com:CTSRD-CHERI/cheri-cap-lib.git
+	url = https://github.com/CTSRD-CHERI/cheri-cap-lib.git
