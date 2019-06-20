@@ -201,6 +201,18 @@ function Action instrXcheri_CIncOffsetImmediate(RVState s, Bit#(12) inc, Bit#(5)
   end
 endaction;
 
+function Action instrXcheri_CSetAddr(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
+  let cap_cs = s.rCR(cs);
+  let rt_val = s.rGPR(rt);
+  let new_cap = setAddr(cap_cs, zeroExtend(rt_val));
+  if (isValidCap(cap_cs) && isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
+  else begin
+    if (!new_cap.exact) s.wCR(cd, nullWithAddr(rt_val));
+    else s.wCR(cd, new_cap.value);
+    logInst(s, fmtInstXcheri3op("csetaddr", CR(cd), CR(cs), GPR(rt)));
+  end
+endaction;
+
 function Action instrXcheri_CSetBounds(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) cd) = action
   let cap_cs = s.rCR(cs);
   let rt_val = s.rGPR(rt);
@@ -539,6 +551,7 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("candperm"  ,      pat(n(7'h0d), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CAndPerm(s));
   defineInstEntry("csetflags",       pat(n(7'h0e), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetFlags(s));
   defineInstEntry("csetoffset",      pat(n(7'h0f), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetOffset(s));
+  defineInstEntry("csetaddr",        pat(n(7'h10), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetAddr(s));
   defineInstEntry("cincoffset",      pat(n(7'h11), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CIncOffset(s));
   defineInstEntry("cincoffsetimmediate", pat(v, v, n(3'h1), v, n(7'h5b)), instrXcheri_CIncOffsetImmediate(s));
   defineInstEntry("csetbounds",      pat(n(7'h08), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSetBounds(s));
