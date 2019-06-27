@@ -40,7 +40,7 @@ typedef 18 CC_OTYPE;
 //typedef 32 CC_ADDR;
 //typedef 16 CC_BOUNDS;
 //typedef  6 CC_EXP;
-typedef  5 CC_OTYPE;
+typedef  4 CC_OTYPE;
 `endif
 import CHERICap :: *;
 import CHERICC_Fat :: *;

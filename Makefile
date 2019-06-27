@@ -140,13 +140,13 @@ all: sim isa-test rvfi-dii verilog
 
 ifeq ($(RVXCHERI),1)
 TOPSIM = $(RVBSSRCDIR)/toplevels/Top_cheri.bsv
-SIMFLAGS = $(BSCFLAGS) -D BLUESIM -D MEM128
+BSCFLAGS += -D MEM128
 ifeq ($(XLEN),64)
-SIMFLAGS += -D CAP128
+BSCFLAGS += -D CAP128
 else
-SIMFLAGS += -D CAP64
+BSCFLAGS += -D CAP64
 endif
-SIMFLAGS += -L . -l pism
+SIMFLAGS = -D BLUESIM -L . -l pism
 SIMDEP = $(TOPSIM) $(RVBSSRCDIR) link-pism
 CLEANSIMDEP = clean-link-pism
 link-pism:
@@ -171,13 +171,12 @@ clean-link-pism:
 	rm -f memoryconfig
 else
 TOPSIM = $(RVBSSRCDIR)/toplevels/Top_sim.bsv
-SIMFLAGS = $(BSCFLAGS)
 SIMDEP = $(TOPSIM) $(RVBSSRCDIR)
 endif
 sim: $(SIMDEP)
 	mkdir -p $(INFODIR)-sim $(BDIR)-sim $(SIMDIR)-sim $(OUTPUTDIR)
-	$(BSC) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
-	CC=$(CC) CXX=$(CXX) $(BSC) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
+	$(BSC) $(BSCFLAGS) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -g mkRVBS_sim -u $<
+	CC=$(CC) CXX=$(CXX) $(BSC) $(BSCFLAGS) $(SIMFLAGS) -bdir $(BDIR)-sim -simdir $(SIMDIR)-sim -info-dir $(INFODIR)-sim -sim -o $(OUTPUTDIR)/$(RVBSNAME)-sim -e mkRVBS_sim $(BLUEUTILSDIR)/*.c $(SOCKETUTILSDIR)/*.c
 
 isa-test: $(RVBSSRCDIR)/toplevels/Top_isa_test.bsv $(RVBSSRCS)
 	mkdir -p $(INFODIR)-isa-test $(BDIR)-isa-test $(SIMDIR)-isa-test $(OUTPUTDIR)
