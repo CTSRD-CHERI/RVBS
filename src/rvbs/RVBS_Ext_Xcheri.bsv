@@ -328,7 +328,7 @@ function Action instrXcheri_CToPtr(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd
   else if (!isValidCap(cap_cs)) s.wGPR(rd, 0);
   else if (isSealed(cap_cs)) raiseCapException(s, CapExcSeal, cs);
   else begin
-    s.wGPR(rd, truncate(getBase(cap_cs) + getOffset(cap_cs) - getBase(cap_ct)));
+    s.wGPR(rd, truncate(getAddr(cap_cs) - getBase(cap_ct)));
     logInst(s, fmtInstXcheri3op("ctoptr", GPR(rd), CR(cs), CR(ct)));
   end
 endaction;
