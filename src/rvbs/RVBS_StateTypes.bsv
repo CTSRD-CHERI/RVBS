@@ -27,15 +27,24 @@
  */
 
 `ifdef RVXCHERI
-import CHERICap :: *;
-//XXX TEMPORARY- FIXME XXX//
+`define RISCV
+//XXX TODO FIXME add a typeclass method that handles getting otypeMax
 `ifdef XLEN64
-import CHERICC_Fat :: *;
+`define CAP128
+//typedef 64 CC_ADDR;
+//typedef 46 CC_BOUNDS;
+//typedef  6 CC_EXP;
+typedef 18 CC_OTYPE;
 `else
-import CHERICC :: *;
+`define CAP64
+//typedef 32 CC_ADDR;
+//typedef 16 CC_BOUNDS;
+//typedef  6 CC_EXP;
+typedef  5 CC_OTYPE;
 `endif
-//XXX TEMPORARY- FIXME XXX//
-`endif
+import CHERICap :: *;
+import CHERICC_Fat :: *;
+//import CHERICC :: *;
 
 import Vector :: *;
 import FIFOF :: *;
@@ -65,26 +74,10 @@ import FIFO :: *;
 ////////////////////////////////////////////////////////////////////////////////
 
 `ifdef RVXCHERI
-`ifdef XLEN64
-typedef 64 CC_ADDR;
-typedef 46 CC_BOUNDS;
-typedef  6 CC_EXP;
-//XXX TEMPORARY- FIXME XXX//
-//typedef  6 CC_OTYPE;
-typedef  18 CC_OTYPE;
+//typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) CapType;
 typedef CapPipe CapType;
-//XXX TEMPORARY- FIXME XXX//
-`else
-typedef 32 CC_ADDR;
-typedef 16 CC_BOUNDS;
-typedef  6 CC_EXP;
-typedef  2 CC_OTYPE;
-//XXX TEMPORARY- FIXME XXX//
-typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) CapType;
-//XXX TEMPORARY- FIXME XXX//
-`endif
-typedef TAdd#(CC_ADDR, CC_ADDR) CapNoValidSz;
-Bit#(CC_OTYPE) otypeMax = -1;
+typedef TAdd#(XLEN, XLEN) CapNoValidSz;
+Bit#(CC_OTYPE) otypeMax = ~0;
 // Capability handle helper types
 typedef union tagged {
   Tuple2#(Bit#(5), CapType) CapAccessHandle;

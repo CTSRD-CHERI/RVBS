@@ -53,10 +53,16 @@ export mkRVBS_CLINT;
 export mkRVBS_CLINT_synth;
 
 `ifdef RVXCHERI
-`define AXI4_PARAMS PAddrWidth, 128, 0, 1, 0, 0, 1
+`ifdef XLEN64
+`define AXI_USR 1
 `else
-`define AXI4_PARAMS PAddrWidth, 128, 0, 0, 0, 0, 0
+`define AXI_USR 2
 `endif
+`else
+`define AXI_USR 0
+`endif
+`define AXI4_PARAMS PAddrWidth, 128, 0, `AXI_USR, 0, 0, `AXI_USR
+
 ////////////////
 // Interfaces //
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +223,7 @@ module mkRVMemShim (RVMemShim);
             wdata: wData,
             wstrb: wStrb,
             `ifdef RVXCHERI
-            wuser: (needMore) ? 0 : w.captag
+            wuser: (needMore) ? 0 : {0, w.captag}
             `else
             wuser: 0
             `endif

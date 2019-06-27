@@ -140,7 +140,13 @@ all: sim isa-test rvfi-dii verilog
 
 ifeq ($(RVXCHERI),1)
 TOPSIM = $(RVBSSRCDIR)/toplevels/Top_cheri.bsv
-SIMFLAGS = $(BSCFLAGS) -D MEM128 -D CAP128 -D BLUESIM -L . -l pism
+SIMFLAGS = $(BSCFLAGS) -D BLUESIM -D MEM128
+ifeq ($(XLEN),64)
+SIMFLAGS += -D CAP128
+else
+SIMFLAGS += -D CAP64
+endif
+SIMFLAGS += -L . -l pism
 SIMDEP = $(TOPSIM) $(RVBSSRCDIR) link-pism
 CLEANSIMDEP = clean-link-pism
 link-pism:

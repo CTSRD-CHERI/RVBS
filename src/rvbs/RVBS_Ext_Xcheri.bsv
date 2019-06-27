@@ -301,7 +301,7 @@ function Action instrXcheri_CCSeal(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) cd
   let cap_cs = s.rCR(cs);
   let cap_ct = s.rCR(ct);
   let new_cap = setType(cap_cs, truncate(getBase(cap_ct) + getOffset(cap_ct)));
-  Bit#(CC_ADDR) negOne = ~0;
+  Bit#(XLEN) negOne = ~0;
   if (!isValidCap(cap_cs)) raiseCapException(s, CapExcTag, cs);
   else if (!isValidCap(cap_ct)) s.wCR(cd, cap_cs);
   else if (truncate(getBase(cap_ct) + getOffset(cap_ct)) == negOne) s.wCR(cd, cap_cs);
@@ -508,7 +508,7 @@ function Recipe overrideLoad(RVState s, LoadArgs args, Bit#(12) imm, Bit#(5) rs1
 function Recipe overrideStore(RVState s, StrArgs args, Bit#(7) imm11_5, Bit#(5) rs2_cs2, Bit#(5) rs1_cs1, Bit#(5) imm4_0);
   Bit#(XLEN) imm = {signExtend(imm11_5), imm4_0};
   return rIfElse(inCapMode(s.pcc), // check for current capability mode
-                 capWriteData(s, args, tpl_2(toMem(s.rCR(rs2_cs2))), rs1_cs1, signExtend(imm)),
+                 capWriteData(s, args, zeroExtend(tpl_2(toMem(s.rCR(rs2_cs2)))), rs1_cs1, signExtend(imm)),
                  writeData(s, args, zeroExtend(s.rGPR(rs2_cs2)), s.rGPR(rs1_cs1), signExtend(imm)));
 endfunction
 

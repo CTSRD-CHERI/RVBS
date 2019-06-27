@@ -46,13 +46,9 @@ import ClientServer :: *;
 import GetPut :: *;
 `endif
 
-//XXX TEMPORARY- FIXME XXX//
 `ifdef RVXCHERI
-`ifdef XLEN64
 import CHERICap :: *;
 `endif
-`endif
-//XXX TEMPORARY- FIXME XXX//
 
 module [ISADefModule] mkRVCommon#(RVState s) (Empty);
 

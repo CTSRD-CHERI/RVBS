@@ -38,13 +38,19 @@ typedef 2 NMASTERS;
 typedef 4 SID_sz;
 typedef TSub#(SID_sz, TLog#(NMASTERS)) MID_sz;
 
+`ifdef CAP64
+`define AXI_USR 2
+`else // CAP128
+`define AXI_USR 1
+`endif
+
 typedef PAddrWidth ADDR_sz;
 typedef        128 DATA_sz;
 typedef          0 AWUSER_sz;
-typedef          1 WUSER_sz;
+typedef   `AXI_USR WUSER_sz;
 typedef          0 BUSER_sz;
 typedef          0 ARUSER_sz;
-typedef          1 RUSER_sz;
+typedef   `AXI_USR RUSER_sz;
 
 `define AXI_MASTER_PARAMS MID_sz, ADDR_sz, DATA_sz,\
                    AWUSER_sz, WUSER_sz, BUSER_sz, ARUSER_sz, RUSER_sz
@@ -64,7 +70,7 @@ module mkRVBS_sim (Empty);
   connectIFCs(rvbs, cheriSOC);
 endmodule
 
-module connectIFCs#(RVBS_CLINT rvbs, CHERISOC cheriSOC) (Empty);
+module connectIFCs#(RVBS_CLINT rvbs, CHERISOC#(ADDR_sz) cheriSOC) (Empty);
   // interconnect
   Vector#(NMASTERS, AXI4_Master#(`AXI_MASTER_PARAMS)) ms;
   ms[0] <- fromAXI4Lite_Master(rvbs.instAXI4Lite_Master);

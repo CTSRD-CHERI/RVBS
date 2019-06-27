@@ -107,7 +107,7 @@ endinstance
 
 instance ToAXI4Lite_WFlit#(RVMemReq, 128, user_sz)
   `ifdef RVXCHERI
-  provisos (Add#(0, user_sz, 1))
+  provisos (Add#(1, a__, user_sz))
   `endif
   ;
   function toAXI4Lite_WFlit(x);
@@ -115,7 +115,7 @@ instance ToAXI4Lite_WFlit#(RVMemReq, 128, user_sz)
     return AXI4Lite_WFlit {
       wdata: pack(w.data), wstrb: w.byteEnable,
       `ifdef RVXCHERI
-      wuser: w.captag
+      wuser: zeroExtend(w.captag)
       `else
       wuser: 0
       `endif
@@ -142,13 +142,13 @@ typedef union tagged {
 
 instance FromAXI4Lite_RFlit#(RVMemRsp, 128, user_sz)
   `ifdef RVXCHERI
-  provisos (Add#(0, user_sz, 1))
+  provisos (Add#(1, a__, user_sz))
   `endif
   ;
   function fromAXI4Lite_RFlit(x) = case (x.rresp)
     OKAY:
       `ifdef RVXCHERI
-      RVReadRsp(tuple2(x.ruser, unpack(x.rdata)));
+      RVReadRsp(tuple2(truncate(x.ruser), unpack(x.rdata)));
       `else
       RVReadRsp(unpack(x.rdata));
       `endif
