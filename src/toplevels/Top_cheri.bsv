@@ -35,7 +35,7 @@ import RVBS_Wrappers :: *;
 import      CHERISOC :: *;
 
 typedef 2 NMASTERS;
-typedef 4 SID_sz;
+typedef 5 SID_sz;
 typedef TSub#(SID_sz, TLog#(NMASTERS)) MID_sz;
 
 `ifdef CAP64
