@@ -198,6 +198,7 @@ typedef enum {
   CapExcPermCCallIDC      = 'h1a, // Premit_CCall IDC Violation
   CapExcPermUnseal        = 'h1c  // Premit_Unseal Violation
 } CapExcCode deriving (Bits, Eq, FShow);
+function Fmt showCapCause(CapExcCode cause) = $format(fshow(cause)," (%0d)", pack(cause));
 `endif
 typedef struct {
   ExcCode excCode;

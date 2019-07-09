@@ -124,6 +124,11 @@ typedef struct {
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Bit#(XLEN))))) pendingMemException;
   `ifdef RVXCHERI
+  Array#(Reg#(Maybe#(Tuple2#(Bit#(6), CapExcCode)))) pendingIFetchCapException;
+  Array#(Reg#(Maybe#(Tuple2#(Bit#(6), CapExcCode)))) pendingCapException;
+  Array#(Reg#(Maybe#(Tuple2#(Bit#(6), CapExcCode)))) pendingMemCapException;
+  `endif
+  `ifdef RVXCHERI
   ArchRegFile#(32, CapType) regFile;
   `else
   ArchRegFile#(32, Bit#(XLEN)) regFile;

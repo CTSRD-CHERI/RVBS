@@ -90,6 +90,11 @@ module [Module] mkState#(
   s.pendingException <- mkCReg(2, Invalid);
   s.pendingMemException <- mkCReg(2, Invalid);
   `ifdef RVXCHERI
+  s.pendingIFetchCapException <- mkConfigCReg(3, Invalid);
+  s.pendingCapException <- mkCReg(2, Invalid);
+  s.pendingMemCapException <- mkCReg(2, Invalid);
+  `endif
+  `ifdef RVXCHERI
   CapType nCap = nullCap;
   CapType yCap = almightyCap;
   s.regFile <- mkRegFileInitZ(nCap, nCap);

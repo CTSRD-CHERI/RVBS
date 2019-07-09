@@ -136,7 +136,7 @@ typeclass RaiseCapException#(type a); a raiseCapException; endtypeclass
 
 instance RaiseCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
   function raiseCapException(s, exc, idx) = action
-    // TODO set cheri cause etc...
+    s.pendingCapException[0] <= Valid(tuple2(idx, exc));
     raiseException(s, CHERIFault);
   endaction;
 endinstance
@@ -149,7 +149,7 @@ typeclass RaiseMemCapException#(type a); a raiseMemCapException; endtypeclass
 
 instance RaiseMemCapException#(function Action f(RVState s, CapExcCode exc, Bit#(6) idx));
   function raiseMemCapException(s, exc, idx) = action
-    // TODO set cheri cause etc...
+    s.pendingMemCapException[0] <= Valid(tuple2(idx, exc));
     raiseMemException(s, CHERIFault, (msb(idx) == 1) ? 0 : getAddr(s.rCR(truncate(idx)))); // TODO update the address to look into special cap regs
   endaction;
 endinstance
@@ -166,7 +166,7 @@ typeclass RaiseIFetchCapException#(type a); a raiseIFetchCapException; endtypecl
 
 instance RaiseIFetchCapException#(function Action f(RVState s, CapExcCode exc));
   function raiseIFetchCapException(s, exc) = action
-    // TODO set cheri cause etc...
+    s.pendingIFetchCapException[1] <= Valid(tuple2(0, exc));
     raiseIFetchException(s, CHERIFault);
   endaction;
 endinstance
@@ -317,9 +317,25 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     match {.exc, .maybe_tval} = s.pendingException[0].Valid;
     match {.memexc, .memexc_tval} = s.pendingMemException[0].Valid;
     TrapCode code = Interrupt(irqCode.Valid);
-    if (isIFetchException) code = Exception(ifetchexc);
-    else if (isStdException) code = Exception(exc);
-    else if (isMemException) code = Exception(memexc);
+    `ifdef RVXCHERI
+    Tuple2#(Bit#(6), CapExcCode) capExc = tuple2(0, CapExcNone);
+    `endif
+    if (isIFetchException) begin
+      code = Exception(ifetchexc);
+      `ifdef RVXCHERI
+      capExc = fromMaybe(capExc, s.pendingIFetchCapException[0]);
+      `endif
+    end else if (isStdException) begin
+      code = Exception(exc);
+      `ifdef RVXCHERI
+      capExc = fromMaybe(capExc, s.pendingCapException[0]);
+      `endif
+    end else if (isMemException) begin
+      code = Exception(memexc);
+      `ifdef RVXCHERI
+      capExc = fromMaybe(capExc, s.pendingMemCapException[0]);
+      `endif
+    end
     // handle general trap behaviour
     general_trap(M, code, s.pc, s);
     // potential tval latching
@@ -335,15 +351,28 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       Vectored &&& (!isException): s.pc <= tgt + zeroExtend({pack(irqCode.Valid),2'b00});
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
+    // prepare trace message
+    Fmt msg = $format(">>> TRAP <<< -- mcause <= ", fshow(code), ", mepc <= 0x%0x, mtval <= 0x%0x, pc <= 0x%0x", s.pc, new_mtval, tgt);
+    `ifdef RVXCHERI
+    if (code matches tagged Exception .c &&& c == CHERIFault) begin
+      //XXX TODO Handle ccsr cause field
+      msg = $format(msg, ", CHERI fault idx: %0d, CHERI fault: ", tpl_1(capExc), showCapCause(tpl_2(capExc)));
+    end
+    `endif
     // reset transient state
     s.pendingIFetchException[0] <= Invalid;
     s.pendingException[0] <= Invalid;
     s.pendingMemException[0] <= Invalid;
+    `ifdef RVXCHERI
+    s.pendingIFetchCapException[0] <= Invalid;
+    s.pendingCapException[0] <= Invalid;
+    s.pendingMemCapException[0] <= Invalid;
+    `endif
     `ifdef RVFI_DII
     s.exc_tgt[0] <= Valid(tgt);
     `endif
     // tracing
-    printTLogPlusArgs("itrace", $format(">>> TRAP <<< -- mcause <= ", fshow(code), ", mepc <= 0x%0x, mtval <= 0x%0x, pc <= 0x%0x", s.pc, new_mtval, s.csrs.mtvec));
+    printTLogPlusArgs("itrace", msg);
   endaction});
 
 endmodule
