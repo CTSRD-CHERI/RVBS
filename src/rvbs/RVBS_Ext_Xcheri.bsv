@@ -612,8 +612,13 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   defineInstEntry("lqddc",  pat(n(7'h7d), n(5'h17), v, n(3'h0), v, n(7'h5b)), ddcCheriLoad(s, LoadArgs{name: "lqddc",  numBytes: 16, sgnExt: True})); // also considers tag bit
   defineInstEntry("lqcap",  pat(n(7'h7d), n(5'h1f), v, n(3'h0), v, n(7'h5b)), capCheriLoad(s, LoadArgs{name: "lqcap",  numBytes: 16, sgnExt: True})); // also considers tag bit
   // new capability load and store instruction
+  `ifdef XLEN64
   defineInstEntry("loadCap",  pat(v, v, n(3'b010), v, n(7'b0001111)), newCapLoad(s, LoadArgs{name: "loadCap",  numBytes: 16, sgnExt: True}));
   defineInstEntry("storeCap", pat(v, v, v, n(3'b100), v, n(7'b0100011)), newCapStore(s, StrArgs{name: "storeCap", numBytes: 16}));
+  `else
+  defineInstEntry("loadCap",  pat(v, v, n(3'b011), v, n(7'b0000011)), newCapLoad(s, LoadArgs{name: "loadCap",  numBytes: 16, sgnExt: True}));
+  defineInstEntry("storeCap", pat(v, v, v, n(3'b011), v, n(7'b0100011)), newCapStore(s, StrArgs{name: "storeCap", numBytes: 16}));
+  `endif
   // Overriding existing memory loads and stores
   defineInstEntry("lb",     pat(v, v, n(3'b000), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lb",  numBytes: 1, sgnExt: True}));
   defineInstEntry("lbu",    pat(v, v, n(3'b100), v, n(7'b0000011)), overrideLoad(s, LoadArgs{name: "lbu", numBytes: 1, sgnExt: False}));

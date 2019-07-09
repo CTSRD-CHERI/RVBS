@@ -138,12 +138,14 @@ function Recipe doReadMemCore(
     endaction, action
       let rAddr <- get(pmp.source);
       `endif
-      let req = case (rAddr) matches
+      Either#(ExcToken, RVMemReq) req = case (rAddr) matches
         tagged Left .excTok: return Left(excTok);
         tagged Right .checkedAddr:
           return Right(RVReadReq {addr: checkedAddr, numBytes: numBytes});
       endcase;
       mem.sink.put(req);
+      if (req matches tagged Right .r)
+        printTPlusArgs("memTrace", $format("sending read request: ", fshow(r)));
     endaction)), action
       let rsp <- get(mem.source);
       rspSink.put(rsp);
@@ -240,6 +242,8 @@ function Recipe doWriteMemCore(
         });
     endcase;
     mem.sink.put(req);
+    if (req matches tagged Right .r)
+      printTPlusArgs("memTrace", $format("sending write request: ", fshow(r)));
   endaction, action
     let rsp <- get(mem.source);
     rspSink.put(rsp);
