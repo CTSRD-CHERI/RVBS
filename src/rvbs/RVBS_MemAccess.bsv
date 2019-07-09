@@ -271,13 +271,13 @@ function Recipe writeCap(
   VAddr vaddr,
   VAddr offset
 );
-  Bit#(CapNoValidSz) capBits = truncate(pack(cap));
+  match {.capTag, .capBits} = toMem(cap);
   return rAct(s.writeMem.enq(tuple5(
            DDCAccessHandle(vaddr),
            offset,
            fromInteger(args.numBytes),
            zeroExtend(capBits),
-           isValidCap(cap))));
+           capTag)));
 endfunction
 
 function Recipe capWriteData(
@@ -295,12 +295,12 @@ function Recipe capWriteCap(
   Bit#(5) capIdx,
   VAddr offset
 );
-  Bit#(CapNoValidSz) capBits = truncate(pack(wcap));
+  match {.capTag, .capBits} = toMem(wcap);
   return rAct(s.writeMem.enq(tuple5(
            CapAccessHandle(tuple2(capIdx, s.rCR(capIdx))),
            offset,
            fromInteger(args.numBytes),
            zeroExtend(capBits),
-           isValidCap(wcap))));
+           capTag)));
 endfunction
 `endif
