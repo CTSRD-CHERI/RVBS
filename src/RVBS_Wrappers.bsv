@@ -211,6 +211,10 @@ module mkRVMemShim (RVMemShim);
           Bit#(5)   beShift = zeroExtend(w.addr[3:0]);
           Bit#(128)   wData = pack(w.data) << dataShift;
           Bit#(16)    wStrb = w.byteEnable << beShift;
+          `ifdef RVXCHERI
+          Bit#(TLog#(`AXI_USR)) capShift = truncateLSB(w.addr[3:0]);
+          Bit#(`AXI_USR)         wCapTag = zeroExtend(w.captag) << capShift;
+          `endif
           if (firstIn > 16) begin
             dataShift = (16 - zeroExtend(w.addr[3:0])) << 3;
             beShift = (16 - zeroExtend(w.addr[3:0]));
@@ -223,7 +227,7 @@ module mkRVMemShim (RVMemShim);
             wdata: wData,
             wstrb: wStrb,
             `ifdef RVXCHERI
-            wuser: (needMore) ? 0 : {0, w.captag}
+            wuser: (needMore) ? 0 : wCapTag
             `else
             wuser: 0
             `endif
@@ -279,6 +283,10 @@ module mkRVMemShim (RVMemShim);
       nextRsp.deq;
       let tmp <- get(shim[i].slave.r);
       match {.offset, .needMore} = pendingReadFF.first;
+      `ifdef RVXCHERI
+      Bit#(TLog#(`AXI_USR)) capShift = truncateLSB(offset);
+      tmp.ruser = tmp.ruser >> capShift;
+      `endif
       Bit#(7) shiftAmnt = zeroExtend(offset) << 3;
       tmp.rdata = tmp.rdata >> shiftAmnt;
       if (!needMore) begin
