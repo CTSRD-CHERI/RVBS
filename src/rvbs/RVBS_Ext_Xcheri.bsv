@@ -29,6 +29,7 @@
 import             BID :: *;
 import          BitPat :: *;
 import          Recipe :: *;
+import       BlueUtils :: *;
 
 import        CHERICap :: *;
 
@@ -354,10 +355,21 @@ endaction;
 
 function Action instrXcheri_CSpecialRW(RVState s, Bit#(5) idx, Bit#(5) cs, Bit#(5) cd) = action
   case (s.getCSpecial(idx)) matches
-    tagged Valid .cspecial: begin
-      if (cd != 0) s.wCR(cd, cspecial);
-      if (cs != 0) cspecial <= s.rCR(cs);
-      logInst(s, $format("cspecialrw"));
+    tagged Valid .cspecialtpl: begin
+      match {.prv, .asr, .ro, .cspecial} = cspecialtpl;
+      if (s.currentPrivLvl < prv) raiseException(s, IllegalInst);
+      else if (asr && !getHardPerms(s.pcc).accessSysRegs)
+        raiseCapException(s, CapExcAccessSysReg, {1'b1, idx});
+      else if (cs != 0 && ro) raiseException(s, IllegalInst);
+      else begin
+        if (cd != 0) s.wCR(cd, cspecial);
+        if (cs != 0) begin
+          let tmp = s.rCR(cs);
+          cspecial <= tmp;
+          printTLogPlusArgs("itrace", $format(specialCapName(idx), " <= ", showCHERICap(tmp)));
+        end
+        logInst(s, fmtInstXcheri3op("cspecialrw", CR(cd), CR(cs), SCR(idx)));
+      end
     end
     default: raiseException(s, IllegalInst);
   endcase

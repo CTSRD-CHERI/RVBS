@@ -282,7 +282,7 @@ function Action instrJAL(RVState s, Bit#(1) imm20, Bit#(10) imm10_1, Bit#(1) imm
   Bit#(XLEN) imm = {signExtend(imm20),imm19_12,imm11,imm10_1,1'b0};
   Bit#(XLEN) tgt = s.pc + imm;
   if (isInstAligned(tgt)) begin
-    s.pc <= tgt;
+    s.updatePC(tgt);
     s.wGPR(rd, s.pc + s.instByteSz);
   end else raiseException(s, InstAddrAlign, tgt);
   logInst(s, fmtInstJ("jal", rd, imm));
@@ -303,7 +303,7 @@ function Action instrJALR (RVState s, Bit#(12) imm, Bit#(5) rs1, Bit#(5) rd) = a
   Bit#(XLEN) tgt = s.rGPR(rs1) + signExtend(imm);
   tgt[0] = 0;
   if (isInstAligned(tgt)) begin
-    s.pc <= tgt;
+    s.updatePC(tgt);
     s.wGPR(rd, s.pc + s.instByteSz);
   end else raiseException(s, InstAddrAlign, tgt);
   logInst(s, fmtInstI("jalr", rd, rs1, imm));
@@ -327,7 +327,7 @@ endaction;
 // to BLT, BLTU, BGE, and BGEU, respectivelly.
 
 function Action branchCommon(RVState s, Bit#(XLEN) tgt) = action
-  if (isInstAligned(tgt)) s.pc <= tgt; else raiseException(s, InstAddrAlign, tgt);
+  if (isInstAligned(tgt)) s.updatePC(tgt); else raiseException(s, InstAddrAlign, tgt);
 endaction;
 
 // funct3 = BEQ = 000

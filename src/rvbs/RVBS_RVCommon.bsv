@@ -195,7 +195,7 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
   // preparing exception token
   let excTok = Invalid;
   `ifdef RVXCHERI
-  let m_ifetchCapExc = ifetchCapChecks(s.pcc, s.pc, 4, False);
+  let m_ifetchCapExc = ifetchCapChecks(s.pcc, getBase(s.pcc) + s.pc, 4, False);
   if (isValid(m_ifetchCapExc)) excTok = Valid(ExcToken{
     excCode: CHERIFault,
     tval: 0,
@@ -228,6 +228,11 @@ module [ISADefModule] mkRVIFetch#(RVState s) ();
       endcase
       snk.put(newInst);
     endaction;
+    `ifdef RVXCHERI
+    let newpc = s.pc.late + getBase(s.pcc);
+    `else
+    let newpc = s.pc.late;
+    `endif
     return rFastSeq(rBlock(
       iFetchCore(tuple4(excTok, IFETCH, s.pc.late, 4), toSink(iFetchFF)),
       action

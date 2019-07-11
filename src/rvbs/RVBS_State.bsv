@@ -127,31 +127,40 @@ module [Module] mkState#(
   // CHERI specific state
   s.pcc  <- mkArchReg(yCap);
   s.ddc  <- mkArchReg(yCap);
-  s.utcc      <- mkArchReg(nCap);
+  s.utcc      <- mkArchReg(yCap);
   s.uscratchc <- mkArchReg(nCap);
-  s.uepcc     <- mkArchReg(nCap);
-  s.stcc      <- mkArchReg(nCap);
+  s.uepcc     <- mkArchReg(yCap);
+  s.stcc      <- mkArchReg(yCap);
   s.sscratchc <- mkArchReg(nCap);
-  s.sepcc     <- mkArchReg(nCap);
-  s.mtcc      <- mkArchReg(nCap);
+  s.sepcc     <- mkArchReg(yCap);
+  s.mtcc      <- mkArchReg(yCap);
   s.mscratchc <- mkArchReg(nCap);
-  s.mepcc     <- mkArchReg(nCap);
+  s.mepcc     <- mkArchReg(yCap);
   function getCapSpecial(idx) = case (idx)
-    0: Valid(asIfc(s.pcc));
-    1: Valid(asIfc(s.ddc));
-    4: Valid(asIfc(s.utcc));
-    6: Valid(asIfc(s.uscratchc));
-    7: Valid(asIfc(s.uepcc));
-    12: Valid(asIfc(s.stcc));
-    14: Valid(asIfc(s.sscratchc));
-    15: Valid(asIfc(s.sepcc));
-    28: Valid(asIfc(s.mtcc));
-    30: Valid(asIfc(s.mscratchc));
-    31: Valid(asIfc(s.mepcc));
+    0:  Valid(tuple4(U, False,  True, asIfc(s.pcc)));
+    1:  Valid(tuple4(U, False, False, asIfc(s.ddc)));
+    4:  Valid(tuple4(U,  True, False, asIfc(s.utcc)));
+    6:  Valid(tuple4(U,  True, False, asIfc(s.uscratchc)));
+    7:  Valid(tuple4(U,  True, False, asIfc(s.uepcc)));
+    12: Valid(tuple4(S,  True, False, asIfc(s.stcc)));
+    14: Valid(tuple4(S,  True, False, asIfc(s.sscratchc)));
+    15: Valid(tuple4(S,  True, False, asIfc(s.sepcc)));
+    28: Valid(tuple4(M,  True, False, asIfc(s.mtcc)));
+    30: Valid(tuple4(M,  True, False, asIfc(s.mscratchc)));
+    31: Valid(tuple4(M,  True, False, asIfc(s.mepcc)));
     default: Invalid;
   endcase;
   s.getCSpecial = getCapSpecial;
   `endif
+  function Action upPC(VAddr newpc) = action
+    s.pc <= newpc;
+    `ifdef RVXCHERI
+    Exact#(CapType) tmp = setOffset(s.pcc, newpc);
+    //XXX TODO check rep somehow?
+    s.pcc <= tmp.value;
+    `endif
+  endaction;
+  s.updatePC = upPC;
   // Memory interfaces
   s.readMem  <- mkBypassFIFOF;
   s.writeMem <- mkBypassFIFOF;

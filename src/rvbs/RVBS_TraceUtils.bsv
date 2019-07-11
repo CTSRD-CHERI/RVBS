@@ -60,12 +60,31 @@ function Fmt rName(Bit#(5) r) = bothRegName(r);
 `endif
 `ifdef RVXCHERI
 typedef union tagged {
+  Bit#(5) SCR;
   Bit#(5) CR;
   Bit#(5) GPR;
 } TraceRegType;
 function Fmt traceReg(TraceRegType idx) = case (idx) matches
-  tagged CR  .cr: $format("c%0d", cr);
+  tagged SCR .scr: specialCapName(scr);
+  tagged CR   .cr: $format("c%0d", cr);
   tagged GPR .gpr: rName(gpr);
+endcase;
+function Fmt specialCapName(Bit#(5) idx) = case (idx)
+  0:  $format("pcc");
+  1:  $format("ddc");
+  4:  $format("utcc");
+  //5:  $format("utdc");
+  6:  $format("uscratchc");
+  7:  $format("uepcc");
+  12: $format("stcc");
+  //13: $format("stdc");
+  14: $format("sscratchc");
+  15: $format("sepcc");
+  28: $format("mtcc");
+  //29: $format("mtdc");
+  30: $format("mscratchc");
+  31: $format("mepcc");
+  default: $format("unknown");
 endcase;
 `endif
 

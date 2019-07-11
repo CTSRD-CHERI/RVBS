@@ -119,6 +119,7 @@ typedef struct {
   XLMode currentXLEN;
 
   ArchReg#(VAddr) pc;
+  function Action f(VAddr newpc) updatePC;
   Reg#(VAddr) instByteSz;
   Array#(Reg#(Maybe#(ExcCode))) pendingIFetchException;
   Array#(Reg#(Maybe#(Tuple2#(ExcCode, Maybe#(Bit#(XLEN)))))) pendingException;
@@ -152,7 +153,7 @@ typedef struct {
   ArchReg#(CapType) mtcc;
   ArchReg#(CapType) mscratchc;
   ArchReg#(CapType) mepcc;
-  function Maybe#(ArchReg#(CapType)) f(Bit#(5) idx) getCSpecial;
+  function Maybe#(Tuple4#(PrivLvl, Bool,Bool,ArchReg#(CapType))) f(Bit#(5) idx) getCSpecial;
   FIFOF#(Tuple6#(MemAccessHandle, VAddr, Bit#(5), BitPO#(4), Bool, Bool)) readMem;
   FIFOF#(Tuple5#(MemAccessHandle, VAddr, BitPO#(4), Bit#(128), Bool)) writeMem;
   `else

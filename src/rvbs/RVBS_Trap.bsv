@@ -81,7 +81,11 @@ function ActionValue#(PrivLvl) popStatusStack(CSR_Ifc#(Status) status, PrivLvl f
   return to;
 endactionvalue;
 
-function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVState s) = action
+function Action general_trap(RVState s, PrivLvl toLvl, TrapCode trapCode, VAddr epc
+`ifdef RVXCHERI
+  , Tuple2#(Bit#(6), CapExcCode) capCause, CapType epcc
+`endif
+) = action
   // Global Interrupt-Enable Stack and latch current privilege level
   pushStatusStack(s.csrs.mstatus, s.currentPrivLvl, toLvl);
   // others
@@ -89,6 +93,10 @@ function Action general_trap(PrivLvl toLvl, TrapCode trapCode, VAddr epc, RVStat
     M: begin
       s.csrs.mcause <= trapCode;
       s.csrs.mepc.addr <= truncateLSB(epc);
+      `ifdef RVXCHERI
+      //XXX TODO Handle ccsr cause field
+      s.mepcc <= epcc;
+      `endif
     end
     `ifdef SUPERVISOR_MODE
     S: begin
@@ -243,6 +251,9 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, M);
       s.currentPrivLvl <= toLvl;
       s.pc <= pack(s.csrs.mepc);
+      `ifdef RVXCHERI
+      s.pcc <= s.mepcc;
+      `endif
       logInst(s, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
@@ -262,6 +273,9 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, S);
       s.currentPrivLvl <= toLvl;
       s.pc <= pack(s.csrs.sepc);
+      `ifdef RVXCHERI
+      s.pcc <= s.sepcc;
+      `endif
       logInst(s, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
@@ -337,7 +351,11 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       `endif
     end
     // handle general trap behaviour
-    general_trap(M, code, s.pc, s);
+    general_trap(s, M, code, s.pc
+      `ifdef RVXCHERI
+      , capExc, s.pcc
+      `endif
+    );
     // potential tval latching
     let new_mtval = 0;
     if (isStdException && isValid(maybe_tval)) new_mtval = maybe_tval.Valid;
@@ -345,17 +363,22 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     s.csrs.mtval <= new_mtval;
     // handle pc update
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+    `ifdef RVXCHERI
+    s.pcc <= s.mtcc;
+    tgt = getOffset(s.mtcc);
+    `endif
     case (s.csrs.mtvec.mode) matches
-      Direct: s.pc <= tgt;
-      Vectored &&& isException: s.pc <= tgt;
-      Vectored &&& (!isException): s.pc <= tgt + zeroExtend({pack(irqCode.Valid),2'b00});
+      Direct: tgt = tgt;
+      Vectored &&& isException: tgt = tgt;
+      Vectored &&& (!isException): tgt = tgt + zeroExtend({pack(irqCode.Valid),2'b00});
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
+    s.pc <= tgt;
     // prepare trace message
     Fmt msg = $format(">>> TRAP <<< -- mcause <= ", fshow(code), ", mepc <= 0x%0x, mtval <= 0x%0x, pc <= 0x%0x", s.pc, new_mtval, tgt);
     `ifdef RVXCHERI
+    msg = $format(msg, ", pcc <= ", showCHERICap(s.mtcc));
     if (code matches tagged Exception .c &&& c == CHERIFault) begin
-      //XXX TODO Handle ccsr cause field
       msg = $format(msg, ", CHERI fault idx: %0d, CHERI fault: ", tpl_1(capExc), showCapCause(tpl_2(capExc)));
     end
     `endif
