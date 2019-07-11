@@ -410,7 +410,7 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
                      rvbs.dataAXI4Lite_Master.w.canPeek);
     let awflit <- get(rvbs.dataAXI4Lite_Master.aw);
     let  wflit <- get(rvbs.dataAXI4Lite_Master.w);
-    if (awflit.awaddr >= 'h02000000 && awflit.awaddr < 'h02001000) begin
+    if (awflit.awaddr >= 'h02000000 && awflit.awaddr < 'h02010000) begin
       clintSlave.aw.put(awflit);
       clintSlave.w.put(wflit);
       clintWriteRspFF.enq(True);
@@ -435,7 +435,7 @@ module mkRVBS_CLINT#(parameter VAddr reset_pc) (RVBS_CLINT);
 
   rule connectAR (rvbs.dataAXI4Lite_Master.ar.canPeek);
     let arflit <- get(rvbs.dataAXI4Lite_Master.ar);
-    if (arflit.araddr >= 'h02000000 && arflit.araddr < 'h02001000) begin
+    if (arflit.araddr >= 'h02000000 && arflit.araddr < 'h02010000) begin
       clintSlave.ar.put(arflit);
       clintReadRspFF.enq(True);
     end else begin

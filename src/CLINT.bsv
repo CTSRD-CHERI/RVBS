@@ -31,6 +31,7 @@ import Vector :: *;
 import FIFO :: *;
 
 import AXI4Lite :: *;
+import BlueUtils :: *;
 import SourceSink :: *;
 
 // CLINT interface
@@ -79,20 +80,32 @@ module mkAXI4LiteCLINT (AXI4LiteCLINT#(addr_sz, data_sz))
   Reg#(Bool) r_mtip[2] <- mkCRegU(2);
   let wRsp <- mkFIFO1;
   let rRsp <- mkFIFO1;
+  // bit idx helper
+   Integer topBitIdx = valueOf(TLog#(TDiv#(data_sz, 8))) - 1;
   // timer rules
   rule count_time; r_mtime <= r_mtime + 1; endrule
-  rule compare; r_mtip[0] <= r_mtime >= r_mtimecmp; endrule
+  rule compare;
+    r_mtip[0] <= r_mtime >= r_mtimecmp;
+    // debug
+    if (!r_mtip[0] && r_mtime >= r_mtimecmp)
+      printTLogPlusArgs("clint", $format("clint >>> mtime (0x%0x) reached mtimecmp", r_mtime));
+  endrule
   // AXI4 write request handling
   rule writeReq;
     // get request
     let awflit <- get(shim.master.aw);
     let  wflit <- get(shim.master.w);
+    // pre-format data / strb
+    Bit#(TLog#(TDiv#(data_sz, 8))) byteShftAmnt = awflit.awaddr[topBitIdx:0];
+    Bit#(TAdd#(3, TLog#(TDiv#(data_sz, 8)))) bitShftAmnt = zeroExtend(byteShftAmnt) << 3;
+    Bit#(data_sz) data = wflit.wdata >> bitShftAmnt;
+    Bit#(TDiv#(data_sz, 8)) strb = wflit.wstrb >> byteShftAmnt;
     // handle request
     AXI4Lite_BFlit#(0) bflit = defaultValue;
     case (awflit.awaddr[15:0])
-      16'h0000: r_msip <= unpack(wflit.wdata[0] & wflit.wstrb[0]);
+      16'h0000: r_msip <= unpack(data[0] & strb[0]);
       16'h4000: begin
-        let cmp_bot = merge(r_mtimecmp, truncate(wflit.wdata), truncate(wflit.wstrb));
+        let cmp_bot = merge(r_mtimecmp, truncate(data), truncate(strb));
         `ifndef XLEN64 // 32-bit only
         let newval = merge(cmp_bot, zeroExtend(cmp_top) << 32, unpack(8'hF0));
         `else
@@ -103,13 +116,17 @@ module mkAXI4LiteCLINT (AXI4LiteCLINT#(addr_sz, data_sz))
       end
       `ifndef XLEN64 // 32-bit only
       16'h4004:
-        cmp_top <= merge(truncateLSB(r_mtimecmp), truncate(wflit.wdata), truncate(wflit.wstrb));
+        cmp_top <= merge(truncateLSB(r_mtimecmp), truncate(data), truncate(strb));
       `endif
       16'hBFF8: bflit.bresp = SLVERR;
       default: bflit.bresp = SLVERR;
     endcase
     // put response
     wRsp.enq(bflit);
+    // debug
+    printTLogPlusArgs("clint", $format("clint >>> ", fshow(awflit)));
+    printTLogPlusArgs("clint", $format("clint >>> ", fshow(wflit)));
+    printTLogPlusArgs("clint", $format("clint >>> ", fshow(bflit)));
   endrule
   rule writeRsp;
     shim.master.b.put(wRsp.first);
@@ -119,20 +136,26 @@ module mkAXI4LiteCLINT (AXI4LiteCLINT#(addr_sz, data_sz))
   rule readReq;
     // get request
     let arflit <- get(shim.master.ar);
+    // pre-format data / strb
+    Bit#(TLog#(TDiv#(data_sz, 8))) byteShftAmnt = arflit.araddr[topBitIdx:0];
+    Bit#(TAdd#(3, TLog#(TDiv#(data_sz, 8)))) bitShftAmnt = zeroExtend(byteShftAmnt) << 3;
     // handle request
     AXI4Lite_RFlit#(data_sz, 0) rflit = defaultValue;
     case (arflit.araddr[15:0])
-      16'h0000: rflit.rdata = zeroExtend(pack(r_msip));
-      16'h4000: rflit.rdata = zeroExtend(r_mtimecmp);
-      16'hBFF8: rflit.rdata = zeroExtend(r_mtime);
+      16'h0000: rflit.rdata = zeroExtend(pack(r_msip)) << bitShftAmnt;
+      16'h4000: rflit.rdata = zeroExtend(r_mtimecmp) << bitShftAmnt;
+      16'hBFF8: rflit.rdata = zeroExtend(r_mtime) << bitShftAmnt;
       `ifndef XLEN64 // 32-bit only
-      16'h4004: rflit.rdata = zeroExtend(r_mtimecmp);
-      16'hBFFC: rflit.rdata = zeroExtend(r_mtime);
+      16'h4004: rflit.rdata = zeroExtend(r_mtimecmp >> 32) << bitShftAmnt;
+      16'hBFFC: rflit.rdata = zeroExtend(r_mtime >> 32) << bitShftAmnt;
       `endif
       default: rflit.rresp = SLVERR;
     endcase
     // put response
     rRsp.enq(rflit);
+    // debug
+    printTLogPlusArgs("clint", $format("clint >>> ", fshow(arflit)));
+    printTLogPlusArgs("clint", $format("clint >>> ", fshow(rflit)));
   endrule
   rule readRsp;
     // put response
