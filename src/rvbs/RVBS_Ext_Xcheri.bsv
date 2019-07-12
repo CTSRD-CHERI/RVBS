@@ -348,6 +348,11 @@ function Action instrXcheri_CFromPtr(RVState s, Bit#(5) rt, Bit#(5) cs, Bit#(5) 
   end
 endaction;
 
+function Action instrXcheri_CSub(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd) = action
+  s.wGPR(rd, getAddr(s.rCR(cs)) - getAddr(s.rCR(ct)));
+  logInst(s, fmtInstXcheri3op("csub", GPR(rd), CR(cs), CR(ct)));
+endaction;
+
 function Action instrXcheri_CMove(RVState s, Bit#(5) cs, Bit#(5) cd) = action
   s.wCR(cd, s.rCR(cs));
   logInst(s, fmtInstXcheriSrcDst("cmove", CR(cd), CR(cs)));
@@ -577,6 +582,7 @@ module [ISADefModule] mkExt_Xcheri#(RVState s) ();
   // Pointer-Arithmetic instructions
   defineInstEntry("ctoptr",     pat(n(7'h12), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CToPtr(s));
   defineInstEntry("cfromptr",   pat(n(7'h13), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CFromPtr(s));
+  defineInstEntry("csub",       pat(n(7'h14), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSub(s));
   defineInstEntry("cmove",      pat(n(7'h7f), n(5'h0a), v, n(3'h0), v, n(7'h5b)), instrXcheri_CMove(s));
   defineInstEntry("cspecialrw", pat(n(7'h01), v, v, n(3'h0), v, n(7'h5b)), instrXcheri_CSpecialRW(s));
 
