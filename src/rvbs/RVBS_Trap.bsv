@@ -65,14 +65,16 @@ function ActionValue#(PrivLvl) popStatusStack(CSR_Ifc#(Status) status, PrivLvl f
   PrivLvl to = from;
   case (from)
     M: begin
-      newval.mie = newval.mpie;
-      to         = unpack(newval.mpp);
-      newval.mpp = (static_HAS_U_MODE) ? pack(U) : pack(M);
+      newval.mie  = newval.mpie;
+      to          = unpack(newval.mpp);
+      newval.mpie = True;
+      newval.mpp  = (static_HAS_U_MODE) ? pack(U) : pack(M);
     end
     S: begin
-      newval.sie = newval.spie;
-      to         = unpack({1'b0, newval.spp});
-      newval.spp = (static_HAS_U_MODE) ? truncate(pack(U)): truncate(pack(M)); // XXX check spec here... Shouldn't it be "lowest supported priv mode" rather than "U if supported, M otherwise"?
+      newval.sie  = newval.spie;
+      to          = unpack({1'b0, newval.spp});
+      newval.spie = True;
+      newval.spp  = (static_HAS_U_MODE) ? truncate(pack(U)): truncate(pack(M)); // XXX check spec here... Shouldn't it be "lowest supported priv mode" rather than "U if supported, M otherwise"?
     end
     U: newval.uie = newval.upie; // (and stay in U-mode)
     default: noAction;
@@ -250,10 +252,12 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, M);
       s.currentPrivLvl <= toLvl;
-      s.pc <= pack(s.csrs.mepc);
+      let tgt = pack(s.csrs.mepc);
       `ifdef RVXCHERI
       s.pcc <= s.mepcc;
+      tgt = getOffset(s.mepcc);
       `endif
+      s.pc <= tgt;
       logInst(s, $format("mret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
@@ -272,10 +276,12 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     end else begin
       PrivLvl toLvl <- popStatusStack(s.csrs.mstatus, S);
       s.currentPrivLvl <= toLvl;
-      s.pc <= pack(s.csrs.sepc);
+      let tgt = pack(s.csrs.sepc);
       `ifdef RVXCHERI
       s.pcc <= s.sepcc;
+      tgt = getOffset(s.sepcc);
       `endif
+      s.pc <= tgt;
       logInst(s, $format("sret"), fshow(s.currentPrivLvl) + $format(" -> ") + fshow(toLvl));
     end
   endaction;
