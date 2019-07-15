@@ -357,9 +357,15 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       `endif
     end
     // handle general trap behaviour
-    general_trap(s, M, code, s.pc
+    let epc = s.pc;
+    if (code matches tagged Interrupt ._) epc = s.pc.late;
+    `ifdef RVXCHERI
+    // XXX assert that the setOffset is safe
+    let epcc = setOffset(s.pcc, epc);
+    `endif
+    general_trap(s, M, code, epc
       `ifdef RVXCHERI
-      , capExc, s.pcc
+      , capExc, epcc.value
       `endif
     );
     // potential tval latching
@@ -379,7 +385,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
       Vectored &&& (!isException): tgt = tgt + zeroExtend({pack(irqCode.Valid),2'b00});
       default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
     endcase
-    s.pc <= tgt;
+    asReg(s.pc.late) <= tgt;
     // prepare trace message
     Fmt msg = $format(">>> TRAP <<< -- mcause <= ", fshow(code), ", mepc <= 0x%0x, mtval <= 0x%0x, pc <= 0x%0x", s.pc, new_mtval, tgt);
     `ifdef RVXCHERI

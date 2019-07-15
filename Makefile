@@ -128,6 +128,7 @@ BSCFLAGS += -show-schedule -sched-dot
 #BSCFLAGS += -steps-warn-interval n
 BSCFLAGS += -steps-warn-interval 3000000
 #BSCFLAGS += +RTS -K40M -RTS
+#BSCFLAGS += -show-range-conflict
 BSCFLAGS += +RTS -K60M -RTS
 
 BSC = bsc
