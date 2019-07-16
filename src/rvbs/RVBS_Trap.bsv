@@ -360,8 +360,10 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     let epc = s.pc;
     if (code matches tagged Interrupt ._) epc = s.pc.late;
     `ifdef RVXCHERI
+    let epcc = s.pcc;
+    if (code matches tagged Interrupt ._) epcc = s.pcc.late;
     // XXX assert that the setOffset is safe
-    let epcc = setOffset(s.pcc, epc);
+    epcc = setOffset(epcc, epc);
     `endif
     general_trap(s, M, code, epc
       `ifdef RVXCHERI
@@ -376,7 +378,7 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     // handle pc update
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
     `ifdef RVXCHERI
-    s.pcc <= s.mtcc;
+    asReg(s.pcc.late) <= s.mtcc;
     tgt = getOffset(s.mtcc);
     `endif
     case (s.csrs.mtvec.mode) matches
