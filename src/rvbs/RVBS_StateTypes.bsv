@@ -45,6 +45,7 @@ typedef  4 CC_OTYPE;
 import CHERICap :: *;
 import CHERICC_Fat :: *;
 //import CHERICC :: *;
+`endif
 
 import Vector :: *;
 import FIFOF :: *;
