@@ -78,6 +78,7 @@ import FIFO :: *;
 //typedef CHERICCCap#(CC_ADDR, CC_BOUNDS, CC_EXP, CC_OTYPE) CapType;
 typedef CapPipe CapType;
 typedef TAdd#(XLEN, XLEN) CapNoValidSz;
+typedef TDiv#(CapNoValidSz, 8) CapByteSz;
 Bit#(CC_OTYPE) otypeMax = ~0;
 // Capability handle helper types
 typedef union tagged {
