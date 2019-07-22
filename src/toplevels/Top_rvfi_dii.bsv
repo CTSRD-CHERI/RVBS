@@ -40,6 +40,10 @@ import   BlueBasics :: *;
 import    BlueUtils :: *;
 import          BID :: *;
 
+// helper
+function Bit#(TLog#(TAdd#(1, n))) idxMSB(Bit#(n) x) =
+  pack(fromInteger(valueOf(n)) - countZerosMSB(x) - 1);
+
 (* synthesize *)
 module mkRVBS_rvfi_dii (Empty);
 
@@ -91,14 +95,18 @@ module mkRVBS_rvfi_dii (Empty);
             case (e_req) matches
               tagged Left .excTok: excFF.enq(excTok);
               tagged Right .req: case (req) matches
-                tagged RVReadReq .r &&& (r.addr >= 'h80000000 && r.addr < 'h80010000): begin
+                tagged RVReadReq .r &&&
+                  (r.addr >= 'h80000000 &&
+                   {1'b0, r.addr} + zeroExtend(readBitPO(r.numBytes) - 1) < 'h80010000): begin
                   mem[i].sink.put(ReadReq{addr: r.addr, numBytes: r.numBytes});
                   `ifdef RVXCHERI
                   mem_tag[i].sink.put(ReadReq{addr: r.addr, numBytes: 1});
                   `endif
                   errorFF.enq(False);
                 end
-                tagged RVWriteReq .w &&& (w.addr >= 'h80000000 && w.addr < 'h80010000): begin
+                tagged RVWriteReq .w &&&
+                  (w.addr >= 'h80000000 &&
+                   {1'b0, w.addr} + zeroExtend(idxMSB(w.byteEnable)) + 1 < 'h80010000): begin
                   mem[i].sink.put(WriteReq{
                     addr: w.addr, byteEnable: w.byteEnable, data: w.data
                   });
