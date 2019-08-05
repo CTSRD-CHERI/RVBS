@@ -73,15 +73,15 @@ function Fmt specialCapName(Bit#(5) idx) = case (idx)
   0:  $format("pcc");
   1:  $format("ddc");
   4:  $format("utcc");
-  //5:  $format("utdc");
+  5:  $format("utdc");
   6:  $format("uscratchc");
   7:  $format("uepcc");
   12: $format("stcc");
-  //13: $format("stdc");
+  13: $format("stdc");
   14: $format("sscratchc");
   15: $format("sepcc");
   28: $format("mtcc");
-  //29: $format("mtdc");
+  29: $format("mtdc");
   30: $format("mscratchc");
   31: $format("mepcc");
   default: $format("unknown");
