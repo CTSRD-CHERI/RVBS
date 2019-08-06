@@ -125,8 +125,8 @@ module [Module] mkState#(
   s.csrs <- mkCSRs();
   `ifdef RVXCHERI
   // CHERI specific state
-  s.pcc  <- mkArchReg(yCap);
-  s.ddc  <- mkArchReg(yCap);
+  s.pcc       <- mkArchReg(setAddr(yCap, reset_pc).value);
+  s.ddc       <- mkArchReg(yCap);
   s.utcc      <- mkArchReg(yCap);
   s.utdc      <- mkArchReg(nCap);
   s.uscratchc <- mkArchReg(nCap);

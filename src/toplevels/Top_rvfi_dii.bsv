@@ -129,19 +129,20 @@ module mkRVBS_rvfi_dii (Empty);
   endmodule
   RVMem mem[2] <- memShim(reset_by bridge.new_rst);
   // prepare state
+  let reset_pc = 'h80000000;
   `ifdef SUPERVISOR_MODE
   RVMem imem[2] <- virtualize(mem[0], 2, reset_by bridge.new_rst);
   RVMem dmem[2] <- virtualize(mem[1], 2, reset_by bridge.new_rst);
-  RVState s <- mkState(?, imem[1], dmem[1], imem[0], dmem[0], bridge, reset_by bridge.new_rst);
+  RVState s <- mkState(reset_pc, imem[1], dmem[1], imem[0], dmem[0], bridge, reset_by bridge.new_rst);
   `else
-  RVState s <- mkState(?, mem[0], mem[1], bridge, reset_by bridge.new_rst);
+  RVState s <- mkState(reset_pc, mem[0], mem[1], bridge, reset_by bridge.new_rst);
   `endif
   // initialization
   module [ISADefModule] mkRVInit#(RVState st) (Empty);
     Reg#(Bit#(6)) cnt <- mkRegU;
     defineInitEntry(rSeq(rBlock(
       printTLogPlusArgs("itrace", "-------- Reseting --------"),
-      action s.pc <= 'h80000000; endaction, action s.pc.commit; endaction,
+      action s.pc <= reset_pc; endaction, action s.pc.commit; endaction,
       `ifdef RVXCHERI
       action CapType c0 = nullCap; s.wCR(0, c0); endaction,
       s.regFile.commit,
