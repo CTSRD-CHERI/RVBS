@@ -188,7 +188,7 @@ typedef struct {
   Array#(Reg#(VAddr)) mem_addr;
   Array#(Reg#(Bit#(DMemWidth))) mem_wdata;
   Array#(Reg#(Bit#(TDiv#(DMemWidth, 8)))) mem_wmask;
-  RVFI_DII_Bridge#(XLEN,0) rvfi_dii_bridge;
+  RVFI_DII_Bridge#(XLEN, XLEN, 0) rvfi_dii_bridge;
   `endif
 } RVState;
 
