@@ -377,15 +377,18 @@ module [ISADefModule] mkRVTrap#(RVState s) ();
     s.csrs.mtval <= new_mtval;
     // handle pc update
     Bit#(XLEN) tgt = {s.csrs.mtvec.base, 2'b00};
+    TVecMode  mode = s.csrs.mtvec.mode;
     `ifdef RVXCHERI
     asReg(s.pcc.late) <= s.mtcc;
-    tgt = getOffset(s.mtcc);
+    TVec tmp = unpack(getOffset(s.mtcc));
+    tgt  = {tmp.base, 2'b00};
+    mode = tmp.mode;
     `endif
-    case (s.csrs.mtvec.mode) matches
+    case (mode) matches
       Direct: tgt = tgt;
       Vectored &&& isException: tgt = tgt;
       Vectored &&& (!isException): tgt = tgt + zeroExtend({pack(irqCode.Valid),2'b00});
-      default: terminateSim(s, $format("TRAP WITH UNKNOWN MTVEC MODE ", fshow(s.csrs.mtvec.mode)));
+      default: terminateSim(s, $format("TRAP WITH UNKNOWN MODE ", fshow(mode)));
     endcase
     asReg(s.pc.late) <= tgt;
     // prepare trace message
