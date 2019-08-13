@@ -72,14 +72,18 @@ endcase;
 function Fmt specialCapName(Bit#(5) idx) = case (idx)
   0:  $format("pcc");
   1:  $format("ddc");
+  `ifdef RVN
   4:  $format("utcc");
   5:  $format("utdc");
   6:  $format("uscratchc");
   7:  $format("uepcc");
+  `endif
+  `ifdef SUPERVISOR_MODE
   12: $format("stcc");
   13: $format("stdc");
   14: $format("sscratchc");
   15: $format("sepcc");
+  `endif
   28: $format("mtcc");
   29: $format("mtdc");
   30: $format("mscratchc");

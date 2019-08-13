@@ -127,14 +127,18 @@ module [Module] mkState#(
   // CHERI specific state
   s.pcc       <- mkArchReg(setAddr(yCap, reset_pc).value);
   s.ddc       <- mkArchReg(yCap);
+  `ifdef RVN
   s.utcc      <- mkArchReg(yCap);
   s.utdc      <- mkArchReg(nCap);
   s.uscratchc <- mkArchReg(nCap);
   s.uepcc     <- mkArchReg(yCap);
+  `endif
+  `ifdef SUPERVISOR_MODE
   s.stcc      <- mkArchReg(yCap);
   s.stdc      <- mkArchReg(nCap);
   s.sscratchc <- mkArchReg(nCap);
   s.sepcc     <- mkArchReg(yCap);
+  `endif
   s.mtcc      <- mkArchReg(yCap);
   s.mtdc      <- mkArchReg(nCap);
   s.mscratchc <- mkArchReg(nCap);
@@ -142,14 +146,18 @@ module [Module] mkState#(
   function getCapSpecial(idx) = case (idx)
     0:  Valid(tuple4(U, False,  True, asIfc(s.pcc)));
     1:  Valid(tuple4(U, False, False, asIfc(s.ddc)));
+    `ifdef RVN
     4:  Valid(tuple4(U,  True, False, asIfc(s.utcc)));
     5:  Valid(tuple4(U,  True, False, asIfc(s.utdc)));
     6:  Valid(tuple4(U,  True, False, asIfc(s.uscratchc)));
     7:  Valid(tuple4(U,  True, False, asIfc(s.uepcc)));
+    `endif
+  `ifdef SUPERVISOR_MODE
     12: Valid(tuple4(S,  True, False, asIfc(s.stcc)));
     13: Valid(tuple4(S,  True, False, asIfc(s.stdc)));
     14: Valid(tuple4(S,  True, False, asIfc(s.sscratchc)));
     15: Valid(tuple4(S,  True, False, asIfc(s.sepcc)));
+    `endif
     28: Valid(tuple4(M,  True, False, asIfc(s.mtcc)));
     29: Valid(tuple4(M,  True, False, asIfc(s.mtdc)));
     30: Valid(tuple4(M,  True, False, asIfc(s.mscratchc)));

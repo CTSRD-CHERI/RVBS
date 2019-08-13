@@ -146,14 +146,18 @@ typedef struct {
   `ifdef RVXCHERI
   ArchReg#(CapType) pcc;
   ArchReg#(CapType) ddc;
+  `ifdef RVN
   ArchReg#(CapType) utcc;
   ArchReg#(CapType) utdc;
   ArchReg#(CapType) uscratchc;
   ArchReg#(CapType) uepcc;
+  `endif
+  `ifdef SUPERVISOR_MODE
   ArchReg#(CapType) stcc;
   ArchReg#(CapType) stdc;
   ArchReg#(CapType) sscratchc;
   ArchReg#(CapType) sepcc;
+  `endif
   ArchReg#(CapType) mtcc;
   ArchReg#(CapType) mtdc;
   ArchReg#(CapType) mscratchc;
@@ -258,14 +262,18 @@ instance State#(RVState);
     `ifdef RVXCHERI
     s.pcc.commit;
     s.ddc.commit;
+    `ifdef RVN
     s.utcc.commit;
     s.utdc.commit;
     s.uscratchc.commit;
     s.uepcc.commit;
+    `endif
+    `ifdef SUPERVISOR_MODE
     s.stcc.commit;
     s.stdc.commit;
     s.sscratchc.commit;
     s.sepcc.commit;
+    `endif
     s.mtcc.commit;
     s.mtdc.commit;
     s.mscratchc.commit;
