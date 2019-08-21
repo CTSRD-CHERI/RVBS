@@ -765,7 +765,7 @@ instance LegalizeWrite#(TVec);
   function legalizeWrite(x, y);
     TVec oldval = unpack(x);
     TVec newval = y;
-    if (newval.mode != Direct || newval.mode != Vectored)
+    if (newval.mode != Direct && newval.mode != Vectored)
       newval.mode = oldval.mode;
     return newval;
   endfunction
