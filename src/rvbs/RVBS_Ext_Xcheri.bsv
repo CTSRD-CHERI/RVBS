@@ -451,7 +451,7 @@ endaction;
 */
 
 function Action instrXcheri_CTestSubset(RVState s, Bit#(5) ct, Bit#(5) cs, Bit#(5) rd) = action
-  let cap_cs = s.rCR(cs);
+  let cap_cs = (cs == 0) ? s.ddc : s.rCR(cs);
   let cap_ct = s.rCR(ct);
   let isSubset = True;
   if (isValidCap(cap_cs) != isValidCap(cap_ct)) isSubset = False;
