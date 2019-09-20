@@ -172,7 +172,7 @@ typedef struct {
 
   // CSR request
   //////////////////////////////////////////////////////////////////////////////
-  function ActionValue#(Bit#(XLEN)) doReq (CSRReq r) req;
+  function ActionValue#(Maybe#(Bit#(XLEN))) doReq (CSRReq r) req;
 
 } CSRs;
 

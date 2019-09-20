@@ -279,8 +279,9 @@ module mkCSRs(CSRs);
     end else printTLogPlusArgs("CSRs", $format("reading value 0x%0x from CSR", retval));
     return retval;
   endactionvalue;
-  function ActionValue#(Bit#(XLEN)) req (CSRReq r) = actionvalue
+  function ActionValue#(Maybe#(Bit#(XLEN))) req (CSRReq r) = actionvalue
     Bit#(XLEN) ret = ?;
+    Bool doTrap = False;
     `define CSRUpdate(x) ret <- readUpdateCSR(x,r);
     `define MVCSRUpdate(x, y) begin x tmp <- readUpdateMultiViewCSR(y,r); ret = pack(tmp); end
     case (r.idx) matches// TODO sort out individual behaviours for each CSR
@@ -338,11 +339,11 @@ module mkCSRs(CSRs);
       end
       12'hCC1: if (genC) begin $display("TEST FAILURE"); $finish(0); end // test failure
       default: begin
-        ret = ?;
+        doTrap = True;
         printLog($format("CSR 0x%0x unimplemented - ", r.idx, fshow(r)));
       end
     endcase
-    return ret;
+    return (doTrap) ? Invalid : Valid(ret);
   endactionvalue;
   csrs.req = req;
 

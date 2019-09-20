@@ -64,8 +64,9 @@ import RVBS_MemAccess :: *;
   else begin\
     // XXX for some reason, bluespec doesn't like this way to write it:\
     // s.rGPR(rd) <- s.csrs.req(r);\
-    let val <- s.csrs.req(r);\
-    s.wGPR(rd, val);\
+    let mval <- s.csrs.req(r);\
+    if (mval matches tagged Valid .val) s.wGPR(rd, val);\
+    else raiseException(s, IllegalInst);\
   end
 
 // funct3 = CSRRW = 001
