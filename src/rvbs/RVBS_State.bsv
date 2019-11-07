@@ -66,7 +66,11 @@ module [Module] mkState#(
   , RVMem dvmmem
   `endif
   `ifdef RVFI_DII
+  `ifdef RVXCHERI
+  , RVFI_DII_Bridge#(XLEN, 64, 0) rvfi_dii_bridge
+  `else
   , RVFI_DII_Bridge#(XLEN, XLEN, 0) rvfi_dii_bridge
+  `endif
   `endif
   ) (RVState);
   RVState s;

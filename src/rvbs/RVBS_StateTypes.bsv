@@ -192,7 +192,11 @@ typedef struct {
   Array#(Reg#(VAddr)) mem_addr;
   Array#(Reg#(Bit#(DMemWidth))) mem_wdata;
   Array#(Reg#(Bit#(TDiv#(DMemWidth, 8)))) mem_wmask;
+  `ifdef RVXCHERI
+  RVFI_DII_Bridge#(XLEN, 64, 0) rvfi_dii_bridge;
+  `else
   RVFI_DII_Bridge#(XLEN, XLEN, 0) rvfi_dii_bridge;
+  `endif
   `endif
 } RVState;
 
