@@ -132,10 +132,10 @@ BSCFLAGS += -steps-warn-interval 3000000
 BSCFLAGS += +RTS -K60M -RTS
 
 BSC = bsc
-#XXX Bluespec is not compatible with gcc > 4.9
+#XXX Bluespec 2018 is not compatible with gcc > 4.9
 #XXX This is actually problematic when using $test$plusargs/strings or something?
-CC = gcc-4.8
-CXX = g++-4.8
+#CC = gcc-4.8
+#CXX = g++-4.8
 
 all: sim isa-test rvfi-dii verilog
 
