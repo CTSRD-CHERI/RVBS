@@ -242,7 +242,7 @@ instance State#(RVState);
       rvfi_rs2_data:  ?,
       rvfi_pc_rdata:  s.pc,
       rvfi_pc_wdata:  isValid(s.exc_tgt[1]) ? s.exc_tgt[1].Valid : s.pc.late,
-      rvfi_mem_wdata: s.mem_wdata[1],
+      rvfi_mem_wdata: zeroExtend(s.mem_wdata[1]),
       rvfi_rd_addr:   s.regFile.rd_idx,
       `ifdef RVXCHERI
       rvfi_rd_wdata:  getAddr(s.regFile.rd_new_val),
@@ -251,7 +251,7 @@ instance State#(RVState);
       `endif
       rvfi_mem_addr:  s.mem_addr[1],
       rvfi_mem_rmask: ?,
-      rvfi_mem_wmask: s.mem_wmask[1],
+      rvfi_mem_wmask: zeroExtend(s.mem_wmask[1]),
       rvfi_mem_rdata: ?
     });
     // reset the cregs
