@@ -128,7 +128,7 @@ typedef enum {
   ECallFromU = 8, ECallFromS = 9, ECallFromM = 11,
   InstPgFault = 12, LoadPgFault = 13, StrAMOPgFault = 15
   `ifdef RVXCHERI
-  , CHERIFault = 32
+  , CHERIFault = 28
   `endif
 } ExcCode deriving (Bits, Eq, FShow);
 typedef union tagged {
