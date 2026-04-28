@@ -1,6 +1,6 @@
 # RVBS - RISC-V Bluespec SystemVerilog Specification
 
-**RVBS** (pronounced *"rubs"*) is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, with an AXI interface, that could be used as a golden model.
+**RVBS** (pronounced *"rubs"*) is an ISA level description of the RISC-V instruction set in [Bluespec SystemVerilog](https://github.com/B-Lang-org/bsc). It uses the [BID library](https://github.com/CTSRD-CHERI/BID) to describe the instructions, providing a readable, executable and synthesizeable specification, with an AXI interface, that could be used as a golden model.
 
 **RVBS** is **not** a heavily pipelined, superscalar or optimised RISC-V core. It is however capable to boot small embedded operating systems.
 
@@ -19,7 +19,7 @@ RVBS supports traps between privilege modes, but **Supervisor mode** is not full
 
 ## Building RVBS
 
-In order to build a RVBS Bluesim simulator, you will need a valid installation of [Bluespec SystemVerilog](http://wiki.bluespec.com/bluespec-systemverilog-and-compiler) on your machine. RVBS relies on the following three Bluespec libraries:
+In order to build a RVBS Bluesim simulator, you will need a valid installation of [Bluespec SystemVerilog](https://github.com/B-Lang-org/bsc ) on your machine. RVBS relies on the following three Bluespec libraries:
 
 - [Recipe](https://github.com/CTSRD-CHERI/Recipe)
 - [BitPat](https://github.com/CTSRD-CHERI/BitPat)
